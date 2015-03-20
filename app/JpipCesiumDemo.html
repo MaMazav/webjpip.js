@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Cesium JPIP Demo</title>
+    
+    <script src="../webjpip.js/misc/j2kjpipglobals.js"></script>
+    <script src="../webjpip.js/misc/jpipruntimefactory.js"></script>
+    <script src="../webjpip.js/misc/simpleajaxhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/compositearray.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipdatabinparts.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipdatabinssaver.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipobjectpoolbydatabin.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpiprequestdatabinslistener.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipmarkersparser.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipoffsetscalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipstructureparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/mutualexclusivetransactionhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipbitstreamreader.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipcodingpassesnumberparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipcodeblocklengthparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpippacketlengthcalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipqualitylayerscache.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipsubbandlengthinpacketheadercalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpiptagtree.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpiptilestructure.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpipcomponentstructure.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpipcodestreamstructure.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpipheadermodifier.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpipcodestreamreconstructor.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpippacketsdatacollector.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipchannel.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipmessageheaderparser.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipreconnectablerequester.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpiprequest.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipsessionhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipsession.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpipcodestreamclient.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpipcodestreamsizescalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpiprequestcontext.js"></script>
+    
+    <script src="../wrappers/cesiumjpip/_cesiumfrustumcalculator.js"></script>
+    <script src="../wrappers/cesiumjpip/_cesiumjpiplayermanager.js"></script>
+    <script src="../wrappers/cesiumjpip/canvasimageryprovider.js"></script>
+    <script src="../wrappers/cesiumjpip/jpipimageryprovider.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/copyTilesPixelsToOnePixelsArray.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/decodejobspool.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/jpipimagehelperfunctions.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/jpxdecodejob.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/lifoscheduler.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/linkedlist.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/priorityscheduler.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/scheduledrequestmanager.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/decodejobspool.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/jpxdecodejob.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/frustumrequestsprioritizer.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/singleregionprioritizer.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimageworkers/workerproxycodestreamclientmanager.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimageworkers/workerproxyjpxjpipimage.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimageworkers/workerproxyasyncjpximage.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimage.js"></script>
+    <script src="../wrappers/jpxjpipimage/viewerjpipimage.js"></script>
+    <script src="../wrappers/workerhelper/mastersideworkerhelper.js"></script>
+    <script src="../wrappers/workerhelper/slavesideworkerhelper.js"></script>
+    
+    <script src="../../Cesium/Build/Cesium/Cesium.js"></script>
+    
+    <style>
+      @import url(../../Cesium/Build/Cesium/Widgets/widgets.css);
+
+      #cesiumContainer {
+          position: absolute;
+          top: 20%;
+          left: 0;
+          height: 80%;
+          width: 100%;
+          margin: 0;
+          overflow: hidden;
+          padding: 0;
+          font-family: sans-serif;
+      }
+	  
+      #jpipUrlTxt {
+          width : 80%;
+      }
+	  
+	  #loadButton {
+          width : 100%;
+	  }
+	  
+	  #errorContainer {
+		color : red
+	  }
+
+      body {
+          padding: 0;
+          margin: 0;
+          overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      URL:
+      <input id="jpipUrlTxt" type="text" value="http://kdu-server:8080/D:%5Cweb%5Cjpeg2000tries%5Ccabs.j2k" />
+  	<br />
+  	
+  	Quality layers count:
+  	<input id="qualityLayersTxt" type="text" value="max" />
+  	<br />
+  
+      <input id="loadButton" type="button" onclick="javascript:loadJpipUrl()" value="Load URL" />
+    </div>
+    <br />
+    
+    <div id="errorContainer"></div>
+  
+    <div id="cesiumContainer"></div>
+  
+    <script src="JpipCesiumDemo.js"></script>
+  </body>
+</html>

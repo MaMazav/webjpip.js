@@ -1,0 +1,89 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>JPIP Demo</title>
+  </head>
+  <body>
+    <div style="width: 100%">
+      Jpip URL:
+      <input
+        style="width: 80%"
+        type="text"
+        id="jpipUrlTxt"
+        value="http://kdu-server:8080/D:%5Cweb%5Cjpeg2000tries%5Ccabs_small.jp2"
+        />
+      <input type="button" onclick="loadImage()" value="Load image" />
+    </div>
+    
+    <div>
+      <a href="javascript:image.close()" id="closeImageLink"></a><br>
+      <a href="javascript:loadAllTiles()" id="loadAllTilesLink"></a>
+    </div>
+    
+    <div id="status">Initializing...</div>
+    <br><br>
+    
+    <div style="color: red" id="errorDiv"></div>
+    
+    <div>
+      <br>
+      Number of resolution levels to cut:
+      <input type="text" value="0" id="numResolutionLevelsToCutTxt" />
+      /
+      maximum: <span id="maxNumResolutionLevelsSpan"></span>
+
+      <br>
+      Maximum number of quality layers:
+      <input type="text" value="0" id="maxNumQualityLayersTxt" />
+
+      <br>
+      <input type="checkbox" value="false" id="enableProgressiveChk" />
+      Enable progressive rendering
+      
+      <br>
+      <br>
+    </div>
+    
+    <div id="tilesViewer"></div>
+    
+    <div id="codestreamBytesDiv"></div>
+    
+    <script src="../webjpip.js/misc/j2kjpipglobals.js"></script>
+    <script src="../webjpip.js/misc/jpipruntimefactory.js"></script>
+    <script src="../webjpip.js/misc/simpleajaxhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/compositearray.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipdatabinparts.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipdatabinssaver.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipobjectpoolbydatabin.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpiprequestdatabinslistener.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipmarkersparser.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipoffsetscalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipstructureparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/mutualexclusivetransactionhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipbitstreamreader.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipcodingpassesnumberparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipcodeblocklengthparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpippacketlengthcalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipqualitylayerscache.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipsubbandlengthinpacketheadercalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpiptagtree.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpiptilestructure.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpipcomponentstructure.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpipcodestreamstructure.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpipheadermodifier.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpipcodestreamreconstructor.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpippacketsdatacollector.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipchannel.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipmessageheaderparser.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipreconnectablerequester.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpiprequest.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipsessionhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipsession.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpipcodestreamclient.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpipcodestreamsizescalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpiprequestcontext.js"></script>
+    
+    <script src="jpxToCanvas.js"></script>
+    <script src="JpipDemo.js"></script>
+  </body>
+</html>

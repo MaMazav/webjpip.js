@@ -1,0 +1,1074 @@
+'use strict';
+
+var statusCallbackMockForSessionTest = {
+    lastStatus: null,
+    
+    statusCallbackCalls: 0,
+    
+    clear: function clear() {
+        statusCallbackMockForSessionTest.lastStatus = null;
+        statusCallbackMockForSessionTest.statusCallbackCalls = 0;
+    },
+    
+    callback: function statusCallbackMock_callback(status) {
+        statusCallbackMockForSessionTest.lastStatus = status;
+        ++statusCallbackMockForSessionTest.statusCallbackCalls;
+    }
+    };
+
+function clearForSessionTest() {
+    ajaxHelperMock.clearForTest();
+    statusCallbackMockForSessionTest.clear();
+    jpipMessageHeaderParserStub.clearForTest();
+}
+    
+function createSessionForTest(options) {
+    if (options === undefined) {
+        options = {};
+    }
+    
+    if (options.mainHeaderDatabin === undefined) {
+        options.mainHeaderDatabin = databinStubs.mainHeaderDatabinStub;
+    }
+    
+    var tileWidthInLevel0 = options.tileWidth || 40;
+    var tileHeightInLevel0 = options.tileHeight || 80;
+    
+    var levelSizesResult = [];
+    
+    var tileStructure = new JpipTileStructureStub(
+        { tileSize: [tileWidthInLevel0, tileHeightInLevel0] } );
+        
+    var codestreamStructure = new JpipCodestreamStructureStub(
+        tileStructure,
+        /*sizeOfPartResult=*/undefined,
+        levelSizesResult);
+    
+    var imageWidth = tileWidthInLevel0 * codestreamStructure.getNumTilesX();
+    var imageHeight = tileHeightInLevel0 * codestreamStructure.getNumTilesY();
+    
+    levelSizesResult[0] = [imageWidth, imageHeight];
+    levelSizesResult[2] = [imageWidth / 4, imageHeight / 4];
+    levelSizesResult[3] = [imageWidth / 8, imageHeight / 8];
+    levelSizesResult[4] = [imageWidth / 16, imageHeight / 16];
+    
+    var databinsSaver = new JpipDatabinsSaverStub(options.mainHeaderDatabin);
+    if (options.isJptStream) {
+        databinsSaver.getIsJpipTilePartStream = function() { return true; };
+    }
+    
+    var session = new JpipSession(
+        options.maxChannelsInSession || 5,
+        options.maxRequestsWaitingForResponseInChannel || 3,
+        /*targetId=*/0,
+        options.requestEndedCallback || function () {},
+        codestreamStructure,
+        databinsSaver,
+        jpipMessageHeaderParserStub,
+        ajaxHelperMock,
+        setIntervalStub,
+        clearIntervalStub);
+    
+    if (options.url) {
+        session.open(options.url);
+    }
+    
+    var channelId = null;
+    var targetId = null;
+    
+    if (!options.disableChannelCreatedResponse) {
+        var callback = ajaxHelperMock.getLastCallbackForTest();
+        ajaxHelperMock.clearForTest();
+
+        var ajaxResponse = new AjaxResponseStub(
+            /*createChannel=*/true, /*createTarget=*/!options.isDisableTargetId);
+        channelId = ajaxResponse.channelId;
+        targetId = ajaxResponse.targetId;
+
+        callback(ajaxResponse, /*isDone=*/true);
+    }
+    
+    var result = {
+        session: session,
+        channelId: channelId,
+        targetId: targetId,
+        databinsSaver: databinsSaver,
+        codestreamStructure: codestreamStructure
+        };
+    
+    return result;
+}
+
+function setIntervalStub() {
+}
+
+function clearIntervalStub() {
+}
+
+function simulateAjaxResponseAndCheckImageReady(
+    assert, session, isReady, disableCreateChannel) {
+    
+    var prevStatusCallbackCallsCount =
+        statusCallbackMockForSessionTest.statusCallbackCalls;
+
+    session.setStatusCallback(statusCallbackMockForSessionTest.callback);
+    
+    var assertSuffix = isReady ? ' (after channel ready)' : ' (before channel ready)';
+    
+    var callback = ajaxHelperMock.getLastCallbackForTest();
+    ajaxHelperMock.clearForTest();
+
+    var ajaxResponse = new AjaxResponseStub(
+        /*createChannel=*/!disableCreateChannel, /*createTarget=*/!disableCreateChannel);
+    callback(ajaxResponse, /*isDone=*/true);
+    
+    var isReadyActual = session.getIsReady();
+    var isReadyExpected = isReady;
+    assert.deepEqual(isReadyActual, isReadyExpected, 'getIsReady() result' + assertSuffix);
+    
+    var statusCallbackCallsActual = 
+        statusCallbackMockForSessionTest.statusCallbackCalls
+        - prevStatusCallbackCallsCount;
+        
+    var statusCallbackCallsExpected = isReady ? 1 : 0;
+    
+    assert.deepEqual(
+        statusCallbackCallsActual,
+        statusCallbackCallsExpected,
+        'Calls count to statusCallback' + assertSuffix);
+        
+    var statusActual = statusCallbackMockForSessionTest.lastStatus;
+    
+    var statusExpected = null;
+    if (isReady) {
+        statusExpected = {
+            exception: null,
+            isReady: isReady
+            };
+    }
+    
+    assert.deepEqual(
+        statusActual,
+        statusExpected,
+        'status argument passed to statusCallback' + assertSuffix);
+}
+
+function actAndAssertRequestTile(
+    assert, url, sessionCreated, numResolutionLevelsToCut, scale, options) {
+    
+    if (options === undefined) {
+        options = {};
+    }
+    
+    if (scale === undefined) {
+        scale = 1;
+    }
+    
+    var isJptStream = !!options.isJptStream;
+    var isEnableTargetId = !options.isDisableTargetId;
+    var isAllowStatefulRequest = !options.isRefuseStatefulRequestForTile;
+    var cnewHttpHeader = options.cnewHttpHeader;
+    var qidParam = options.qid !== undefined ? '&qid=' + options.qid : '';
+    var cnewParam = options.hasCnewRequestInUrl ? '&cnew=http' : '';
+    var addEndOfResponseByte = !!options.addEndOfResponseByte;
+    var isFailureExpected = !!options.isFailureExpected;
+    
+    var streamTypeQueryParameter = isJptStream ? 'jpt-stream' : 'jpp-stream';
+    
+    var requestTileCallbackCalls = 0;
+    function tileCreatedCallback(codestream) {
+        ++requestTileCallbackCalls;
+    }
+    
+    var failureCallbackCalls = 0;
+    function failureCallback() {
+        ++failureCallbackCalls;
+    }
+    
+    var tileX = 2;
+    var tileY = 4;
+    
+    var responseLength = 30;
+    var response = new ArrayBuffer(responseLength + 2);//(addEndOfResponseByte ? 2 : 0));
+    var responseAsUint8 = new Uint8Array(response);
+    for (var i = 0; i < responseLength; ++i) {
+        responseAsUint8[i] = i + 1;
+    }
+    //if (addEndOfResponseByte) {
+        responseAsUint8[responseLength] = 0;
+        responseAsUint8[responseLength + 1] = 2; // Window done
+    //}
+    
+    var messageHeaders = [
+        { bodyStart: 5, messageBodyLength: 10 },
+        { bodyStart: 17, messageBodyLength: 5 },
+        { bodyStart: 25, messageBodyLength: 0 },
+        { bodyStart: 27, messageBodyLength: responseLength - 27 },
+        ];
+    
+    jpipMessageHeaderParserStub.messageParseResultForTest = messageHeaders;
+
+    var levelWidth = sessionCreated.codestreamStructure.getImageWidth() / scale;
+    var levelHeight = sessionCreated.codestreamStructure.getImageHeight() / scale;
+    var tileStructure = sessionCreated.codestreamStructure.getDefaultTileStructure();
+    var tileWidth = tileStructure.getTileWidth() / scale;
+    var tileHeight = tileStructure.getTileHeight() / scale;
+    var tileXOffset = tileX * tileWidth;
+    var tileYOffset = tileY * tileHeight;
+    
+    // Act
+    
+    var channel = sessionCreated.session.getChannelForRequest();
+    sessionCreated.session.requestData(
+        channel,
+        {
+            minX: tileXOffset,
+            minY: tileYOffset,
+            maxXExclusive: tileXOffset + tileWidth,
+            maxYExclusive: tileYOffset + tileHeight,
+            numResolutionLevelsToCut: numResolutionLevelsToCut
+        },
+        tileCreatedCallback,
+        failureCallback,
+        /*numQualityLayers=*/'max');
+
+    var requestActual = ajaxHelperMock.getLastRequestForTest();
+    var requestTileCallbackCallsBeforeResponseActual = requestTileCallbackCalls;
+    var failureCallbackCallsBeforeResponseActual = failureCallbackCalls;
+    
+    var ajaxResponse = new AjaxResponseStub(
+        /*createChannel=*/false, //isAllowStatefulRequest,
+        /*createTarget=*/false,
+        cnewHttpHeader);
+        
+    ajaxResponse.response = response;
+
+    var callback = ajaxHelperMock.getLastCallbackForTest();
+    callback(ajaxResponse, /*isDone=*/true);
+    
+    //var closeTempChannelRequestActual;
+    //if (isAllowStatefulRequest) {
+    //    closeTempChannelRequestActual = ajaxHelperMock.getLastRequestForTest();
+    //}
+
+    var redundantRequestActual = ajaxHelperMock.getLastRequestForTest();
+    var requestTileCallbackCallsAfterResponseActual = requestTileCallbackCalls;
+    var failureCallbackCallsAfterResponseActual = failureCallbackCalls;
+
+    // Assert
+    
+    var requestUrlExpected =
+        url +
+        '?type=' + streamTypeQueryParameter +
+        '&stream=0' +
+        '&wait=yes' +
+        '&len=10240' +
+        cnewParam +
+        qidParam +
+        '&cid=' + sessionCreated.channelId +
+        '&fsiz=' + levelWidth + ',' + levelHeight + ',closest' +
+        '&rsiz=' + tileWidth + ',' + tileHeight +
+        '&roff=' + tileXOffset + ',' + tileYOffset;
+    
+    if (isEnableTargetId) {
+        requestUrlExpected += '&tid=' + sessionCreated.targetId;
+    }
+    
+    var requestExpected = ajaxHelperMock.getRequestFromUrlForTest(
+        requestUrlExpected);
+
+    assert.deepEqual(
+        requestActual,
+        requestExpected,
+        'Correctness of request parameters on requestTile');
+
+    var requestTileCallbackCallsBeforeResponseExpected = 0;
+    assert.deepEqual(
+        requestTileCallbackCallsBeforeResponseActual,
+        requestTileCallbackCallsBeforeResponseExpected,
+        'No call for success callback before AJAX response');
+    
+    var failureCallbackCallsBeforeResponseExpected = 0;
+    assert.deepEqual(
+        failureCallbackCallsBeforeResponseActual,
+        failureCallbackCallsBeforeResponseExpected,
+        'No call for failure callback before AJAX response');
+    
+    //if (isAllowStatefulRequest) {
+    //    var closeTempChannelUrl = url +
+    //        '?type=' + streamTypeQueryParameter +
+    //        '&cclose=' + ajaxResponse.channelId +
+    //        '&cid=' + ajaxResponse.channelId;
+    //        
+    //    if (isEnableTargetId) {
+    //        closeTempChannelUrl += '&tid=' + sessionCreated.targetId;
+    //    }
+    //    
+    //    var closeTempChannelRequestExpected = ajaxHelperMock.getRequestFromUrlForTest(
+    //        closeTempChannelUrl);
+        //
+    //    assert.deepEqual(
+    //        closeTempChannelRequestActual,
+    //        closeTempChannelRequestExpected,
+    //        'Correctness of request parameters on close temporary channel');
+    //}
+    
+    var redundantRequestExpected = null;
+    assert.deepEqual(
+        redundantRequestActual,
+        redundantRequestExpected,
+        'No redundant request after end of requestTile');
+    
+    var requestTileCallbackCallsAfterResponseExpected = isFailureExpected ? 0 : 1;
+    assert.deepEqual(
+        requestTileCallbackCallsAfterResponseActual,
+        requestTileCallbackCallsAfterResponseExpected,
+        'Expected calls count to the successful callback');
+    
+    var failureCallbackCallsAfterResponseExpected = isFailureExpected ? 1 : 0;
+    assert.deepEqual(
+        failureCallbackCallsAfterResponseActual,
+        failureCallbackCallsAfterResponseExpected,
+        'Expected calls count to the failure callback');
+    
+    var parsedMessagesCountExpected = messageHeaders.length;
+    var parsedMessagesCountActual =
+        jpipMessageHeaderParserStub.loggedParseArgsForTest.length;
+    
+    assert.deepEqual(
+        parsedMessagesCountActual,
+        parsedMessagesCountExpected,
+        'Correctness of parsed messages count');
+    
+    var savedMessagesCountExpected = messageHeaders.length;
+    var savedMessagesCountActual =
+        sessionCreated.databinsSaver.loggedSaveDataArgsForTest.length;
+    
+    assert.deepEqual(
+        savedMessagesCountActual,
+        savedMessagesCountExpected,
+        'Correctness of saved messages count');
+    
+    for (var i = 0; i < messageHeaders.length; ++i) {
+        var parsedArgsActual = jpipMessageHeaderParserStub.loggedParseArgsForTest[i];
+        
+        var parsedArgsExpected = { data: responseAsUint8 };
+        if (i > 0) {
+            var previous = messageHeaders[i - 1];
+            parsedArgsExpected.previousHeader = previous;
+            parsedArgsExpected.offset =
+                previous.bodyStart + previous.messageBodyLength;
+        } else {
+            parsedArgsExpected.previousHeader = undefined;
+            parsedArgsExpected.offset = 0;
+        }
+        
+        assert.propEqual(
+            parsedArgsActual,
+            parsedArgsExpected,
+            'Correctness of parse arguments of message #' + i);
+        
+        var savedArgsExpected = {
+            header: messageHeaders[i],
+            bytes: responseAsUint8
+            };
+        
+        var savedArgsActual = sessionCreated.databinsSaver
+            .loggedSaveDataArgsForTest[i];
+        
+        assert.propEqual(
+            savedArgsActual,
+            savedArgsExpected,
+            'Correctness of saved arguments of message #' + i);
+    }
+}
+
+function testRequestTileFlow(
+    testName, numResolutionLevelsToCut, scale, options) {
+    
+    QUnit.test('requestTile flow (' + testName + ')', function(assert) {
+        clearForSessionTest();
+
+        options = options || {};
+        options.url = 'http://dummyurl.com';
+        var sessionCreated = createSessionForTest(options);
+        
+        var optionsWithQid = Object.create(options || {});
+        optionsWithQid.qid = 2;
+        
+        actAndAssertRequestTile(
+            assert, options.url, sessionCreated, numResolutionLevelsToCut, scale, optionsWithQid);
+        
+        clearForSessionTest();
+        });
+}
+
+function testFailureOnTileResponseProcessing(
+    description, installFailure, actAfterAjaxCallback, performAnotherTestAfterFailure) {
+    
+    QUnit.test('requestTile (' + description + ')', function(assert) {
+        clearForSessionTest();
+        
+        var url = 'http://dummyurl.com';
+        var sessionCreated = createSessionForTest({
+            tileWidth: 20,
+            tileHeight: 40,
+            url : url
+            });
+        
+        var callbackCallsCount = 0;
+        var failureCallbackCallsCount = 0;
+        var statusCallbackCallsCount = 0;
+        var statusException = null;
+        
+        function tileRequestCallback() {
+            ++callbackCallsCount;
+        }
+        
+        function tileRequestFailureCallback() {
+            ++failureCallbackCallsCount;
+        }
+        
+        function statusCallback(status) {
+            ++statusCallbackCallsCount;
+            statusException = status.exception;
+        }
+        
+        sessionCreated.session.setStatusCallback(statusCallback);
+        statusCallbackCallsCount = 0;
+        
+        var channel = sessionCreated.session.getChannelForRequest();
+        sessionCreated.session.requestData(
+            channel,
+            {
+                minTileX: 0,
+                minTileY: 0,
+                maxTileXExclusive: 20,
+                maxTileYExclusive: 40,
+                numResolutionLevelsToCut: 0
+            },
+            tileRequestCallback,
+            tileRequestFailureCallback,
+            /*numQualityLayers=*/'max');
+        
+        var ajaxResponse = new AjaxResponseStub(/*createChannel=*/false);
+        var nonZeroLengthResponse = new ArrayBuffer(1);
+        var nonZeroLengthResponseAsUint8 = new Uint8Array(nonZeroLengthResponse);
+        nonZeroLengthResponseAsUint8[0] = 20;
+        ajaxResponse.response = nonZeroLengthResponse;
+        
+        // Avoid mock failure on tests that not throws exception on messageHeaderParser
+        jpipMessageHeaderParserStub.messageParseResultForTest =
+            [ { bodyStart: 0, messageBodyLength: 1 } ];
+
+        installFailure();
+        var callback = ajaxHelperMock.getLastCallbackForTest();
+        ajaxHelperMock.getLastRequestForTest(); // Clear request
+
+        callback(ajaxResponse, /*isDone=*/true);
+        
+        actAfterAjaxCallback();
+        
+        var statusCallbackCallsCountAfterExceptionActual = statusCallbackCallsCount;
+
+        // Test next tile is OK
+
+        var level = undefined;
+        var scale = undefined;
+        var options = { qid: 3, addEndOfResponseByte: true };
+        performAnotherTestAfterFailure(
+            assert, url, sessionCreated, level, scale, options);
+            
+        var statusCallbackCallsCountAfterFinishedActual = statusCallbackCallsCount;
+
+        var failureCallbackCallsCountActual = failureCallbackCallsCount;
+        var failureCallbackCallsCountExpected = 1;
+        assert.deepEqual(
+            failureCallbackCallsCountActual,
+            failureCallbackCallsCountExpected,
+            'Expected single call to failure callback on failed requested tile');
+        
+        var callbackCallsCountActual = callbackCallsCount;
+        var callbackCallsCountExpected = 0;
+        assert.deepEqual(
+            callbackCallsCountActual,
+            callbackCallsCountExpected,
+            'Expected no call to success callback on failed requested tile');
+        
+        var hadException = statusException !== null;
+        assert.ok(hadException, 'Exception was provided');
+        
+        var statusCallbackCallsCountAfterFinishedExpected = 1;
+        assert.deepEqual(
+            statusCallbackCallsCountAfterFinishedActual,
+            statusCallbackCallsCountAfterFinishedExpected,
+            'No redundant calls to statusCallback');
+        
+        var statusCallbackCallsCountAfterExceptionExpected = 1;
+        assert.deepEqual(
+            statusCallbackCallsCountAfterExceptionActual,
+            statusCallbackCallsCountAfterExceptionExpected,
+            'statusCallback was called on exception');
+        
+        clearForSessionTest();
+        });
+}
+
+function checkAfterReleaseChannelFailure(assert, url, sessionCreated) {
+    assert.throws(
+        function() {
+            sessionCreated.session.requestData();
+        },
+        jpipExceptions.InternalErrorException,
+        'Expected exception on requestTile after failed to release channel');
+}
+
+QUnit.module('JpipSession');
+
+testFailureOnTileResponseProcessing(
+    'exception from messageHeaderParser, latter requestTiles should success',
+    function intallMessageHeaderParserException() {
+        jpipMessageHeaderParserStub.parseMessageHeader = function throwException() {
+            throw 'Dummy exception';
+        };
+    },
+    function actAfterAjaxCallback() {
+        //// Respond to close request
+        //var closeTemporaryChannelAjaxResponse = new AjaxResponseStub(
+        //    /*createChannel=*/false,
+        //    /*createTargetId=*/false);
+        //var closeCallback = ajaxHelperMock.getLastCallbackForTest();
+        //ajaxHelperMock.getLastRequestForTest(); // Clear close-temporary-channel request
+        //
+        //closeCallback(closeTemporaryChannelAjaxResponse, /*isDone=*/true);
+
+        ajaxHelperMock.clearForTest();
+
+        jpipMessageHeaderParserStub.clearForTest();
+
+        //// Remove close-temporary-channel request from mock
+        //ajaxHelperMock.getLastRequestForTest();
+    },
+    /*performAnotherTestAfterFailure=*/actAndAssertRequestTile);
+
+//testFailureOnTileResponseProcessing(
+//    'exception from ajaxHelper of close temporary channel request, latter requestTiles should fail',
+//    function intallAjaxHelperException() {
+//        ajaxHelperMock.request = function throwException() {
+//            throw 'Dummy exception';
+//        };
+//    },
+//    function actAfterAjaxCallback() {
+//    },
+//    /*performAnotherTestAfterFailure=*/checkAfterReleaseChannelFailure);
+
+testFailureOnTileResponseProcessing(
+    'AJAX request failed, failureCallback called, latter requestTiles should success',
+    function intallAjaxFailure(throwException) {
+        ajaxHelperMock.toggleLastRequestFailedForTest();
+    },
+    function actAfterAjaxCallback() {
+        ajaxHelperMock.clearForTest();
+    },
+    /*performAnotherTestAfterFailure=*/actAndAssertRequestTile);
+
+//testFailureOnTileResponseProcessing(
+//    'AJAX request for closing temporary channel failed, failureCallback called, latter requestTiles should fail',
+//    function intallAjaxFailure(throwException) {
+//    },
+//    function actAfterAjaxCallback() {
+//        ajaxHelperMock.toggleLastRequestFailedForTest();
+//
+//        // Respond to close request
+//        var closeTemporaryChannelAjaxResponse = new AjaxResponseStub(
+//            /*createChannel=*/false,
+//            /*createTargetId=*/false);
+//        var closeCallback = ajaxHelperMock.getLastCallbackForTest();
+//        ajaxHelperMock.getLastRequestForTest(); // Clear close-temporary-channel request
+//        
+//        closeCallback(closeTemporaryChannelAjaxResponse, /*isDone=*/true);
+//
+//        ajaxHelperMock.clearForTest();
+//    },
+//    /*performAnotherTestAfterFailure=*/checkAfterReleaseChannelFailure);
+
+testRequestTileFlow(
+    'Jpip Tile-part (jpt) stream',
+    /*numResolutionLevelsToCut=*/3,
+    /*scale=*/8,
+    { isJptStream: true });
+
+testRequestTileFlow(
+    'Jpip Precinct (jpp) stream',
+    /*numResolutionLevelsToCut=*/2,
+    /*scale=*/4,
+    { isJptStream: false });
+
+testRequestTileFlow(
+    'No resolution levels to cut',
+    /*numResolutionLevelsToCut=*/undefined,
+    /*scale=*/1);
+
+testRequestTileFlow(
+    'No targetId provided by server',
+    /*numResolutionLevelsToCut=*/2,
+    /*scale=*/4,
+    { isDisableTargetId: true });
+
+testRequestTileFlow(
+    'Stateful request per tile refused with cnewHeader = \'\'',
+    /*numResolutionLevelsToCut=*/2,
+    /*scale=*/4,
+    {    isRefuseStatefulRequestForTile: true,
+        cnewHttpHeader: '' });
+
+testRequestTileFlow(
+    'Stateful request per tile refused with cnewHeader = null',
+    /*numResolutionLevelsToCut=*/2,
+    /*scale=*/4,
+    {    isRefuseStatefulRequestForTile: true,
+        cnewHttpHeader: null });
+
+testRequestTileFlow(
+    'Stateful request per tile refused but cnew http header exist',
+    /*numResolutionLevelsToCut=*/2,
+    /*scale=*/4,
+    {    isRefuseStatefulRequestForTile: true,
+        cnewHttpHeader: 'DummyKey1=DummyValue1,DummyKey2=DummyValue2' });
+
+testRequestTileFlow(
+    'HTTP response ends with EOR (End Of Response) byte',
+    /*numResolutionLevelsToCut=*/2,
+    /*scale=*/4,
+    { addEndOfResponseByte: true });
+
+QUnit.test('cnew request on construction', function(assert) {
+    clearForSessionTest();
+    var url = 'http://dummyurl.com';
+    createSessionForTest({
+        disableChannelCreatedResponse: true,
+        url: url
+        });
+    
+    var requestUrlExpected = url + '?type=jpp-stream&tid=0&cnew=http&qid=1';
+    var requestExpected = ajaxHelperMock.getRequestFromUrlForTest(
+        requestUrlExpected);
+
+    var requestActual = ajaxHelperMock.getLastRequestForTest();
+
+    assert.deepEqual(
+        requestActual,
+        requestExpected,
+        'Correctness of request parameters on construction');
+
+    clearForSessionTest();
+    });
+
+QUnit.test('close', function(assert) {
+    clearForSessionTest();
+    
+    var url = 'http://dummyurl.com';
+    var created = createSessionForTest({ url: url });
+    var closedCallbackCallsCount = 0;
+    
+    // Act
+    
+    function closedCallback() {
+        ++closedCallbackCallsCount;
+    }
+    
+    created.session.close(closedCallback);
+    
+    var requestActual = ajaxHelperMock.getLastRequestForTest();
+    
+    var ajaxResponse = new AjaxResponseStub();
+    var callback = ajaxHelperMock.getLastCallbackForTest();
+
+    var closedCallbackCallsCountBeforeServerRespondedActual = closedCallbackCallsCount;
+    callback(ajaxResponse, /*isDone=*/true);
+    
+    var isReadyAfterCloseActual = created.session.getIsReady();
+    var closedCallbackCallsCountAfterServerRespondedActual = closedCallbackCallsCount;
+    
+    // Assert
+    
+    var requestUrlExpected = url + '?type=jpp-stream&cclose=*&cid=' + created.channelId;
+    var requestExpected = ajaxHelperMock.getRequestFromUrlForTest(
+        requestUrlExpected);
+
+    assert.deepEqual(
+        requestActual,
+        requestExpected,
+        'Correctness of request parameters on close');
+    
+    var isReadyAfterCloseExpected = false;
+    assert.deepEqual(
+        isReadyAfterCloseActual,
+        isReadyAfterCloseExpected,
+        'isReady expected to be false after close');
+        
+    var closedCallbackCallsCountBeforeServerRespondedExpected = 0;
+    assert.deepEqual(
+        closedCallbackCallsCountBeforeServerRespondedActual,
+        closedCallbackCallsCountBeforeServerRespondedExpected,
+        'Expected no closedCallback calls before server responded');
+    
+    var closedCallbackCallsCountAfterServerRespondedExpected = 1;
+    assert.deepEqual(
+        closedCallbackCallsCountAfterServerRespondedActual,
+        closedCallbackCallsCountAfterServerRespondedExpected,
+        'Expected single closedCallback call after server responded');
+    
+    clearForSessionTest();
+    });
+    
+QUnit.test(
+    'Failure when server refuses statefull connection on construction',
+    function(assert) {
+        clearForSessionTest();
+        
+        // Act
+        
+        var url = 'http://dummyurl.com';
+        var created = createSessionForTest({
+            disableChannelCreatedResponse: true,
+            url: url
+            });
+        
+        var statusCallbackCallsCount = 0;
+        var statusException = null;
+        
+        function statusCallback(status) {
+            statusException = status.exception;
+            ++statusCallbackCallsCount;
+        }
+        
+        created.session.setStatusCallback(statusCallback);
+        var callsBeforeResponseActual = statusCallbackCallsCount;
+
+        var ajaxResponse = new AjaxResponseStub(
+            /*createChannel=*/false, /*createTarget=*/true);
+
+        var callback = ajaxHelperMock.getLastCallbackForTest();
+        callback(ajaxResponse, /*isDone=*/true);
+        
+        var callsAfterResponseActual = statusCallbackCallsCount;
+        
+        // Assert
+        
+        var callsBeforeResponseExpected = 0;
+        assert.deepEqual(
+            callsBeforeResponseActual,
+            callsBeforeResponseExpected,
+            'No statusCallback calls expected before response');
+            
+        var hadException = statusException !== null;
+        assert.ok(hadException, 'statusCallback was called with exception');
+            
+        var callsAfterResponseExpected = 1;
+        assert.deepEqual(
+            callsAfterResponseActual,
+            callsAfterResponseExpected,
+            'Single statusCallback call expected after response');
+        
+        var isReadyActual = created.session.getIsReady();
+        var isReadyExpected = false;
+        assert.deepEqual(isReadyActual, isReadyExpected, 'Expected isReady=false');
+
+        clearForSessionTest();
+    });
+
+QUnit.test('isReady status when main header is sent immediately',
+    function(assert) {
+    
+    clearForSessionTest();
+    var created = createSessionForTest({
+        url: 'http://dummyurl.com',
+        disableChannelCreatedResponse: true
+        });
+    
+    var isReady = true;
+    simulateAjaxResponseAndCheckImageReady(assert, created.session, isReady);
+
+    clearForSessionTest();
+    });
+
+QUnit.test('isReady status when main header is sent only on second request',
+    function(assert) {
+    
+    clearForSessionTest();
+
+    var mainHeaderDatabin = Object.create(databinStubs.mainHeaderDatabinStub);
+    
+    var originalIsAllDatabinLoaded = mainHeaderDatabin.isAllDatabinLoaded;
+    mainHeaderDatabin.isAllDatabinLoaded = function isAllDatabinLoaded() {
+        return false;
+    };
+    
+    var created = createSessionForTest({
+        url: 'http://dummyurl.com',
+        mainHeaderDatabin: mainHeaderDatabin,
+        disableChannelCreatedResponse: true
+        });
+    
+    var isReady = false;
+    simulateAjaxResponseAndCheckImageReady(assert, created.session, isReady);
+
+    mainHeaderDatabin.isAllDatabinLoaded = originalIsAllDatabinLoaded;
+    
+    isReady = true;
+    simulateAjaxResponseAndCheckImageReady(
+        assert, created.session, isReady, /*disableCreateChannel=*/true);
+    
+    clearForSessionTest();
+    });
+            
+QUnit.test(
+    'requestTile: Two requests asynchrnously returned in inverse order when ' +
+        'only single channel with single waiting request is allowed',
+    function(assert) {
+        clearForSessionTest();
+        
+        var firstCallbackCalls = 0;
+        var secondCallbackCalls = 0;
+        
+        function firstCallbackMock() {
+            ++firstCallbackCalls;
+        }
+        
+        function firstFailureCallbackMock() {
+            // TODO: Test
+        }
+        
+        function secondCallbackMock() {
+            ++secondCallbackCalls;
+        }
+        
+        function secondFailureCallbackMock() {
+            // TODO: Test
+        }
+        
+        var tileWidth = 40;
+        var tileHeight = 80;
+        var firstTileX = 2;
+        var firstTileY = 4;
+        
+        var secondTileX = 3;
+        var secondTileY = 5;
+        var numResolutionLevelsToCut = 0;
+        var channelFreed = null;
+        
+        function requestEndedCallback(channel) {
+            channelFreed = channel;
+        }
+
+        var url = 'http://dummyurl.com';
+        var created = createSessionForTest({
+            url: url,
+            maxChannelsInSession: 1,
+            maxRequestsWaitingForResponseInChannel: 1,
+            requestEndedCallback: requestEndedCallback
+            });
+        
+        var firstOffsetX = firstTileX * tileWidth;
+        var firstOffsetY = firstTileY * tileHeight;
+        var secondOffsetX = secondTileX * tileWidth;
+        var secondOffsetY = secondTileY * tileHeight;
+        var firstTileIndex =
+            firstTileX + firstTileY * created.codestreamStructure.getNumTilesX();
+        var secondTileIndex =
+            secondTileX + secondTileY * created.codestreamStructure.getNumTilesX();
+        
+        // Act
+        
+        var channel = created.session.getChannelForRequest();
+        created.session.requestData(
+            channel,
+            {
+                minX: firstOffsetX,
+                minY: firstOffsetY,
+                maxXExclusive: firstOffsetX + tileWidth,
+                maxYExclusive: firstOffsetY + tileHeight,
+                numResolutionLevelsToCut: numResolutionLevelsToCut
+            },
+            firstCallbackMock,
+            firstFailureCallbackMock);
+        
+        var firstRequest = ajaxHelperMock.getLastRequestForTest();
+        var firstAjaxCallback = ajaxHelperMock.getLastCallbackForTest();
+
+        var getChannelResultBeforeCallbackActual = created.session.getChannelForRequest();
+        var channelFreedBeforeCallbackActual = channelFreed;
+        
+        var firstCallbackCallsBeforeFirstReturnedActual = firstCallbackCalls;
+        var secondCallbackCallsBeforeFirstReturnedActual = secondCallbackCalls;
+        var secondRequestBeforeFirstReturnedActual =
+            ajaxHelperMock.getLastRequestForTest();
+        
+        //ajaxHelperMock.allowMoreThanLastRequest = true;
+        
+        var firstAjaxResponse = new AjaxResponseStub(
+            /*createChannel=*/false, /*createTarget=*/false);
+        var firstTempChannelId = firstAjaxResponse.channelId;
+        firstAjaxResponse.response = new Uint8Array(2);
+        firstAjaxResponse.response[0] = 0;
+        firstAjaxResponse.response[1] = 2; // Window done
+        firstAjaxCallback(firstAjaxResponse, /*isDone=*/true);
+
+        var secondChannel = created.session.getChannelForRequest();
+        var getChannelResultAfterCallbackActual = secondChannel;
+        var channelFreedAfterCallbackActual = channelFreed;
+        
+        created.session.requestData(
+            secondChannel,
+            {
+                minX: secondOffsetX,
+                minY: secondOffsetY,
+                maxXExclusive: secondOffsetX + tileWidth,
+                maxYExclusive: secondOffsetY + tileHeight,
+                numResolutionLevelsToCut: numResolutionLevelsToCut
+            },
+            secondCallbackMock,
+            secondFailureCallbackMock);
+        
+        //var firstCloseRequest = ajaxHelperMock.getLastRequestForTest();
+        //var firstCloseResponse = new AjaxResponseStub(
+        //    /*createChannel=*/false, /*createTarget=*/false);
+        //var firstCloseCallback = ajaxHelperMock.getLastCallbackForTest();
+        //firstCloseCallback(firstCloseResponse, /*isDone=*/true);
+
+        //ajaxHelperMock.allowMoreThanLastRequest = false;
+        
+        var secondRequest = ajaxHelperMock.getLastRequestForTest();
+
+        var firstCallbackCallsAfterFirstReturnedActual = firstCallbackCalls;
+        var secondCallbackCallsAfterFirstReturnedActual = secondCallbackCalls;
+        
+        var secondAjaxCallback = ajaxHelperMock.getLastCallbackForTest();
+        var secondAjaxResponse = new AjaxResponseStub(
+            /*createChannel=*/false, /*createTarget=*/false);
+        var secondTempChannelId = secondAjaxResponse.channelId;
+        secondAjaxResponse.response = new Uint8Array(2);
+        secondAjaxResponse.response[0] = 0;
+        secondAjaxResponse.response[1] = 2; // Window done
+        secondAjaxCallback(secondAjaxResponse, /*isDone=*/true);
+
+        //var secondCloseRequest = ajaxHelperMock.getLastRequestForTest();
+        var thirdRequest = ajaxHelperMock.getLastRequestForTest();
+        
+        // Assert
+        
+        var firstRoffActual = firstRequest.roff;
+        var firstRoffExpected = firstOffsetX + ',' + firstOffsetY;
+        assert.deepEqual(firstRoffActual, firstRoffExpected, 'Offset of first request');
+        
+        var secondRequestBeforeFirstReturnedExpected = null;
+        assert.deepEqual(
+            secondRequestBeforeFirstReturnedActual,
+            secondRequestBeforeFirstReturnedExpected,
+            'No second ajax request before first request returned');
+        
+        var secondCallbackCallsBeforeFirstReturnedExpected = 0;
+        assert.deepEqual(
+            secondCallbackCallsBeforeFirstReturnedActual,
+            secondCallbackCallsBeforeFirstReturnedExpected,
+            'No second callback call before first request returned');
+
+        var firstCallbackCallsBeforeFirstReturnedExpected = 0;
+        assert.deepEqual(
+            firstCallbackCallsBeforeFirstReturnedActual,
+            firstCallbackCallsBeforeFirstReturnedExpected,
+            'No first callback call before first request returned');
+
+        //var firstCCloseArgExpected = firstTempChannelId;
+        //var firstCCloseArgActual = firstCloseRequest.cclose;
+        //assert.deepEqual(
+        //    firstCCloseArgActual,
+        //    firstCCloseArgExpected,
+        //    'Correctness of first cclose argument in close request');
+        
+        //var firstCidArgExpected = firstTempChannelId;
+        //var firstCidArgActual = firstCloseRequest.cid;
+        //assert.deepEqual(
+        //    firstCidArgActual,
+        //    firstCidArgExpected,
+        //    'Correctness of first cid argument in close request');
+        
+        var firstCallbackCallsAfterFirstReturnedExpected = 1;
+        assert.deepEqual(
+            firstCallbackCallsAfterFirstReturnedActual,
+            firstCallbackCallsAfterFirstReturnedExpected,
+            'Single call to callback after first returned');
+        
+        var secondCallbackCallsAfterFirstReturnedExpected = 0;
+        assert.deepEqual(
+            secondCallbackCallsAfterFirstReturnedActual,
+            secondCallbackCallsAfterFirstReturnedExpected,
+            'No call to second callback after first returned');
+        
+        var secondRoffActual = secondRequest.roff;
+        var secondRoffExpected = secondOffsetX + ',' + secondOffsetY;
+        assert.deepEqual(
+            secondRoffActual,
+            secondRoffExpected,
+            'Offset of second request');
+        
+        //var secondCCloseArgExpected = secondTempChannelId;
+        //var secondCCloseArgActual = secondCloseRequest.cclose;
+        //assert.deepEqual(
+        //    secondCCloseArgActual,
+        //    secondCCloseArgExpected,
+        //    'Correctness of second cclose argument in close request');
+        
+        //var secondCidArgExpected = secondTempChannelId;
+        //var secondCidArgActual = secondCloseRequest.cid;
+        //assert.deepEqual(
+        //    secondCidArgActual,
+        //    secondCidArgExpected,
+        //    'Correctness of second cid argument in close request');
+
+        var redundantRequestActual = thirdRequest;
+        var redundantRequestExpected = null;
+        assert.deepEqual(
+            redundantRequestActual,
+            redundantRequestExpected,
+            'Redundant requests are not expected');
+            
+        var firstCallbackCallsAtTheEndActual = firstCallbackCalls;
+        var firstCallbackCallsAtTheEndExpected = 1;
+        assert.deepEqual(
+            firstCallbackCallsAtTheEndActual,
+            firstCallbackCallsAtTheEndExpected,
+            'Expected single call to first');
+        
+        var secondCallbackCallsAtTheEndActual = secondCallbackCalls;
+        var secondCallbackCallsAtTheEndExpected = 1;
+        assert.deepEqual(
+            secondCallbackCallsAtTheEndActual,
+            secondCallbackCallsAtTheEndExpected,
+            'Expected single call to second');
+            
+        var getChannelResultBeforeCallbackExpected = null;
+        assert.deepEqual(
+            getChannelResultBeforeCallbackActual,
+            getChannelResultBeforeCallbackExpected,
+            'getChannelForRequest() result before server responded');
+            
+        var channelFreedBeforeCallbackExpected = null;
+        assert.deepEqual(
+            channelFreedBeforeCallbackActual,
+            channelFreedBeforeCallbackExpected,
+            'channelFreed callback before server responded');
+            
+        var hasChannelAfterResponse =
+            getChannelResultAfterCallbackActual !== null;
+        assert.ok(hasChannelAfterResponse, 'Free channel is not null after ' +
+            'server responded');
+        
+        var calledFreedCallbackAfterResponse =
+            channelFreedAfterCallbackActual !== null;
+        assert.ok(calledFreedCallbackAfterResponse, 'freedChannelCallback ' +
+            'called after server responded');
+        
+        clearForSessionTest();
+    });

@@ -1,0 +1,159 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>JPIP Demo</title>
+  </head>
+  <body>
+    <div style="width: 100%" id="imageOpenDiv">
+      Jpip URL:
+      <input
+        style="width: 80%"
+        type="text"
+        id="jpipUrlTxt"
+        value="http://kdu-server:8080/D:%5Cweb%5Cjpeg2000tries%5Ccabs.j2k"
+        />
+      <input type="button" onclick="loadImage()" value="Load image" />
+      <br/>
+      
+      <a href="javascript:image.close()" id="closeImageLink"></a>
+      <br/>
+      <!--<a href="javascript:loadAllTiles()" id="loadAllTilesLink"></a>-->
+    </div>
+    
+    <div id="status">Initializing...</div>
+    <br><br>
+    
+    <div style="color: red" id="errorDiv"></div>
+    
+    <div id="reduceQualityDiv">
+      <br>
+      Number of resolution levels to cut:
+      <input type="text" value="0" id="numResolutionLevelsToCutTxt" />
+      /
+      maximum: <span id="maxNumResolutionLevelsSpan"></span>
+      
+      <br>
+      Maximum number of quality layers:
+      <input type="text" value="0" id="numQualityLayersTxt" />
+      /
+      maximum: <span id="maxNumQualityLayersSpan"></span>
+
+      <br><br>
+      Progressiveness (Quality layers):
+      <br><br>
+      
+      <input id="automaticProgressivenessRadio"
+          type="radio" name="progressivenessRadio" checked />
+      <label for="automaticProgressivenessRadio">Automatic progressiveness</label>
+      <br>
+      
+      <input id="maxQualityLayersRadio" type="radio" name="progressivenessRadio" />
+      <label for="maxQualityLayersRadio">No progressiveness</label>
+      <br>
+      
+      <input id="useCachedDataOnlyRadio" type="radio" name="progressivenessRadio" />
+      <label for="useCachedDataOnlyRadio">Use cached data only</label>
+      
+      <br>
+      <br>
+    </div>
+    
+    <div id="showRegionDiv">
+      <table>
+        <tr>
+          <th>Show region:</th>
+        </tr>
+        <tr>
+          <td></td>
+          <td>MinX:</td>
+          <td><input type="text" value="0" id="minXTxt"></td>
+          <td>MaxX:</td>
+          <td><input type="text" id="maxXTxt"></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>MinY:</td>
+          <td><input type="text" value="0" id="minYTxt"></td>
+          <td>MaxY:</td>
+          <td><input type="text" id="maxYTxt"></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><a href="javascript:showRegion()" id="showRegionLink"></a></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td><a href="javascript:demonstrateLayers()" id="demonstrateLayersLink"></a></td>
+        </tr>
+      </table>
+    </div>
+    
+    <div>
+      <span id="spanRegionStatus"></span>
+      <br />
+      <canvas id="canvasRegion"></canvas>
+    </div>
+
+    <div id="tilesViewer"></div>
+    
+    <div id="codestreamBytesDiv"></div>
+    
+    <script src="../webjpip.js/misc/j2kjpipglobals.js"></script>
+    <script src="../webjpip.js/misc/jpipruntimefactory.js"></script>
+    <script src="../webjpip.js/misc/simpleajaxhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/compositearray.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipdatabinparts.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipdatabinssaver.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpipobjectpoolbydatabin.js"></script>
+    <script src="../webjpip.js/jpipcore/databins/jpiprequestdatabinslistener.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipmarkersparser.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipoffsetscalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/parsers/jpipstructureparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/mutualexclusivetransactionhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipbitstreamreader.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipcodingpassesnumberparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipcodeblocklengthparser.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpippacketlengthcalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipqualitylayerscache.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpipsubbandlengthinpacketheadercalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/qualitylayers/jpiptagtree.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpiptilestructure.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpipcomponentstructure.js"></script>
+    <script src="../webjpip.js/jpipcore/imagestructures/jpipcodestreamstructure.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpipheadermodifier.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpipcodestreamreconstructor.js"></script>
+    <script src="../webjpip.js/jpipcore/writers/jpippacketsdatacollector.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipchannel.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipmessageheaderparser.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipreconnectablerequester.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpiprequest.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipsessionhelper.js"></script>
+    <script src="../webjpip.js/jpipcore/protocol/jpipsession.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpipcodestreamclient.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpipcodestreamsizescalculator.js"></script>
+    <script src="../webjpip.js/jpipcore/api/jpiprequestcontext.js"></script>
+
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/copyTilesPixelsToOnePixelsArray.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/codestreamclientmanager.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/decodejobspool.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/jpipimagehelperfunctions.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/jpxdecodejob.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/lifoscheduler.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/linkedlist.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/priorityscheduler.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/scheduledrequestmanager.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/decodejobspool.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/jpxdecodejob.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/frustumrequestsprioritizer.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimagehelpers/singleregionprioritizer.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimageworkers/workerproxycodestreamclientmanager.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimageworkers/workerproxyjpxjpipimage.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimageworkers/workerproxyasyncjpximage.js"></script>
+    <script src="../wrappers/jpxjpipimage/jpxjpipimage.js"></script>
+    <script src="../wrappers/jpxjpipimage/viewerjpipimage.js"></script>
+    <script src="../wrappers/workerhelper/mastersideworkerhelper.js"></script>
+    <script src="../wrappers/workerhelper/slavesideworkerhelper.js"></script>
+
+    <script src="JpxJpipDemo.js"></script>
+  </body>
+</html>
