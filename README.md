@@ -1,5 +1,5 @@
 # webjpip.js
-An end to end solution for Pure Web standard JPIP client.
+An end to end solution for Pure Web standard JPIP client written in Javascript.
 This library contains a ready to use plugin for Leaflet and Cesium viewers, and can show a standard Jpeg2000 image published by a standard JPIP server. Progressive display of quality layers is supported.
 
 The server side that this library assumes is a standard HTTP-JPIP server (except of a simple HTTP server for static file access, of course). The kdu_server comes with the Kakadu library is a good starting point, except some issues:
