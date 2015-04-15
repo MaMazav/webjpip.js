@@ -736,17 +736,3 @@ QUnit.test(
             
         clearForChannelTest();
 });
-
-QUnit.test(
-    'setChannelId: pending requests should be sent',
-    function(assert) {
-        clearForChannelTest();
-            
-        var created = createChannel();
-        
-        created.channel.setChannelId('dummy channel ID 584');
-        
-        assert.ok(false);
-            
-        clearForChannelTest();
-});
