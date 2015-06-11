@@ -401,7 +401,7 @@ function createFetchParams(
 		//maxNumQualityLayers : maxNumQualityLayers
 	};
 	
-	var alignedParams = image.alignParamsToTilesAndLevel(regionParams);
+	var alignedParams = jpipImageHelperFunctions.alignParamsToTilesAndLevel(regionParams, image);
 	alignedParams.codestreamPartParams.maxNumQualityLayers = maxNumQualityLayers;
 	
 	return alignedParams.codestreamPartParams;
