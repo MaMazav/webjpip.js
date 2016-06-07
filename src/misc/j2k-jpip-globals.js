@@ -1,6 +1,8 @@
 'use strict';
 
-var j2kMarkers = {
+module.exports = {};
+
+module.exports.j2kMarkers = {
     StartOfCodestream: [0xFF, 0x4F], // SOC
     ImageAndTileSize: [0xFF, 0x51], // SIZ
     CodingStyleDefault: [0xFF, 0x52], // COD
@@ -15,7 +17,7 @@ var j2kMarkers = {
     Comment: [0xFF, 0x64] // COM
 };
 
-var j2kOffsets = {
+module.exports.j2kOffsets = {
     MARKER_SIZE: 2,
     LENGTH_FIELD_SIZE: 2,
     
@@ -24,7 +26,7 @@ var j2kOffsets = {
 
 };
 
-var jpipEndOfResponseReasons = {
+module.exports.jpipEndOfResponseReasons = {
     IMAGE_DONE : 1,
     WINDOW_DONE : 2,
     WINDOW_CHANGE : 3,
@@ -35,7 +37,7 @@ var jpipEndOfResponseReasons = {
     NON_SPECIFIED : 8
 };
 
-var j2kExceptions = {
+module.exports.j2kExceptions = {
     UnsupportedFeatureException: function(feature, standardSection) {
         this.description = feature + ' (specified in section ' + standardSection + ' of part 1: Core Coding System standard) is not supported yet';
         
@@ -67,7 +69,7 @@ var j2kExceptions = {
     }
 };
 
-var jpipExceptions = {
+module.exports.jpipExceptions = {
     UnsupportedFeatureException: function(feature, standardSection) {
         this.description = feature + ' (specified in section ' + standardSection + ' of part 9: Interactivity tools, APIs and Protocols) is not supported yet';
         
@@ -150,17 +152,24 @@ var jpipExceptions = {
     }
 };
 
-j2kExceptions.UnsupportedFeatureException.Name =
+module.exports.j2kExceptions.UnsupportedFeatureException.Name =
     'j2kExceptions.UnsupportedFeatureException';
-j2kExceptions.ParseException.Name = 'j2kExceptions.ParseException';
-j2kExceptions.IllegalDataException.Name = 'j2kExceptions.IllegalDataException';
+module.exports.j2kExceptions.ParseException.Name =
+    'j2kExceptions.ParseException';
+module.exports.j2kExceptions.IllegalDataException.Name =
+    'j2kExceptions.IllegalDataException';
 
-jpipExceptions.UnsupportedFeatureException.Name =
+module.exports.jpipExceptions.UnsupportedFeatureException.Name =
     'jpipExceptions.UnsupportedFeatureException';
-jpipExceptions.ParseException.Name = 'jpipExceptions.ParseException';
-jpipExceptions.IllegalDataException.Name = 'jpipExceptions.IllegalDataException';
-jpipExceptions.IllegalOperationException.Name =
+module.exports.jpipExceptions.ParseException.Name =
+    'jpipExceptions.ParseException';
+module.exports.jpipExceptions.IllegalDataException.Name =
+    'jpipExceptions.IllegalDataException';
+module.exports.jpipExceptions.IllegalOperationException.Name =
     'jpipExceptions.IllegalOperationException';
-jpipExceptions.ArgumentException.Name = 'jpipExceptions.ArgumentException';
-jpipExceptions.WrongStreamException.Name = 'jpipExceptions.WrongStreamException';
-jpipExceptions.InternalErrorException.Name = 'jpipExceptions.InternalErrorException';
+module.exports.jpipExceptions.ArgumentException.Name =
+    'jpipExceptions.ArgumentException';
+module.exports.jpipExceptions.WrongStreamException.Name =
+    'jpipExceptions.WrongStreamException';
+module.exports.jpipExceptions.InternalErrorException.Name =
+    'jpipExceptions.InternalErrorException';
