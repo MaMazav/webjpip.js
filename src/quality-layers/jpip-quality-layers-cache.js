@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipQualityLayersCache = function JpipQualityLayersCache(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipQualityLayersCache = function JpipQualityLayersCache(
     codestreamStructure, jpipFactory) {
     
     var CACHE_KEY = 'packetLengthCalculator';
@@ -56,7 +58,7 @@ var JpipQualityLayersCache = function JpipQualityLayersCache(
         }
         
         if (precinctPosition === undefined) {
-            throw new jpipExceptions.InternalErrorException('precinctPosition ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('precinctPosition ' +
                 'should be given on the first time of using QualityLayersCache ' +
                 'on this precinct');
         }

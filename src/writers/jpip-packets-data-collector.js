@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipPacketsDataCollector = function JpipPacketsDataCollector(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipPacketsDataCollector = function JpipPacketsDataCollector(
     codestreamStructure,
     databinsSaver,
     qualityLayersCache,
@@ -53,15 +55,14 @@ var JpipPacketsDataCollector = function JpipPacketsDataCollector(
             if (minNumQualityLayers === 'max') {
                 minNumQualityLayers = maxNumQualityLayers;
             } else if (minNumQualityLayers > maxNumQualityLayers) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'minNumQualityLayers is larger than maxNumQualityLayers');
             }
             
             do {
                 if (!precinctIterator.isInCodestreamPart) {
-                    throw new jpipExceptions.InternalErrorException(
+                    throw new jGlobals.jpipExceptions.InternalErrorException(
                         'Unexpected precinct not in codestream part');
-                    continue;
                 }
                 
                 var inClassIndex = tileStructure.precinctPositionToInClassIndex(
@@ -107,7 +108,7 @@ var JpipPacketsDataCollector = function JpipPacketsDataCollector(
         result.data = dataAsUint8;
         
         return result;
-    };
+    }
 
     function pushPackets(
         result,

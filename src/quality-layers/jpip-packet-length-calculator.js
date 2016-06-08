@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipPacketLengthCalculator = function JpipPacketLengthCalculator(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipPacketLengthCalculator = function JpipPacketLengthCalculator(
     tileStructure,
     componentStructure,
     databin,
@@ -282,7 +284,7 @@ var JpipPacketLengthCalculator = function JpipPacketLengthCalculator(
     
     function checkSupportedStructure() {
         if (!isPacketHeaderNearData) {
-            throw new jpipExceptions.UnsupportedFeatureException(
+            throw new jGlobals.jpipExceptions.UnsupportedFeatureException(
                 'PPM or PPT', 'A.7.4 and A.7.5');
         }
     }

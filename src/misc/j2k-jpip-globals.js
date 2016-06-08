@@ -1,7 +1,5 @@
 'use strict';
 
-module.exports = {};
-
 module.exports.j2kMarkers = {
     StartOfCodestream: [0xFF, 0x4F], // SOC
     ImageAndTileSize: [0xFF, 0x51], // SIZ

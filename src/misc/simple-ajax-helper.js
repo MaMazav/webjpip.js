@@ -1,6 +1,8 @@
 'use strict';
 
-var simpleAjaxHelper = {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.simpleAjaxHelper = {
     request: function request(
         url,
         callbackForAsynchronousRequest,
@@ -66,7 +68,7 @@ var simpleAjaxHelper = {
         ajaxResponse.send(null);
 
         if (isSynchronous && !isFinishedRequest) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'synchronous ajax call was not finished synchronously');
         }
         

@@ -28,7 +28,7 @@ function createComponentStructureForTest(
         getTileHeight: function() { return initTileSize[1]; }
         };
     
-    var componentStructure = new JpipComponentStructure(initComponentParams, tileStructureMock);
+    var componentStructure = new jpipExports.JpipComponentStructure(initComponentParams, tileStructureMock);
     return componentStructure;
 }
 

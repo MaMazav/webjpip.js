@@ -95,7 +95,7 @@ function createStructureParserStubForCodestreamStructureTest(imageParams) {
 }
 
 function createCodestreamStructure() {
-    var codestreamStructure = new JpipCodestreamStructure(
+    var codestreamStructure = new jpipExports.JpipCodestreamStructure(
         structureParserStub,
         mockFactoryForCodestreamStructureTest,
         progressionOrder);
@@ -239,14 +239,14 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
     
     testEdgeTiles(codestreamStructure, /*isEdgeTileFull=*/false);
     
-    codestreamStructure = new JpipCodestreamStructure(
+    codestreamStructure = new jpipExports.JpipCodestreamStructure(
         structureParserWithFullTilesStub,
         mockFactoryForCodestreamStructureTest,
         progressionOrder);
     testEdgeTiles(codestreamStructure, /*isEdgeTileFull=*/true);
 
     // Reset codestreamStructure to clear horizontal/vertical edge cached information
-    codestreamStructure = new JpipCodestreamStructure(
+    codestreamStructure = new jpipExports.JpipCodestreamStructure(
         structureParserStubWithLastEdgeOverriden,
         mockFactoryForCodestreamStructureTest,
         progressionOrder);
@@ -262,12 +262,12 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
     
     assert.throws(
         function() { codestreamStructure.getTileStructure(-1) },
-        jpipExceptions.ArgumentException,
+        _jGlobals.jpipExceptions.ArgumentException,
         'Expect exception on negative tile index');
 
     assert.throws(
         function() { codestreamStructure.getTileStructure(numTilesX * numTilesY) },
-        jpipExceptions.ArgumentException,
+        _jGlobals.jpipExceptions.ArgumentException,
         'Expect exception on too big tile index');
     });
 

@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipCodeblockLengthParser = (function JpipCodeblockLengthParserClosure() {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipCodeblockLengthParser = (function JpipCodeblockLengthParserClosure() {
     // B.10.7.
     
     var exactLog2Table = createExactLog2Table();
@@ -21,7 +23,7 @@ var JpipCodeblockLengthParser = (function JpipCodeblockLengthParserClosure() {
             
             var codingPassesLog2 = exactLog2Table[codingPasses];
             if (codingPassesLog2 === undefined) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Unexpected value of coding passes ' + codingPasses +
                     '. Expected positive integer <= 164');
             }
@@ -31,7 +33,7 @@ var JpipCodeblockLengthParser = (function JpipCodeblockLengthParserClosure() {
             
             return length;
         };
-    };
+    }
     
     function createExactLog2Table() {
         var maxCodingPassesPossible = 164;

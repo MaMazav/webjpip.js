@@ -26,7 +26,7 @@ function createSessionForTest(options) {
     var setIntervalStub = options.setInterval || stubFunction;
     var clearIntervalStub = options.clearInterval || stubFunction;
     
-    var session = new JpipSession(
+    var session = new jpipExports.JpipSession(
         maxChannelsInSession,
         maxRequestsWaitingForResponseInChannel,
         knownTargetId,
@@ -228,7 +228,7 @@ QUnit.test('open() twice expected to throw exception', function(assert) {
         function secondCallOpen() {
             created.session.open('Dummy URL');
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Expected exception on second call to open()');
     });
 
@@ -377,7 +377,7 @@ QUnit.test('getTargetId(): exception when not ready', function(assert) {
         function callGetTargetIdBeforeOpen() {
             created.session.getTargetId();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Exception expected on getTargetId() before server responded');
     });
 
@@ -484,7 +484,7 @@ QUnit.test('hasActiveRequests(): exception when not ready', function(assert) {
         function callGetTargetIdBeforeOpen() {
             created.session.hasActiveRequests();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Exception expected on hasActiveRequests() before server responded');
     });
 
@@ -537,7 +537,7 @@ QUnit.test('tryGetChannel(): exception when not ready', function(assert) {
         function callGetTargetIdBeforeOpen() {
             created.session.tryGetChannel();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Exception expected on tryGetChannel() before server responded');
     });
 
@@ -772,7 +772,7 @@ QUnit.test('close(): exception before open()', function(assert) {
         function callGetTargetIdBeforeOpen() {
             created.session.close();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Exception expected on close() before open() called');
     });
 
@@ -788,7 +788,7 @@ QUnit.test('close(): exception on close twice', function(assert) {
         function callGetTargetIdBeforeOpen() {
             created.session.close();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Exception expected on second close');
     });
 

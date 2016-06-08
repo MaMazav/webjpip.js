@@ -1,5 +1,7 @@
 'use strict';
 
+var jGlobals = require('j2k-jpip-globals.js');
+
 var jpipMessageHeaderParser = {
         
     LSB_MASK: 0x1,
@@ -32,12 +34,10 @@ var jpipMessageHeaderParser = {
             result |= message[currentOffset] & self.LSB_7_MASK;
         }
         
-        var result = {
+        return {
             endOffset: currentOffset + 1,
             number: result
         };
-        
-        return result;
     },
     
     // A.2
@@ -53,7 +53,7 @@ var jpipMessageHeaderParser = {
         var classAndCsnPrecense = (message[startOffset] & self.BITS_56_MASK) >>> 5;
         
         if (classAndCsnPrecense === 0) {
-            throw new jpipExceptions.ParseException('Failed parsing message header ' +
+            throw new jGlobals.jpipExceptions.ParseException('Failed parsing message header ' +
                 '(A.2.1): prohibited existance class and csn bits 00');
         }
         
@@ -109,7 +109,7 @@ var jpipMessageHeaderParser = {
         // A.2.2
         var hasAuxVbas = !!(classId & self.LSB_MASK);
         
-        var aux = undefined;
+        var aux;
         if (hasAuxVbas) {
             var parsedAux = self.parseNumberInVbas(message, currentOffset);
             aux = parsedAux.number;
@@ -153,3 +153,5 @@ var jpipMessageHeaderParser = {
         return result;
     }
 };
+
+module.exports.jpipMessageHeaderParser = jpipMessageHeaderParser;

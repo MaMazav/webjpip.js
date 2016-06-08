@@ -64,7 +64,7 @@ function checkQualityLayersCacheFunction(
     
     var precinctPosition = 'Dummy precinct position';
     
-    var qualityLayersCache = new JpipQualityLayersCache(
+    var qualityLayersCache = new jpipExports.JpipQualityLayersCache(
         codestreamStructure, factory);
     
     var functionToTest = qualityLayersCache[functionName];
@@ -73,7 +73,7 @@ function checkQualityLayersCacheFunction(
         function() {
             functionToTest(precinctDatabin, maxNumQualityLayers);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Expected exception when calling ' + functionName +
             'without precinctPosition argument on the first time');
     
@@ -151,7 +151,7 @@ function testParametersPassedToFactory(testName, doSomeOperation) {
                 return packetLengthCalculator;
             }
             
-            var qualityLayersCache = new JpipQualityLayersCache(
+            var qualityLayersCache = new jpipExports.JpipQualityLayersCache(
                 codestreamStructure, factory);
             
             // Act

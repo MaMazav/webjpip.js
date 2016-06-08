@@ -57,7 +57,7 @@ function createSessionForTest(options) {
         databinsSaver.getIsJpipTilePartStream = function() { return true; };
     }
     
-    var session = new JpipSession(
+    var session = new jpipExports.JpipSession(
         options.maxChannelsInSession || 5,
         options.maxRequestsWaitingForResponseInChannel || 3,
         /*targetId=*/0,
@@ -519,7 +519,7 @@ function checkAfterReleaseChannelFailure(assert, url, sessionCreated) {
         function() {
             sessionCreated.session.requestData();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Expected exception on requestTile after failed to release channel');
 }
 

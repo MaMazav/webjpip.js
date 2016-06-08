@@ -2,7 +2,7 @@
 
 // A.2.1.
 
-var JpipDatabinParts = function JpipDatabinPartsClosure(
+module.exports.JpipDatabinParts = function JpipDatabinParts(
     classId, inClassId, jpipFactory) {
 
     var self = this;
@@ -192,7 +192,7 @@ var JpipDatabinParts = function JpipDatabinPartsClosure(
             firstPartNearOrAfter.getOffset() + firstPartNearOrAfter.getLength();
         
         var partToMergeIndex;
-        for (var partToMergeIndex = indexFirstPartNearOrAfter;
+        for (partToMergeIndex = indexFirstPartNearOrAfter;
             partToMergeIndex < parts.length - 1;
             ++partToMergeIndex) {
             
@@ -209,8 +209,8 @@ var JpipDatabinParts = function JpipDatabinPartsClosure(
             
             // Delete all middle and merged parts except 1
             
-            for (var i = indexFirstPartNearOrAfter + 1; i < parts.length - partsToDelete; ++i) {
-                parts[i] = parts[i + partsToDelete];
+            for (var j = indexFirstPartNearOrAfter + 1; j < parts.length - partsToDelete; ++j) {
+                parts[j] = parts[j + partsToDelete];
             }
             
             parts.length -= partsToDelete;
@@ -222,7 +222,7 @@ var JpipDatabinParts = function JpipDatabinPartsClosure(
     function getParamsForCopyBytes(resultStartOffset, rangeOptions) {
         var forceCopyAllRange = false;
         var databinStartOffset = 0;
-        var maxLengthToCopy = undefined;
+        var maxLengthToCopy;
         
         if (rangeOptions !== undefined) {
             forceCopyAllRange = !!rangeOptions.forceCopyAllRange;
@@ -243,15 +243,13 @@ var JpipDatabinParts = function JpipDatabinPartsClosure(
         }
         
         if ((databinLengthIfKnown !== null) && (databinStartOffset >= databinLengthIfKnown)) {
-            var result = !!maxLengthToCopy && forceCopyAllRange ? null : 0;
-            return { resultWithoutCopy: result };
+            return { resultWithoutCopy: (!!maxLengthToCopy && forceCopyAllRange ? null : 0) };
         }
         
         var firstRelevantPartIndex = findFirstPartAfterOffset(databinStartOffset);
         
         if (firstRelevantPartIndex === parts.length) {
-            var result = forceCopyAllRange ? null : 0;
-            return { resultWithoutCopy: result };
+            return { resultWithoutCopy: (forceCopyAllRange ? null : 0) };
         }
         
         if (forceCopyAllRange) {
@@ -270,7 +268,7 @@ var JpipDatabinParts = function JpipDatabinPartsClosure(
             };
         
         return params;
-    };
+    }
     
     function isAllRangeExist(
         databinStartOffset, maxLengthToCopy, firstRelevantPartIndex) {

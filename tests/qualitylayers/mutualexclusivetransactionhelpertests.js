@@ -1,14 +1,14 @@
 'use strict';
 
-QUnit.module('mutualExclusiveTransactionHelper');
+QUnit.module('jpipExports.mutualExclusiveTransactionHelper');
 
 QUnit.test('Correctness of initial value', function(assert) {
     var initialValue = { prop1: 'value1', prop2: 2 };
     
-    var transactionalObject = mutualExclusiveTransactionHelper
+    var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
         .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
     
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     
     var valueActual = transactionalObject.getValue(transaction);
     var valueExpected = initialValue;
@@ -23,15 +23,15 @@ QUnit.test(
     function(assert) {
         var initialValue = { prop1: 'value1', prop2: 2 };
         
-        var transactionalObject = mutualExclusiveTransactionHelper
+        var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
             .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
         
-        var writerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
         changedValue.prop1 = 'value3';
         writerTx.commit();
         
-        var readerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var readerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var valueActual = transactionalObject.getValue(readerTx);
         
         var valueExpected = Object.create(initialValue);
@@ -49,15 +49,15 @@ QUnit.test(
     function(assert) {
         var initialValue = { prop1: 'value1', prop2: 2 };
         
-        var transactionalObject = mutualExclusiveTransactionHelper
+        var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
             .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
         
-        var writerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
         changedValue.prop1 = 'value3';
         writerTx.abort();
         
-        var readerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var readerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var valueActual = transactionalObject.getValue(readerTx);
         
         var valueExpected = Object.create(initialValue);
@@ -73,20 +73,20 @@ QUnit.test(
     function(assert) {
         var initialValue = { prop1: 'value1', prop2: 2 };
         
-        var transactionalObject = mutualExclusiveTransactionHelper
+        var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
             .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
         
-        var writerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
         changedValue.prop1 = 'value3';
         writerTx.abort();
         
-        var writer2Tx = mutualExclusiveTransactionHelper.createTransaction();
+        var writer2Tx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue2 = transactionalObject.getValue(writer2Tx);
         changedValue2.prop1 = 'value4';
         writer2Tx.abort();
         
-        var readerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var readerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var valueActual = transactionalObject.getValue(readerTx);
         
         var valueExpected = Object.create(initialValue);
@@ -102,20 +102,20 @@ QUnit.test(
     function(assert) {
         var initialValue = { prop1: 'value1', prop2: 2 };
         
-        var transactionalObject = mutualExclusiveTransactionHelper
+        var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
             .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
         
-        var writerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
         changedValue.prop1 = 'value3';
         writerTx.commit();
         
-        var writer2Tx = mutualExclusiveTransactionHelper.createTransaction();
+        var writer2Tx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue2 = transactionalObject.getValue(writer2Tx);
         changedValue2.prop1 = 'value4';
         writer2Tx.abort();
         
-        var readerTx = mutualExclusiveTransactionHelper.createTransaction();
+        var readerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var valueActual = transactionalObject.getValue(readerTx);
         
         var valueExpected = Object.create(initialValue);
@@ -130,10 +130,10 @@ QUnit.test(
 QUnit.test('Transaction should see all local changes', function(assert) {
     var initialValue = { prop1: 'value1', prop2: 2 };
     
-    var transactionalObject = mutualExclusiveTransactionHelper
+    var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
         .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
     
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
 
     var object1 = transactionalObject.getValue(transaction);
     object1.prop1 = 'value3';
@@ -153,7 +153,7 @@ QUnit.test('Transaction should see all local changes', function(assert) {
     });
 
 QUnit.test('isAborted of active transaction', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     
     var isAbortedActual = transaction.isAborted;
     var isAbortedExpected = false;
@@ -161,7 +161,7 @@ QUnit.test('isAborted of active transaction', function(assert) {
     });
 
 QUnit.test('isAborted of aborted transaction', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.abort();
     
     var isAbortedActual = transaction.isAborted;
@@ -170,7 +170,7 @@ QUnit.test('isAborted of aborted transaction', function(assert) {
     });
 
 QUnit.test('isAborted of committed transaction', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.commit();
     
     var isAbortedActual = transaction.isAborted;
@@ -179,7 +179,7 @@ QUnit.test('isAborted of committed transaction', function(assert) {
     });
 
 QUnit.test('isActive of active transaction', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     
     var isActiveActual = transaction.isActive;
     var isActiveExpected = true;
@@ -187,7 +187,7 @@ QUnit.test('isActive of active transaction', function(assert) {
     });
 
 QUnit.test('isActive of aborted transaction', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.abort();
     
     var isActiveActual = transaction.isActive;
@@ -196,7 +196,7 @@ QUnit.test('isActive of aborted transaction', function(assert) {
     });
 
 QUnit.test('isActive of committed transaction', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.commit();
     
     var isActiveActual = transaction.isActive;
@@ -205,76 +205,76 @@ QUnit.test('isActive of committed transaction', function(assert) {
     });
 
 QUnit.test('commit after commit exception', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.commit();
     
     assert.throws(
         function() {
             transaction.commit();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Commit after commit should throw exception');
     });
 
 QUnit.test('commit after abort exception', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.abort();
     
     assert.throws(
         function() {
             transaction.commit();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Commit after abort should throw exception');
     });
 
 QUnit.test('abort after commit exception', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.commit();
     
     assert.throws(
         function() {
             transaction.abort();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Abort after commit should throw exception');
     });
 
 QUnit.test('abort after abort exception', function(assert) {
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.abort();
     
     assert.throws(
         function() {
             transaction.abort();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Abort after abort should throw exception');
     });
 
 QUnit.test('Committed transaction exception when accessing object', function(assert) {
-    var object = mutualExclusiveTransactionHelper.createTransactionalObject();
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var object = jpipExports.mutualExclusiveTransactionHelper.createTransactionalObject();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.commit();
     
     assert.throws(
         function() {
             object.getValue(transaction);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Access to object from committed transaction should throw exception');
     });
 
 QUnit.test('Aborted transaction exception when accessing object', function(assert) {
-    var object = mutualExclusiveTransactionHelper.createTransactionalObject();
-    var transaction = mutualExclusiveTransactionHelper.createTransaction();
+    var object = jpipExports.mutualExclusiveTransactionHelper.createTransactionalObject();
+    var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     transaction.abort();
     
     assert.throws(
         function() {
             object.getValue(transaction);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Access to object from abort transaction should throw exception');
     });
 
@@ -282,10 +282,10 @@ QUnit.test(
     'Mutual exclusiveness: exception when accessing simultanuously from two ' +
         'active transactions',
     function(assert) {
-        var object = mutualExclusiveTransactionHelper.createTransactionalObject(
+        var object = jpipExports.mutualExclusiveTransactionHelper.createTransactionalObject(
             { initialValue: 'dummyValue' } );
-        var transaction1 = mutualExclusiveTransactionHelper.createTransaction();
-        var transaction2 = mutualExclusiveTransactionHelper.createTransaction();
+        var transaction1 = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
+        var transaction2 = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         
         object.getValue(transaction1);
         
@@ -293,6 +293,6 @@ QUnit.test(
             function() {
                 object.getValue(transaction2);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'Simultanuous access should throw exception');
     });

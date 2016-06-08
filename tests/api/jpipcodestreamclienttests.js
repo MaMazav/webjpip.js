@@ -6,13 +6,7 @@ function clearForCodestreamClientTest() {
 }
 
 function createCodestreamForTest(options) {
-    var prevJpipRuntimeFactory = jpipRuntimeFactory;
-    jpipRuntimeFactory = mockFactoryForCodestreamClientTest;
-
-    var client = new JpipCodestreamClient(options);
-    
-    jpipRuntimeFactory = prevJpipRuntimeFactory;
-        
+    var client = new jpipExports.JpipCodestreamClient(options);
     return client;
 }
 
@@ -250,7 +244,7 @@ function testNaNParams(params, progressiveness) {
             for (var i = 0; i < testedFunctions.length; ++i) {
                 assert.throws(
                     testedFunctions[i].func,
-                    jpipExceptions.ArgumentException,
+                    _jGlobals.jpipExceptions.ArgumentException,
                     testedFunctions[i].name + ' expected to throw exception');
             }
         });
@@ -618,7 +612,7 @@ QUnit.test('getSizesParams before reconnectableRequester ready', function(assert
         function () {
             client.getSizesParams();
         },
-        jpipExceptions.IllegalOperationException,
+        _jGlobals.jpipExceptions.IllegalOperationException,
         'exception is expected before reconnectableRequester is ready');
         
     clearForCodestreamClientTest();

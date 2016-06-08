@@ -5,7 +5,7 @@ function createCalculatorForTest(mainHeaderDatabin) {
         mainHeaderDatabin = databinStubs.mainHeaderDatabinStub;
     }
     
-    var result = new JpipOffsetsCalculator(mainHeaderDatabin, jpipMarkersParserStub);
+    var result = new jpipExports.JpipOffsetsCalculator(mainHeaderDatabin, jpipMarkersParserStub);
     return result;
 }
 
@@ -57,7 +57,7 @@ function testCodingStyleBaseParams(databin, databinDescription) {
                     calculator.getCodingStyleBaseParams(
                         databin, /*isMandatory=*/true);
                 },
-                j2kExceptions.IllegalDataException,
+                _jGlobals.j2kExceptions.IllegalDataException,
                 'getCodingStyleBaseParams should throw exception on non-exist COD marker');
         });
 }
@@ -117,7 +117,7 @@ QUnit.test('InternalErrorException', function(assert) {
                 databinStubs.notRecievedCodingStyleSegmentContentDatabinStub,
                 /*isMandatory=*/false);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'getCodingStyleBaseParams (part of content recieved, exception is expected)');
     });
 
@@ -132,7 +132,7 @@ QUnit.test(
                 calculatorWithCOCInMainHeader.getCodingStyleOffset(
                     databinStubs.mainHeaderWithCOCDatabinStub, /*isMandatory=*/true);
             },
-            j2kExceptions.UnsupportedFeatureException,
+            _jGlobals.j2kExceptions.UnsupportedFeatureException,
             'getCodingStyleOffset with COC expected to throw unsupported excetion');
     });
             
@@ -146,7 +146,7 @@ QUnit.test(
                 calculator.getCodingStyleOffset(
                     databinStubs.tileHeaderWithCodingStyleComponentDatabinStub);
             },
-            j2kExceptions.UnsupportedFeatureException,
+            _jGlobals.j2kExceptions.UnsupportedFeatureException,
             'getCodingStyleOffset (COC in tile header, expected unsupported exception)');
     });
             
@@ -160,7 +160,7 @@ QUnit.test(
                 calculator.getCodingStyleOffset(
                     databinStubs.tileHeaderWithCodingStyleDefaultAndComponentDatabinStub);
             },
-            j2kExceptions.UnsupportedFeatureException,
+            _jGlobals.j2kExceptions.UnsupportedFeatureException,
             'getCodingStyleOffset (COD and COC in tile header, expected unsupported exception)');
     });
             
@@ -174,7 +174,7 @@ QUnit.test(
                 calculator.getCodingStyleOffset(
                     databinStubs.tileHeaderWithCodingStyleDefaultAndComponentDatabinStub);
             },
-            j2kExceptions.UnsupportedFeatureException,
+            _jGlobals.j2kExceptions.UnsupportedFeatureException,
             'getCodingStyleOffset (COD and COC in tile header, expected unsupported exception)');
     });
             
@@ -190,7 +190,7 @@ QUnit.test(
                 calculator.getRangesOfBestResolutionLevelsData(
                     databinStubs.mainHeaderDatabinStub, numResolutionLevelsToCut);
             },
-            j2kExceptions.InternalErrorException,
+            _jGlobals.j2kExceptions.InternalErrorException,
             'getRangesOfBestResolutionLevelsData (too much levels to ' +
                 'cut, expected unspported exception)');
     });
@@ -206,7 +206,7 @@ QUnit.test(
                 calculator.getRangesOfBestResolutionLevelsData(
                     databinStubs.tileHeaderWithIllegalQCD, 1);
             },
-            j2kExceptions.InternalErrorException,
+            _jGlobals.j2kExceptions.InternalErrorException,
             'getRangesOfBestResolutionLevelsData (illegal quantization type)');
     });
     

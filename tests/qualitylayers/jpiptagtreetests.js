@@ -48,7 +48,7 @@ function testTagTree(
     testName, bitstreamContent, operationsSequence, width, height, noSwapTest) {
     
     function tagTreeTestContextInitializer(bitstreamReader) {
-        var tagTree = new JpipTagTree(
+        var tagTree = new jpipExports.JpipTagTree(
             bitstreamReader, width, height, transactionHelperStub);
         
         var context = {
@@ -70,7 +70,7 @@ function testTagTree(
     }
 
     function tagTreeTestSwapXYContextInitializer(bitstreamReader) {
-        var tagTree = new JpipTagTree(
+        var tagTree = new jpipExports.JpipTagTree(
             bitstreamReader, height, width, transactionHelperStub);
         
         var context = {

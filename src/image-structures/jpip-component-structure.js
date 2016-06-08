@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipComponentStructure = function JpipComponentStructureClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipComponentStructure = function JpipComponentStructure(
     params, tileStructure) {
     
     var tileWidthLevel0;
@@ -138,7 +140,7 @@ var JpipComponentStructure = function JpipComponentStructureClosure(
     
     function initialize() {
         if (params.scaleX !== 1 || params.scaleY !== 1) {
-            throw new j2kExceptions.UnsupportedFeatureException(
+            throw new jGlobals.j2kExceptions.UnsupportedFeatureException(
                 'Non 1 component scale', 'A.5.1');
         }
         
@@ -147,4 +149,4 @@ var JpipComponentStructure = function JpipComponentStructureClosure(
         tileHeightLevel0 = Math.floor(
             tileStructure.getTileHeight() / params.scaleY);
     }
-}
+};

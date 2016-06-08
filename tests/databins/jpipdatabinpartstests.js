@@ -192,7 +192,7 @@ performDatabinPartsTest('Override existing data (all data exist)',
 QUnit.test('(Simple accessors)', function(assert) {
     var classId = 'Dummy Class-ID';
     var inClassId = 'Dummy In-Class-ID';
-    var databin = new JpipDatabinParts(
+    var databin = new jpipExports.JpipDatabinParts(
         classId, inClassId, mockFactoryForDatabinPartsTest);
     
     var classIdExpected = classId;

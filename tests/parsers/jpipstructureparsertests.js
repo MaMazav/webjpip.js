@@ -8,7 +8,7 @@ function createStructureParserForTest(mainHeader) {
     
     var offsetsCalculator = new JpipOffsetsCalculatorStub(mainHeader);
     
-    var parser = new JpipStructureParser(
+    var parser = new jpipExports.JpipStructureParser(
         databinsSaver,
         jpipMarkersParserStub,
         jpipMessageHeaderParserStub,
@@ -161,7 +161,7 @@ QUnit.test('parseCodestreamStructure (no SIZ segment content)', function(assert)
         function() {
             parser.parseCodestreamStructure();
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'Not recieved SIZ segment content should throw exception');
     });
 
@@ -176,7 +176,7 @@ QUnit.test('parseDefaultTileParams (illegal codeblock width)', function(assert) 
         function() {
             parser.parseDefaultTileParams();
         },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'Illegal codeblock width > 10 expected to throw exception');
     });
 
@@ -191,6 +191,6 @@ QUnit.test('parseDefaultTileParams (illegal codeblock height)', function(assert)
         function() {
             parser.parseDefaultTileParams();
         },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'Illegal codeblock height > 10 expected to throw exception');
     });

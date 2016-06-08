@@ -1,16 +1,18 @@
 'use strict';
 
-var CompositeArray = function CompositeArrayClosure(offset) {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.CompositeArray = function CompositeArray(offset) {
     var length = 0;
     var internalParts = [];
     
     this.getLength = function getLength() {
         return length;
-    }
+    };
 
     this.getOffset = function getOffset() {
         return offset;
-    }
+    };
         
     this.pushSubArray = function pushSubArray(subArray) {
         internalParts.push(subArray);
@@ -67,7 +69,7 @@ var CompositeArray = function CompositeArrayClosure(offset) {
     
     this.copyToOther = function copyToOther(other) {
         if (other.getOffset() > offset) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'CompositeArray: Trying to copy part into a latter part');
         }
         
@@ -83,7 +85,7 @@ var CompositeArray = function CompositeArrayClosure(offset) {
         var iterator = getInternalPartsIterator(minOffset);
         
         if (!tryAdvanceIterator(iterator)) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'CompositeArray: Could not merge parts');
         }
         
@@ -91,10 +93,10 @@ var CompositeArray = function CompositeArrayClosure(offset) {
 
         do {
             if (iterator.offset !== expectedOffsetValue) {
-                throw new jpipExceptions.InternalErrorException(
-                    'CompositeArray: Non-continuous value of rangeToCopy.offset.'
-                    + ' Expected: ' + expectedOffsetValue + ', Actual: '
-                    + iterator.offset);
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'CompositeArray: Non-continuous value of ' +
+                    'rangeToCopy.offset. Expected: ' + expectedOffsetValue +
+                     ', Actual: ' + iterator.offset);
             }
             
             other.pushSubArray(iterator.subArray);
@@ -104,18 +106,18 @@ var CompositeArray = function CompositeArrayClosure(offset) {
     
     function checkOffsetsToCopy(minOffset, maxOffset) {
         if (minOffset === undefined || maxOffset === undefined) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'minOffset or maxOffset is undefined for CompositeArray.copyToArray');
         }
         
         if (minOffset < offset) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'minOffset (' + minOffset + ') must be smaller than ' +
                 'CompositeArray offset (' + offset + ')');
         }
         
         if (maxOffset > offset + length) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'maxOffset (' + maxOffset + ') must be larger than ' +
                 'CompositeArray end offset (' + offset + length + ')');
         }
@@ -154,7 +156,7 @@ var CompositeArray = function CompositeArrayClosure(offset) {
         var alreadyReachedToTheEnd = false;
         do {
             if (alreadyReachedToTheEnd) {
-                throw new jpipExceptions.InternalErrorException('Iterator reached ' +
+                throw new jGlobals.jpipExceptions.InternalErrorException('Iterator reached ' +
                     'to the end although no data has been iterated');
             }
             
@@ -215,7 +217,7 @@ var CompositeArray = function CompositeArrayClosure(offset) {
     
     function ensureNoEndOfArrayReached(currentInternalPartIndex) {
         if (currentInternalPartIndex >= internalParts.length) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'CompositeArray: end of part has reached. Check end calculation');
         }
     }

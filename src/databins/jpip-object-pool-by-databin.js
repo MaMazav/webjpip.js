@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipObjectPoolByDatabin = function JpipObjectPoolByDatabin() {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipObjectPoolByDatabin = function JpipObjectPoolByDatabin() {
     var databinIdToObject = [];
     
     this.getObject = function getObject(databin) {
@@ -21,7 +23,7 @@ var JpipObjectPoolByDatabin = function JpipObjectPoolByDatabin() {
             
             inClassIdToObject[inClassId] = obj;
         } else if (obj.databin !== databin) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Databin IDs are not unique');
         }
         

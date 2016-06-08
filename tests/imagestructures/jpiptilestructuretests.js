@@ -83,7 +83,7 @@ QUnit.test(
                         numResolutionLevelsToCut: initNumResolutionLevels
                         });
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'Too large numResolutionLevelsToCut, exception is expected');
     });
 
@@ -132,47 +132,47 @@ testProgressionOrderForNonUniformStructure(
 QUnit.test('Illegal & unsupported progression orders', function(assert) {
     assert.throws(
         function() { createTileStructure('LRCP') },
-        jpipExceptions.IllegalDataException,
+        _jGlobals.jpipExceptions.IllegalDataException,
         'LRCP');
     
     assert.throws(
         function(assert) { createTileStructure('RLCP'); },
-        jpipExceptions.IllegalDataException,
+        _jGlobals.jpipExceptions.IllegalDataException,
         'RLCP'); 
 
     assert.throws(
         function() { createTileStructure('CPRL') },
-        j2kExceptions.UnsupportedFeatureException,
+        _jGlobals.j2kExceptions.UnsupportedFeatureException,
         'CPRL');
     
     assert.throws(
         function() { createTileStructure('PCRL') },
-        j2kExceptions.UnsupportedFeatureException,
+        _jGlobals.j2kExceptions.UnsupportedFeatureException,
         'PCRL');
     
     assert.throws(
         function(assert) { createTileStructure('More than 4 letters'); },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'Non 4-length letters'); 
 
     assert.throws(
         function(assert) { createTileStructure('RPPL'); },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'No C'); 
 
     assert.throws(
         function(assert) { createTileStructure('CCRL'); },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'No P');
         
     assert.throws(
         function(assert) { createTileStructure('PPCL'); },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'No R'); 
         
     assert.throws(
         function(assert) { createTileStructure('RPCC'); },
-        jpipExceptions.IllegalDataException,
+        _jGlobals.jpipExceptions.IllegalDataException,
         'No L'); 
     });
 
@@ -253,7 +253,7 @@ function testProgressionOrderForNonUniformStructure(
             
             assert.throws(
                 tryToCreate,
-                j2kExceptions.UnsupportedFeatureException,
+                _jGlobals.j2kExceptions.UnsupportedFeatureException,
                 assertName);
         }
         });
@@ -652,7 +652,7 @@ function createTileStructure(progressionOrder, tileParams) {
         return result;
     };
 
-    var result = new JpipTileStructure(tileParams, codestreamStructureStubForTileStructureTest, jpipMockFactoryForTileStructureTest, progressionOrder);
+    var result = new jpipExports.JpipTileStructure(tileParams, codestreamStructureStubForTileStructureTest, jpipMockFactoryForTileStructureTest, progressionOrder);
     
     return result;
 };

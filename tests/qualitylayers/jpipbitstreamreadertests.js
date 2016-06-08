@@ -22,7 +22,7 @@ function bitstreamReaderTestContextInitializer(bitstreamReaderStub) {
     bitstreamReaderStub.setOffsetForTest(0);
     
     var databin = new DatabinPartsStub(bytes);
-    var testedReader = new JpipBitstreamReader(databin, transactionHelperStub);
+    var testedReader = new jpipExports.JpipBitstreamReader(databin, transactionHelperStub);
     var testContext = {
         testedReader: testedReader,
         stubReader: bitstreamReaderStub
@@ -111,7 +111,7 @@ function bitstreamReaderTestDatabinOffset(testContext, operation, assert, index)
             function() {
                 var offset = testContext.testedReader.databinOffset;
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'get databinOffset expected to throw exception due to non ' +
                 'partial byte offset after ' + operation.type +
                 actualResult.descriptionSuffix + ' (bitsCounter=' +
@@ -222,7 +222,7 @@ QUnit.module('JpipBitstreamReader');
 
 QUnit.test('activeTransaction returns last created transaction', function(assert) {
     var databin = null;
-    var reader = new JpipBitstreamReader(databin, transactionHelperStub);
+    var reader = new jpipExports.JpipBitstreamReader(databin, transactionHelperStub);
     
     for (var i = 0; i < 3; ++i) {
         var transaction = { name: 'Transaction #1' };
@@ -246,13 +246,13 @@ QUnit.test(
         transactionHelperStub.clearForTest();
         
         var databin = null;
-        var reader = new JpipBitstreamReader(databin, transactionHelperStub);
+        var reader = new jpipExports.JpipBitstreamReader(databin, transactionHelperStub);
         
         assert.throws(
             function() {
                 var activeTransaction = reader.activeTransaction;
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'bitstreamReader.activeTransaction expected to throw exception');
 
         transactionHelperStub.clearForTest();
@@ -264,7 +264,7 @@ QUnit.test(
         transactionHelperStub.clearForTest();
         
         var databin = null;
-        var reader = new JpipBitstreamReader(databin, transactionHelperStub);
+        var reader = new jpipExports.JpipBitstreamReader(databin, transactionHelperStub);
         
         var transaction = {};
         transactionHelperStub.transactionToCreate = transaction;
@@ -276,7 +276,7 @@ QUnit.test(
             function() {
                 var activeTransaction = reader.activeTransaction;
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'bitstreamReader.activeTransaction expected to throw exception');
 
         transactionHelperStub.clearForTest();

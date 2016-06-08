@@ -1,7 +1,9 @@
 'use strict';
 
-var JpipSubbandLengthInPacketHeaderCalculator =
-    function JpipSubbandLengthInPacketHeaderCalcualtorClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipSubbandLengthInPacketHeaderCalculator =
+    function JpipSubbandLengthInPacketHeaderCalculator(
         bitstreamReader,
         numCodeblocksX,
         numCodeblocksY,
@@ -59,7 +61,7 @@ var JpipSubbandLengthInPacketHeaderCalculator =
             bitstreamReader.activeTransaction);
         
         if (parsedQualityLayersValue >= qualityLayer + 1) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Unexpected quality layer to parse');
         }
     }

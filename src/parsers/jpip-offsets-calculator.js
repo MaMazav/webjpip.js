@@ -1,13 +1,15 @@
 'use strict';
 
-var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipOffsetsCalculator = function JpipOffsetsCalculator(
     mainHeaderDatabin, markersParser) {
     
     var supportedMarkers = [
-        j2kMarkers.ImageAndTileSize,
-        j2kMarkers.CodingStyleDefault,
-        j2kMarkers.QuantizationDefault,
-        j2kMarkers.Comment
+        jGlobals.j2kMarkers.ImageAndTileSize,
+        jGlobals.j2kMarkers.CodingStyleDefault,
+        jGlobals.j2kMarkers.QuantizationDefault,
+        jGlobals.j2kMarkers.Comment
         ];
     
     this.getCodingStyleOffset = getCodingStyleOffset;
@@ -19,7 +21,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
         
         var sizMarkerOffset = markersParser.getMandatoryMarkerOffsetInDatabin(
             mainHeaderDatabin,
-            j2kMarkers.ImageAndTileSize,
+            jGlobals.j2kMarkers.ImageAndTileSize,
             'Image and Tile Size (SIZ)',
             'A.5.1');
         
@@ -51,7 +53,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
             databinOrMainHeaderCodingStyleBaseParams.numResolutionLevels;
             
         if (codingStyleNumResolutionLevels <= numResolutionLevels) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'numResolutionLevels (' + numResolutionLevels + ') <= COD.' +
                 'numResolutionLevels (' + codingStyleNumResolutionLevels + ')');
         }
@@ -86,7 +88,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
         }
         
         var numBytes = 8;
-        var bytesOffset = codingStyleDefaultOffset + j2kOffsets.MARKER_SIZE;
+        var bytesOffset = codingStyleDefaultOffset + jGlobals.j2kOffsets.MARKER_SIZE;
         var bytes = getBytes(databin, numBytes, bytesOffset);
 
         var codingStyleFlagsForAllComponentsOffset = 2; // Scod
@@ -136,7 +138,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
             codingStyleDefaultBaseParams.precinctSizesOffset + levelsNotInRange;
         
         var markerLengthOffset = 
-            codingStyleDefaultBaseParams.codingStyleDefaultOffset + j2kOffsets.MARKER_SIZE;
+            codingStyleDefaultBaseParams.codingStyleDefaultOffset + jGlobals.j2kOffsets.MARKER_SIZE;
         
         var precinctSizesRange = {
             markerSegmentLengthOffset: markerLengthOffset,
@@ -149,8 +151,8 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
     }
 
     function getQuantizationDataBytesPerSubband(databin, quantizationStyleOffset) {
-        var quantizationStyleOffset = quantizationStyleOffset + 4; // Sqcd
-        var bytes = getBytes(databin, /*numBytes=*/1, quantizationStyleOffset);
+        var sqcdOffset = quantizationStyleOffset + 4; // Sqcd
+        var bytes = getBytes(databin, /*numBytes=*/1, sqcdOffset);
         var quantizationStyle = bytes[0] & 0x1F;
         
         var bytesPerSubband;
@@ -165,7 +167,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
                 bytesPerSubband = 2;
                 break;
             default:
-                throw new j2kExceptions.IllegalDataException(
+                throw new jGlobals.j2kExceptions.IllegalDataException(
                     'Quantization style of ' + quantizationStyle, 'A.6.4');
         }
         
@@ -179,7 +181,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
         numResolutionLevels) {
         
         var qcdMarkerOffset = markersParser.getMarkerOffsetInDatabin(
-            databin, j2kMarkers.QuantizationDefault);
+            databin, jGlobals.j2kMarkers.QuantizationDefault);
         
         if (qcdMarkerOffset === null) {
             return;
@@ -203,7 +205,7 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
         
         var rangeLength = subbandsInRange * bytesPerSubband;
         
-        var markerLengthOffset = qcdMarkerOffset + j2kOffsets.MARKER_SIZE;
+        var markerLengthOffset = qcdMarkerOffset + jGlobals.j2kOffsets.MARKER_SIZE;
         
         var quantizationsRange = {
             markerSegmentLengthOffset: markerLengthOffset,
@@ -216,11 +218,11 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
     
     function expectNoCodingStyleComponent(databin) {
         var cocOffset = markersParser.getMarkerOffsetInDatabin(
-            databin, j2kMarkers.CodingStyleComponent);
+            databin, jGlobals.j2kMarkers.CodingStyleComponent);
         
         if (cocOffset !== null) {
             // A.6.2
-            throw new j2kExceptions.UnsupportedFeatureException(
+            throw new jGlobals.j2kExceptions.UnsupportedFeatureException(
                 'COC Marker (Coding Style Component)', 'A.6.2');
         }
     }
@@ -232,12 +234,12 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
         if (isMandatory) {
             offset = markersParser.getMandatoryMarkerOffsetInDatabin(
                 databin,
-                j2kMarkers.CodingStyleDefault,
+                jGlobals.j2kMarkers.CodingStyleDefault,
                 'COD (Coding style Default)',
                 'A.6.1');
         } else {
             offset = markersParser.getMarkerOffsetInDatabin(
-                databin, j2kMarkers.CodingStyleDefault);
+                databin, jGlobals.j2kMarkers.CodingStyleDefault);
         }
         
         return offset;
@@ -254,11 +256,11 @@ var JpipOffsetsCalculator = function JpipOffsetsCalculatorClosure(
         
         var bytesCopied = databin.copyBytes(bytes, /*startOffset=*/0, rangeOptions);
         if (bytesCopied === null) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Header data-bin has not yet recieved ' + numBytes +
                 ' bytes starting from offset ' + databinStartOffset);
         }
         
         return bytes;
     }
-}
+};

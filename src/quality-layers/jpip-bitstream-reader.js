@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
     var zeroBitsUntilFirstOneBitMap = createZeroBitsUntilFirstOneBitMap();
 
     function JpipBitstreamReader(databin, transactionHelper) {
@@ -19,7 +21,7 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
             get: function getActiveTransaction() {
                 if (activeTransaction === null ||
                     !activeTransaction.isActive) {
-                    throw new jpipExceptions.InternalErrorException(
+                    throw new jGlobals.jpipExceptions.InternalErrorException(
                         'No active transaction in bitstreamReader');
                 }
                 
@@ -33,7 +35,7 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
                 
                 tryValidateCurrentByte(databin, state);
                 if (state.isSkipNextByte) {
-                    throw new jpipExceptions.InternalErrorException(
+                    throw new jGlobals.jpipExceptions.InternalErrorException(
                         'Unexpected state of bitstreamReader: ' +
                         'When 0xFF encountered, tryValidateCurrentByte ' +
                         'should skip the whole byte  after ' +
@@ -58,7 +60,7 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
                 if (state.validBitsInCurrentByte % 8 !== 0 ||
                     state.originalByteWithoutShift === 0xFF) {
                     
-                    throw new jpipExceptions.InternalErrorException(
+                    throw new jGlobals.jpipExceptions.InternalErrorException(
                         'Cannot calculate databin offset when bitstreamReader ' +
                         ' is in the middle of the byte');
                 }
@@ -77,7 +79,7 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
         
         this.startNewTransaction = function startNewTransaction() {
             if (activeTransaction !== null && activeTransaction.isActive) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Cannot start new transaction in bitstreamReader ' +
                     'while another transaction is active');
             }
@@ -146,7 +148,7 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
             
             return result;
         };
-    };
+    }
     
     function countAndShiftBits(databin, state, isUntilZeroBit, maxBitsToShift) {
         var countedBits = 0;
@@ -224,7 +226,7 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
         
         if (prevByte === 0xFF) {
             if ((resultArray[0] & 0x80) !== 0) {
-                throw new j2kExceptions.IllegalDataException(
+                throw new jGlobals.j2kExceptions.IllegalDataException(
                     'Expected 0 bit after 0xFF byte', 'B.10.1');
             }
             
@@ -249,32 +251,34 @@ var JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
         arrayMap[0x02] = 7;
         arrayMap[0x03] = 7;
         
-        for (var i = 0x04; i <= 0x07; ++i) {
+        var i;
+        
+        for (i = 0x04; i <= 0x07; ++i) {
             arrayMap[i] = 6;
         }
         
-        for (var i = 0x08; i <= 0x0F; ++i) {
+        for (i = 0x08; i <= 0x0F; ++i) {
             arrayMap[i] = 5;
         }
 
-        for (var i = 0x10; i <= 0x1F; ++i) {
+        for (i = 0x10; i <= 0x1F; ++i) {
             arrayMap[i] = 4;
         }
 
-        for (var i = 0x20; i <= 0x3F; ++i) {
+        for (i = 0x20; i <= 0x3F; ++i) {
             arrayMap[i] = 3;
         }
         
-        for (var i = 0x40; i <= 0x7F; ++i) {
+        for (i = 0x40; i <= 0x7F; ++i) {
             arrayMap[i] = 2;
         }
         
-        for (var i = 0x80; i <= 0xFF; ++i) {
+        for (i = 0x80; i <= 0xFF; ++i) {
             arrayMap[i] = 1;
         }
         
         // Avoid two's complement problems
-        for (var i = 0; i <= 0xFF; ++i) {
+        for (i = 0; i <= 0xFF; ++i) {
             arrayMap[i - 0x100] = arrayMap[i];
         }
         

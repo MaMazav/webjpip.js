@@ -13,6 +13,10 @@ var jpipMockFactory = {
         throw 'Unexpected call to createCodestreamReconstructor. Fix test';
     },
     
+    createCodestreamSizesCalculator: function(params) {
+        throw 'Unexpected call to createCodestreamSizesCalculator. Fix test';
+    },
+    
     createCodestreamStructure: function(structureParser, progressionOrder) {
         throw 'Unexpected call to createCodestreamStructure. Fix test';
     },

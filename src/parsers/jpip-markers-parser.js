@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipMarkersParser = function JpipMarkersParserClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipMarkersParser = function JpipMarkersParser(
     mainHeaderDatabin, messageHeaderParser, jpipFactory) {
     
     var CACHE_KEY = 'markers';
@@ -12,7 +14,7 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
         var offset = getMarkerOffsetInDatabin(databin, marker);
         
         if (offset === null) {
-            throw new j2kExceptions.IllegalDataException(
+            throw new jGlobals.j2kExceptions.IllegalDataException(
                 markerName + ' is not found where expected to be',
                 standardSection);
         }
@@ -38,7 +40,7 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
         for (var existingMarker in databinMarkers.markerToOffset) {
             var isMarkerInList = !!markersAsProperties[existingMarker];
             if (isMarkerInList !== isMarkersSupported) {
-                throw new j2kExceptions.UnsupportedFeatureException(
+                throw new jGlobals.j2kExceptions.UnsupportedFeatureException(
                     'Unsupported marker found: ' + existingMarker, 'unknown');
             }
         }
@@ -59,7 +61,7 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
             databin, /*forceAllMarkersParsed=*/true);
         
         var strMarker = getMarkerAsPropertyName(
-            marker, 'Predefined marker in j2kMarkers');
+            marker, 'Predefined marker in jGlobals.j2kMarkers');
         var offset = databinMarkers.markerToOffset[strMarker];
         
         if (offset === undefined) {
@@ -90,13 +92,13 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
         if (databin === mainHeaderDatabin && databinMarkers.lastOffsetParsed === 0) {
             var bytesCopied = databin.copyBytes(bytes, /*startOffset=*/0, {
                 forceCopyAllRange: true,
-                maxLengthToCopy: j2kOffsets.MARKER_SIZE
+                maxLengthToCopy: jGlobals.j2kOffsets.MARKER_SIZE
                 });
             
             if (bytesCopied === null) {
                 canParse = false;
-            } else if (!isMarker(bytes, j2kMarkers.StartOfCodestream, /*offset=*/0)) {
-                throw new j2kExceptions.IllegalDataException(
+            } else if (!isMarker(bytes, jGlobals.j2kMarkers.StartOfCodestream, /*offset=*/0)) {
+                throw new jGlobals.j2kExceptions.IllegalDataException(
                     'SOC (Start Of Codestream) ' +
                     'is not found where expected to be',
                     'A.4.1');
@@ -120,7 +122,7 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
         var bytes = [];
         var bytesCopied = databinMarkers.databin.copyBytes(bytes, /*startOffset=*/0, {
                 forceCopyAllRange: true,
-                maxLengthToCopy: j2kOffsets.MARKER_SIZE + j2kOffsets.LENGTH_FIELD_SIZE,
+                maxLengthToCopy: jGlobals.j2kOffsets.MARKER_SIZE + jGlobals.j2kOffsets.LENGTH_FIELD_SIZE,
                 databinStartOffset: offset
                 });
         
@@ -132,12 +134,12 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
                     databinMarkers.databin.getInClassId());
             databinMarkers.markerToOffset[marker.toString()] = offset;
                 
-            var length = messageHeaderParser.getInt16(bytes, j2kOffsets.MARKER_SIZE);
-            offset += length + j2kOffsets.MARKER_SIZE;
+            var length = messageHeaderParser.getInt16(bytes, jGlobals.j2kOffsets.MARKER_SIZE);
+            offset += length + jGlobals.j2kOffsets.MARKER_SIZE;
             
             bytesCopied = databinMarkers.databin.copyBytes(bytes, /*startOffset=*/0, {
                 forceCopyAllRange: true,
-                maxLengthToCopy: j2kOffsets.MARKER_SIZE + j2kOffsets.LENGTH_FIELD_SIZE,
+                maxLengthToCopy: jGlobals.j2kOffsets.MARKER_SIZE + jGlobals.j2kOffsets.LENGTH_FIELD_SIZE,
                 databinStartOffset: offset
                 });
         }
@@ -153,20 +155,20 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
             var bytes = [];
             var bytesCopied = databinMarkers.databin.copyBytes(bytes, /*startOffset=*/0, {
                 forceCopyAllRange: true,
-                maxLengthToCopy: j2kOffsets.MARKER_SIZE,
+                maxLengthToCopy: jGlobals.j2kOffsets.MARKER_SIZE,
                 databinStartOffset: databinMarkers.lastOffsetParsed
                 });
             
             if (bytesCopied !== null &&
-                isMarker(bytes, 0, j2kMarkers.StartOfData)) {
+                isMarker(bytes, 0, jGlobals.j2kMarkers.StartOfData)) {
                 
-                databinMarkers.lastOffsetParsed += j2kOffsets.MARKER_SIZE;
+                databinMarkers.lastOffsetParsed += jGlobals.j2kOffsets.MARKER_SIZE;
                 databinMarkers.isParsedAllMarkers = true;
             }
         }
         
         if (forceAllMarkersParsed && !databinMarkers.isParsedAllMarkers) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'data-bin with class ID = ' +
                 databinMarkers.databin.getClassId() + ' and in class ID = ' +
                 databinMarkers.databin.getInClassId() +
@@ -176,7 +178,7 @@ var JpipMarkersParser = function JpipMarkersParserClosure(
     
     function getMarkerAsPropertyName(bytes, markerPositionDescription) {
         if (bytes[0] !== 0xFF) {
-            throw new j2kExceptions.IllegalDataException(
+            throw new jGlobals.j2kExceptions.IllegalDataException(
                 'Expected marker in ' + markerPositionDescription, 'A');
         }
         

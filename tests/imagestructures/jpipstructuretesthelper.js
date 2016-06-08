@@ -129,7 +129,7 @@ function testAllPositionsInStructure(
         
         assert.throws(
             function() { getExpectedAndActual(negativeIndex, negativePosition) },
-            jpipExceptions.ArgumentException,
+            _jGlobals.jpipExceptions.ArgumentException,
             'Exception is expected when ' + illegalMember + ' is negative');
         
         var tooBigPosition = Object.create(endPosition);
@@ -137,7 +137,7 @@ function testAllPositionsInStructure(
         
         assert.throws(
             function() { getExpectedAndActual(tooBigIndex, tooBigPosition) },
-            jpipExceptions.ArgumentException,
+            _jGlobals.jpipExceptions.ArgumentException,
             'Exception is expected when ' + illegalMember + ' is too big');
     }
 }

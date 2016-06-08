@@ -1,16 +1,18 @@
 'use strict';
 
-var JpipReconnectableRequester = function JpipReconnectableRequester(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipReconnectableRequester = function JpipReconnectableRequester(
     maxChannelsInSession,
     maxRequestsWaitingForResponseInChannel, 
     codestreamStructure,
     databinsSaver,
     jpipFactory,
     // NOTE: Move parameter to beginning and expose in CodestreamClient
-    maxJpipCacheSize) {
+    maxJpipCacheSizeConfig) {
     
     var MB = 1048576;
-    var maxJpipCacheSize = maxJpipCacheSize || (10 * MB);
+    var maxJpipCacheSize = maxJpipCacheSizeConfig || (10 * MB);
     
     var sessionWaitingForReady;
     var activeSession = null;
@@ -31,21 +33,21 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
     
     this.open = function open(baseUrl) {
         if (baseUrl === undefined || baseUrl === null) {
-            throw new jpipExceptions.ArgumentException('baseUrl', baseUrl);
+            throw new jGlobals.jpipExceptions.ArgumentException('baseUrl', baseUrl);
         }
         
         if (url !== null) {
-            throw new jpipExceptions.IllegalOperationException(
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
                 'Image was already opened');
         }
         
         url = baseUrl;
         createInternalSession();
-    }
+    };
     
     this.close = function close(closedCallback) {
         if (lastClosedCallback !== null) {
-            throw new jpipExceptions.IllegalOperationException('closed twice');
+            throw new jGlobals.jpipExceptions.IllegalOperationException('closed twice');
         }
         
         lastClosedCallback = closedCallback;
@@ -109,13 +111,13 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
                 nonDedicatedRequestsWaitingForSend.push(request);
                 return request;
             } else if (channel.getIsDedicatedForMovableRequest()) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Expected non-movable channel');
             }
         }
         
         if (channel.getIsDedicatedForMovableRequest() !== moveDedicatedChannel) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'getIsDedicatedForMovableRequest inconsistency');
         }
 
@@ -140,7 +142,7 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
     
     function reconnect() {
         if (sessionWaitingForReady !== null) {
-            throw new jpipExceptions.IllegalOperationException(
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
                 'Previous session still not established');
         }
         
@@ -185,14 +187,14 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
             /*dedicateForMovableRequest=*/true);
         
         if (channel === null) {
-            throw new jpipExceptions.InvalidOperationException(
+            throw new jGlobals.jpipExceptions.InvalidOperationException(
                 'Too many concurrent requests. Limit the use of dedicated ' +
                 '(movable) requests, enlarge maxChannelsInSession or wait ' +
                 'for requests to finish and avoid create new ones');
         }
         
         if (!channel.getIsDedicatedForMovableRequest()) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'getIsDedicatedForMovableRequest inconsistency');
         }
 
@@ -203,14 +205,14 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
         if (sessionWaitingForReady === null ||
             status.isReady !== sessionWaitingForReady.getIsReady()) {
             
-            throw new jpipExceptions.InternalErrorException('Unexpected ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('Unexpected ' +
                 'statusCallback when not registered to session or ' +
                 'inconsistent isReady');
         }
         
         if (status.isReady) {
             if (sessionWaitingForDisconnect !== null) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'sessionWaitingForDisconnect should be null');
             }
             
@@ -256,7 +258,7 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
     
     function checkReady() {
         if (activeSession === null) {
-            throw new jpipExceptions.InternalErrorException('This operation ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('This operation ' +
                 'is forbidden when session is not ready');
         }
     }
@@ -273,7 +275,7 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
         }
         
         if (channelFreed.getIsDedicatedForMovableRequest()) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Expected non-movable channel as channelFreed');
         }
         
@@ -285,7 +287,7 @@ var JpipReconnectableRequester = function JpipReconnectableRequester(
             
             request = nonDedicatedRequestsWaitingForSend.shift();
             if (request.internalRequest !== null) {
-                throw new jpipExceptions.InternalErrorException('Request was ' +
+                throw new jGlobals.jpipExceptions.InternalErrorException('Request was ' +
                     'already sent but still in queue');
             }
         } while (request.isEnded);

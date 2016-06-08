@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipTileStructure = function JpipTileStructureClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipTileStructure = function JpipTileStructure(
     sizeParams,
     codestreamStructure,
     jpipFactory,
@@ -54,7 +56,7 @@ var JpipTileStructure = function JpipTileStructureClosure(
         // A.3.2
         
         if (inClassIndex < 0) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 'inClassIndex',
                 inClassIndex,
                 'Invalid negative in-class index of precinct');
@@ -95,7 +97,7 @@ var JpipTileStructure = function JpipTileStructureClosure(
         var precinctY = (precinctIndexInLevel - precinctX) / precinctsX;
         
         if (precinctY >= precinctsY) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 'inClassIndex',
                 inClassIndex,
                 'Invalid in-class index of precinct');
@@ -163,7 +165,7 @@ var JpipTileStructure = function JpipTileStructureClosure(
             numResolutionLevelsToCut = codestreamPartParams.numResolutionLevelsToCut;
             
             if (minNumResolutionLevels <= numResolutionLevelsToCut) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Cannot advance resolution: numResolutionLevelsToCut=' +
                     codestreamPartParams.numResolutionLevelsToCut + ' but should ' +
                     'be smaller than ' + minNumResolutionLevels);
@@ -224,7 +226,7 @@ var JpipTileStructure = function JpipTileStructureClosure(
     
     function validateArgumentInRange(paramName, paramValue, suprimumParamValue) {
         if (paramValue < 0 || paramValue >= suprimumParamValue) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 paramName,
                 paramValue,
                 paramName + ' is expected to be between 0 and ' + suprimumParamValue - 1);
@@ -233,22 +235,22 @@ var JpipTileStructure = function JpipTileStructureClosure(
     
     function validateTargetProgressionOrder(progressionOrder) {
         if (progressionOrder.length !== 4) {
-            throw new j2kExceptions.IllegalDataException('Illegal progression order ' + progressionOrder + ': unexpected length');
+            throw new jGlobals.j2kExceptions.IllegalDataException('Illegal progression order ' + progressionOrder + ': unexpected length');
         }
         
         if (progressionOrder[3] !== 'L') {
-            throw new jpipExceptions.IllegalDataException('Illegal target progression order of ' + progressionOrder, 'A.3.2.1');
+            throw new jGlobals.jpipExceptions.IllegalDataException('Illegal target progression order of ' + progressionOrder, 'A.3.2.1');
         }
         
         var hasP = progressionOrder.indexOf('P') >= 0;
         var hasC = progressionOrder.indexOf('C') >= 0;
         var hasR = progressionOrder.indexOf('R') >= 0;
         if (!hasP || !hasC || !hasR) {
-            throw new j2kExceptions.IllegalDataException('Illegal progression order ' + progressionOrder + ': missing letter');
+            throw new jGlobals.j2kExceptions.IllegalDataException('Illegal progression order ' + progressionOrder + ': missing letter');
         }
         
         if (progressionOrder !== 'RPCL') {
-            throw new j2kExceptions.UnsupportedFeatureException('Progression order of ' + progressionOrder, 'A.6.1');
+            throw new jGlobals.j2kExceptions.UnsupportedFeatureException('Progression order of ' + progressionOrder, 'A.6.1');
         }
     }
     
@@ -311,12 +313,12 @@ var JpipTileStructure = function JpipTileStructureClosure(
         }
 
         if (!isComponentsIdenticalSize) {
-            throw new j2kExceptions.UnsupportedFeatureException(
+            throw new jGlobals.j2kExceptions.UnsupportedFeatureException(
                 'Special Coding Style for Component (COC)', 'A.6.2');
         }
         
         if (!isPrecinctPartitionFitsToTilePartition) {
-            throw new j2kExceptions.UnsupportedFeatureException(
+            throw new jGlobals.j2kExceptions.UnsupportedFeatureException(
                 'Precinct TopLeft which is not matched to tile TopLeft', 'B.6');
         }
     }
@@ -442,14 +444,14 @@ var JpipTileStructure = function JpipTileStructureClosure(
         isIteratePrecinctsNotInCodestreamPart) {
         
         var needAdvanceNextMember = true;
-        var precinctsRange = isIteratePrecinctsNotInCodestreamPart ?
+        var precinctsRangeHash = isIteratePrecinctsNotInCodestreamPart ?
             null: precinctsInCodestreamPartPerLevelPerComponent;
         
         var needResetPrecinctToMinimalInCodestreamPart = false;
         
         for (var i = 2; i >= 0; --i) {
             var newValue = advanceProgressionOrderMember(
-                setableIterator, i, numResolutionLevelsToCut, precinctsRange);
+                setableIterator, i, numResolutionLevelsToCut, precinctsRangeHash);
             
             needAdvanceNextMember = newValue === 0;
             if (!needAdvanceNextMember) {
@@ -558,15 +560,15 @@ var JpipTileStructure = function JpipTileStructureClosure(
                 return precinctPosition.precinctY - minY;
             
             case 'L' :
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Advancing L is not supported in JPIP');
             
             default:
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Unexpected letter in progression order: ' +
                     progressionOrder[memberIndex]);
         }
-    };
+    }
     
     defaultComponentStructure = jpipFactory.createComponentStructure(
         sizeParams.defaultComponentParams, this);

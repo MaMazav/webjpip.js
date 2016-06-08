@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
     params) {
     
     var EDGE_TYPE_NO_EDGE = 0;
@@ -66,7 +68,7 @@ var JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
     function getSizeOfPart(codestreamPartParams) {
         var numResolutionLevelsToCut =
             codestreamPartParams.numResolutionLevelsToCut;
-        var tileWidth = getTileWidth(numResolutionLevelsToCut)
+        var tileWidth = getTileWidth(numResolutionLevelsToCut);
         var tileHeight = getTileHeight(numResolutionLevelsToCut);
         
         var tileBounds = getTilesFromPixels(codestreamPartParams);
@@ -183,7 +185,7 @@ var JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
                 break;
             
             default:
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Unexpected edge type: ' + edgeType);
         }
         
@@ -197,7 +199,7 @@ var JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
         var tileY = Math.floor(tileId / numTilesX);
         
         if (tileY > numTilesY || tileX < 0 || tileY < 0) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Tile index ' + tileId + ' is not in range');
         }
         
@@ -269,7 +271,7 @@ var JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
         var scale = 1 << numResolutionLevelsToCut;
         var width = Math.ceil(params.tileWidth / scale);
         return width;
-    };
+    }
     
     function getTileHeight(numResolutionLevelsToCut) {
         if (numResolutionLevelsToCut === undefined) {
@@ -279,15 +281,15 @@ var JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
         var scale = 1 << numResolutionLevelsToCut;
         var height = Math.ceil(params.tileHeight / scale);
         return height;
-    };
+    }
     
     function getFirstTileOffsetX() {
         return params.firstTileOffsetX;
-    };
+    }
     
     function getFirstTileOffsetY() {
         return params.firstTileOffsetY;
-    };
+    }
 
     function getFirstTileWidth(numResolutionLevelsToCut) {
         var firstTileWidthBestLevel =

@@ -4,7 +4,7 @@ QUnit.module('JpipDatabinsSaver');
 
 QUnit.test('JpipDatabinsSaver (JPP or JPT)', function(assert) {
     mockFactoryForDatabinsSaverTests.clearLastCreated();
-    var databinsSaver = new JpipDatabinsSaver(/*isJPT=*/true, mockFactoryForDatabinsSaverTests);
+    var databinsSaver = new jpipExports.JpipDatabinsSaver(/*isJPT=*/true, mockFactoryForDatabinsSaverTests);
     
     // Before saveData
 
@@ -47,7 +47,7 @@ QUnit.test('JpipDatabinsSaver (JPP or JPT)', function(assert) {
 
 QUnit.test('JpipDatabinsSaver (JPP)', function(assert) {
     mockFactoryForDatabinsSaverTests.clearLastCreated();
-    var jppSaver = new JpipDatabinsSaver(/*isJPT=*/false, mockFactoryForDatabinsSaverTests);
+    var jppSaver = new jpipExports.JpipDatabinsSaver(/*isJPT=*/false, mockFactoryForDatabinsSaverTests);
     mockFactoryForDatabinsSaverTests.clearLastCreated(); // Clear main header data-bin creation
     
     var isJptActual = jppSaver.getIsJpipTilePartStream();
@@ -111,7 +111,7 @@ QUnit.test('JpipDatabinsSaver (JPP)', function(assert) {
 
 QUnit.test('JpipDatabinsSaver (JPP), in-class ID = 65,536', function(assert) {
     mockFactoryForDatabinsSaverTests.clearLastCreated();
-    var jppSaver = new JpipDatabinsSaver(/*isJPT=*/false, mockFactoryForDatabinsSaverTests);
+    var jppSaver = new jpipExports.JpipDatabinsSaver(/*isJPT=*/false, mockFactoryForDatabinsSaverTests);
     mockFactoryForDatabinsSaverTests.clearLastCreated(); // Clear main header data-bin creation
 
     var savePartTo65536Expected = {
@@ -136,7 +136,7 @@ QUnit.test('JpipDatabinsSaver (JPP), in-class ID = 65,536', function(assert) {
 QUnit.test('JPIPDatabinsSaver (JPT)', function(assert) {
 
     mockFactoryForDatabinsSaverTests.clearLastCreated();
-    var jptSaver = new JpipDatabinsSaver(/*isJPT=*/true, mockFactoryForDatabinsSaverTests);
+    var jptSaver = new jpipExports.JpipDatabinsSaver(/*isJPT=*/true, mockFactoryForDatabinsSaverTests);
     mockFactoryForDatabinsSaverTests.clearLastCreated(); // Clear main header data-bin creation
 
     var isJptActual = jptSaver.getIsJpipTilePartStream();
@@ -184,12 +184,12 @@ QUnit.test('JPIPDatabinsSaver (JPT)', function(assert) {
 
 QUnit.test('Illegal operation exceptions', function(assert) {
     mockFactoryForDatabinsSaverTests.clearLastCreated();
-    var jppSaver = new JpipDatabinsSaver(/*isJPT=*/false, mockFactoryForDatabinsSaverTests);
+    var jppSaver = new jpipExports.JpipDatabinsSaver(/*isJPT=*/false, mockFactoryForDatabinsSaverTests);
     mockFactoryForDatabinsSaverTests.getLastDatabinCreated();
 
     assert.throws(
         function() { jppSaver.getTileDatabin(4); },
-        jpipExceptions.WrongStreamException,
+        _jGlobals.jpipExceptions.WrongStreamException,
         'getTileDatabin expected to throw exception in JPP stream');
         
     var nonUniqueIdsActual = mockFactoryForDatabinsSaverTests.nonUniqueIds;
@@ -198,17 +198,17 @@ QUnit.test('Illegal operation exceptions', function(assert) {
     mockFactoryForDatabinsSaverTests.clearAllLoggedCreated();
 
     mockFactoryForDatabinsSaverTests.clearLastCreated();
-    var jptSaver = new JpipDatabinsSaver(/*isJPT=*/true, mockFactoryForDatabinsSaverTests);
+    var jptSaver = new jpipExports.JpipDatabinsSaver(/*isJPT=*/true, mockFactoryForDatabinsSaverTests);
     mockFactoryForDatabinsSaverTests.getLastDatabinCreated();
 
     assert.throws(
         function() { jptSaver.getTileHeaderDatabin(0); },
-        jpipExceptions.WrongStreamException,
+        _jGlobals.jpipExceptions.WrongStreamException,
         'getTileHeaderDatabin expected to throw exception in JPT stream');
         
     assert.throws(
         function() { jptSaver.getPrecinctDatabin(15); },
-        jpipExceptions.WrongStreamException,
+        _jGlobals.jpipExceptions.WrongStreamException,
         'getPrecinctDatabin expected to throw exception in JPT stream');
         
     var illegalInClassIdToMainHeader = {
@@ -217,7 +217,7 @@ QUnit.test('Illegal operation exceptions', function(assert) {
         };
     assert.throws(
         function() { jptSaver.saveData(illegalInClassIdToMainHeader.header, illegalInClassIdToMainHeader.message); },
-        jpipExceptions.IllegalDataException,
+        _jGlobals.jpipExceptions.IllegalDataException,
         'Illegal non zero in-class ID in main header');
     
     var unsupportedNonZeroCodestream = {
@@ -226,7 +226,7 @@ QUnit.test('Illegal operation exceptions', function(assert) {
         };
     assert.throws(
         function() { jptSaver.saveData(unsupportedNonZeroCodestream.header, unsupportedNonZeroCodestream.message); },
-        jpipExceptions.UnsupportedFeatureException,
+        _jGlobals.jpipExceptions.UnsupportedFeatureException,
         'Unsupported non zero codestream != 0');
     
     var nonUniqueIdsActual = mockFactoryForDatabinsSaverTests.nonUniqueIds;

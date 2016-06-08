@@ -84,7 +84,7 @@ QUnit.test('reconstructCodestream (JPP not supported)', function(assert) {
     
     assert.throws(
         function() { reconstructorJPT.reconstructCodestream(); },
-        jpipExceptions.UnsupportedFeatureException,
+        _jGlobals.jpipExceptions.UnsupportedFeatureException,
         'JPT throws a not supported exception'
         );
     });
@@ -116,7 +116,7 @@ QUnit.test('createCodestreamForTile (with resolution levels to cut)', function(a
     var layersManagerStub = createLayersManagerStubForReconstructorTest(
         codestreamStructureMock, databinsSaverMock);
     
-    var reconstructor = new JpipCodestreamReconstructor(
+    var reconstructor = new jpipExports.JpipCodestreamReconstructor(
         codestreamStructureMock,
         databinsSaverMock,
         modifier,

@@ -1,12 +1,13 @@
 'use strict';
 
-var JpipStructureParser = function JpipStructureParserClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipStructureParser = function JpipStructureParser(
     databinsSaver, markersParser, messageHeaderParser, offsetsCalculator) {
     
     this.parseCodestreamStructure = function parseCodestreamStructure() {
         // A.5.1 (Image and Tile Size)
         
-        var bytes = [];
         var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
         
         var sizMarkerOffset = offsetsCalculator.getImageAndTileSizeOffset();
@@ -14,14 +15,14 @@ var JpipStructureParser = function JpipStructureParserClosure(
         var bytes = getBytes(
             mainHeaderDatabin,
             /*numBytes=*/38,
-            sizMarkerOffset + j2kOffsets.MARKER_SIZE + j2kOffsets.LENGTH_FIELD_SIZE);
+            sizMarkerOffset + jGlobals.j2kOffsets.MARKER_SIZE + jGlobals.j2kOffsets.LENGTH_FIELD_SIZE);
         
         var referenceGridSizeOffset =
-            j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER -
-            (j2kOffsets.MARKER_SIZE + j2kOffsets.LENGTH_FIELD_SIZE);
+            jGlobals.j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER -
+            (jGlobals.j2kOffsets.MARKER_SIZE + jGlobals.j2kOffsets.LENGTH_FIELD_SIZE);
         var numComponentsOffset =
-            j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER -
-            (j2kOffsets.MARKER_SIZE + j2kOffsets.LENGTH_FIELD_SIZE);
+            jGlobals.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER -
+            (jGlobals.j2kOffsets.MARKER_SIZE + jGlobals.j2kOffsets.LENGTH_FIELD_SIZE);
             
         var referenceGridSizeX = messageHeaderParser.getInt32(
             bytes, referenceGridSizeOffset); // XSiz
@@ -38,7 +39,7 @@ var JpipStructureParser = function JpipStructureParserClosure(
         var numComponents = messageHeaderParser.getInt16(bytes, numComponentsOffset); // CSiz
         
         var componentsDataOffset =
-            sizMarkerOffset + j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER + 2;
+            sizMarkerOffset + jGlobals.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER + 2;
         var componentsDataLength = numComponents * 3;
         
         var componentsDataBytes = getBytes(
@@ -96,7 +97,7 @@ var JpipStructureParser = function JpipStructureParserClosure(
         var sizMarkerOffset = offsetsCalculator.getImageAndTileSizeOffset();
         
         var numComponentsOffset =
-            sizMarkerOffset + j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER;
+            sizMarkerOffset + jGlobals.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER;
 
         var numComponentsBytes = getBytes(
             mainHeaderDatabin,
@@ -106,11 +107,11 @@ var JpipStructureParser = function JpipStructureParserClosure(
         
         var packedPacketHeadersMarkerInTileHeader =
             markersParser.getMarkerOffsetInDatabin(
-                databin, j2kMarkers.PackedPacketHeadersInTileHeader);
+                databin, jGlobals.j2kMarkers.PackedPacketHeadersInTileHeader);
         
         var packedPacketHeadersMarkerInMainHeader =
             markersParser.getMarkerOffsetInDatabin(
-                mainHeaderDatabin, j2kMarkers.PackedPacketHeadersInMainHeader);
+                mainHeaderDatabin, jGlobals.j2kMarkers.PackedPacketHeadersInMainHeader);
         
         var isPacketHeadersNearData =
             packedPacketHeadersMarkerInTileHeader === null &&
@@ -160,8 +161,8 @@ var JpipStructureParser = function JpipStructureParserClosure(
         }
         
         var paramsPerComponent = new Array(numComponents);
-        for (var i = 0; i < numComponents; ++i) {
-            paramsPerComponent[i] = {
+        for (var j = 0; j < numComponents; ++j) {
+            paramsPerComponent[j] = {
                 maxCodeblockWidth: codeblockWidth,
                 maxCodeblockHeight: codeblockHeight,
                 
@@ -201,7 +202,7 @@ var JpipStructureParser = function JpipStructureParserClosure(
         var codeblockSizeExponent = 2 + (codeblockSizeExponentMinus2 & 0x0F);
         
         if (codeblockSizeExponent > 10) {
-            throw new j2kExceptions.IllegalDataException(
+            throw new jGlobals.j2kExceptions.IllegalDataException(
                 'Illegal codeblock width exponent ' + codeblockSizeExponent,
                 'A.6.1, Table A.18');
         }
@@ -221,7 +222,7 @@ var JpipStructureParser = function JpipStructureParserClosure(
         
         var bytesCopied = databin.copyBytes(bytes, /*startOffset=*/0, rangeOptions);
         if (bytesCopied === null) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Header data-bin has not yet recieved ' + numBytes +
                 ' bytes starting from offset ' + databinStartOffset);
         }

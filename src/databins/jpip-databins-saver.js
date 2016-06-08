@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, jpipFactory) {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipDatabinsSaver = function JpipDatabinsSaver(isJpipTilePartStream, jpipFactory) {
     var PRECINCT_NO_AUX_CLASS = 0;
     var PRECINCT_WITH_AUX_CLASS = 1;
     var TILE_HEADER_CLASS = 2;
@@ -57,7 +59,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
             'tileHeader');
         
         return databin;
-    }
+    };
     
     this.getPrecinctDatabin = function(inClassIndex) {
         var databin = getDatabinFromArray(
@@ -68,7 +70,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
             'precinct');
         
         return databin;
-    }
+    };
     
     this.getTileDatabin = function(inClassIndex) {
         var databin = getDatabinFromArray(
@@ -85,7 +87,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         databin, event, listener, listenerThis) {
         
         if (event !== 'dataArrived') {
-            throw new jpipExceptions.InternalErrorException('Unsupported event: ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('Unsupported event: ' +
                 event);
         }
         
@@ -94,7 +96,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         var databinsArray = databinsByClass[classId];
         
         if (databin !== databinsArray.databins[inClassId]) {
-            throw new jpipExceptions.InternalErrorException('Unmatched databin ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('Unmatched databin ' +
                 'with class-ID=' + classId + ' and in-class-ID=' + inClassId);
         }
         
@@ -118,7 +120,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         databin, event, listener) {
         
         if (event !== 'dataArrived') {
-            throw new jpipExceptions.InternalErrorException('Unsupported event: ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('Unsupported event: ' +
                 event);
         }
 
@@ -130,7 +132,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         if (databin !== databinsArray.databins[inClassId] ||
             databin !== databinsArray.databinsWithListeners[inClassId]) {
             
-            throw new jpipExceptions.InternalErrorException('Unmatched databin ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('Unmatched databin ' +
                 'with class-ID=' + classId + ' and in-class-ID=' + inClassId);
         }
         
@@ -148,7 +150,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
             }
         }
         
-        throw new jpipExceptions.InternalErrorException(
+        throw new jGlobals.jpipExceptions.InternalErrorException(
             'Could not unregister listener from databin');
     };
     
@@ -169,7 +171,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         // A.2.2
         
         if (header.codestreamIndex !== 0) {
-            throw new jpipExceptions.UnsupportedFeatureException(
+            throw new jGlobals.jpipExceptions.UnsupportedFeatureException(
                 'Non zero Csn (Code Stream Index)', 'A.2.2');
         }
         
@@ -225,7 +227,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         // A.3.5
         
         if (header.inClassId !== 0) {
-            throw new jpipExceptions.IllegalDataException('Main header data-bin with ' +
+            throw new jGlobals.jpipExceptions.IllegalDataException('Main header data-bin with ' +
                 'in-class index other than zero is not valid', 'A.3.5');
         }
         
@@ -235,15 +237,15 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         
         loadedBytes += bytesDifference;
         loadedBytesInRegisteredDatabins += bytesDifference;
-    };
+    }
     
     function saveMetadata(header, message) {
         // A.3.6
         
-        // throw new jpipExceptions.UnsupportedFeatureException('recieve metadata-bin', 'A.3.6');
+        // throw new jGlobals.jpipExceptions.UnsupportedFeatureException('recieve metadata-bin', 'A.3.6');
         
         // ignore unused metadata (legal according to A.2.2).
-    };
+    }
     
     function getDatabinFromArray(
         databinsArray,
@@ -253,7 +255,7 @@ var JpipDatabinsSaver = function JpipDatabinsSaverClosure(isJpipTilePartStream, 
         databinTypeDescription) {
         
         if (isJpipTilePartStreamExpected !== isJpipTilePartStream) {
-            throw new jpipExceptions.WrongStreamException('databin of type ' +
+            throw new jGlobals.jpipExceptions.WrongStreamException('databin of type ' +
                 databinTypeDescription, isJpipTilePartStream);
         }
         

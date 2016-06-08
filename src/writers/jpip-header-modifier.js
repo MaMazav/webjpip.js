@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipHeaderModifier = function JpipHeaderModifierClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipHeaderModifier = function JpipHeaderModifier(
     codestreamStructure, offsetsCalculator, progressionOrder) {
 
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);
@@ -45,7 +47,7 @@ var JpipHeaderModifier = function JpipHeaderModifierClosure(
         var sizMarkerOffset = offsetsCalculator.getImageAndTileSizeOffset();
             
         var referenceGridSizeOffset =
-            sizMarkerOffset + j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER;
+            sizMarkerOffset + jGlobals.j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER;
 
         var imageOffsetBytesOffset = referenceGridSizeOffset + 8;
         var tileSizeBytesOffset = referenceGridSizeOffset + 16;
@@ -79,20 +81,19 @@ var JpipHeaderModifier = function JpipHeaderModifierClosure(
     
     function removeRanges(result, rangesToRemove, addOffset) {
         if (rangesToRemove.length === 0) {
-            var bytesRemoved = 0;
-            return bytesRemoved;
+            return 0; // zero bytes removed
         }
         
-        for (var rangeToRemove = 0; rangeToRemove < rangesToRemove.length; ++rangeToRemove) {
+        for (var i = 0; i < rangesToRemove.length; ++i) {
             var offset =
                 addOffset +
-                rangesToRemove[rangeToRemove].markerSegmentLengthOffset;
+                rangesToRemove[i].markerSegmentLengthOffset;
                 
             var originalMarkerSegmentLength =
                 (result[offset] << 8) + result[offset + 1];
             
             var newMarkerSegmentLength =
-                originalMarkerSegmentLength - rangesToRemove[rangeToRemove].length;
+                originalMarkerSegmentLength - rangesToRemove[i].length;
             
             result[offset] = newMarkerSegmentLength >>> 8;
             result[offset + 1] = newMarkerSegmentLength & 0xFF;
@@ -100,12 +101,12 @@ var JpipHeaderModifier = function JpipHeaderModifierClosure(
         
         var offsetTarget = addOffset + rangesToRemove[0].start;
         var offsetSource = offsetTarget;
-        for (var rangeToRemove = 0; rangeToRemove < rangesToRemove.length; ++rangeToRemove) {
-            offsetSource += rangesToRemove[rangeToRemove].length;
+        for (var j = 0; j < rangesToRemove.length; ++j) {
+            offsetSource += rangesToRemove[j].length;
             
             var nextRangeOffset =
-                rangeToRemove + 1 < rangesToRemove.length ?
-                    addOffset + rangesToRemove[rangeToRemove + 1].start :
+                j + 1 < rangesToRemove.length ?
+                    addOffset + rangesToRemove[j + 1].start :
                     result.length;
 
             for (; offsetSource < nextRangeOffset; ++offsetSource) {
@@ -148,7 +149,7 @@ var JpipHeaderModifier = function JpipHeaderModifierClosure(
                 return 4;
             
             default:
-                throw new j2kExceptions.IllegalDataException('Progression order of ' + progressionOrder, 'A.6.1, table A.16');
+                throw new jGlobals.j2kExceptions.IllegalDataException('Progression order of ' + progressionOrder, 'A.6.1, table A.16');
         }
     }
 };

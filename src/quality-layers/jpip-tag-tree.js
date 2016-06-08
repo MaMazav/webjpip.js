@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipTagTree = function JpipTagTree(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipTagTree = function JpipTagTree(
     bitstreamReader, width, height, transactionHelper) {
     
     var isAlreadyReadBitsTransactionalObject =
@@ -59,7 +61,7 @@ var JpipTagTree = function JpipTagTree(
         
         var result = lastNode.minimalPossibleValue <= value;
         if (result && !lastNode.isFinalValue) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Wrong parsing in TagTree.isSmallerThanOrEqualsTo: ' +
                 'not sure if value is smaller than asked');
         }
@@ -123,7 +125,7 @@ var JpipTagTree = function JpipTagTree(
         
         function getNext() {
             if (level === null) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Iterated too deep in tag tree');
             }
             

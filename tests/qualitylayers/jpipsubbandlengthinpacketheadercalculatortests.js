@@ -18,12 +18,12 @@ function testSubbandLengthInPacketHeaderCalculator(
     var bitstreamReaderStub;
     var isOnlyPerformOperations = false;
     
-    function calcualtorTestContextInitializer(bitstreamReader) {
+    function calculatorTestContextInitializer(bitstreamReader) {
         clearForTest();
         
         bitstreamReaderStub = bitstreamReader;
     
-        var calculator = new JpipSubbandLengthInPacketHeaderCalculator(
+        var calculator = new jpipExports.JpipSubbandLengthInPacketHeaderCalculator(
             bitstreamReader,
             numCodeblocksX,
             numCodeblocksY,
@@ -89,7 +89,7 @@ function testSubbandLengthInPacketHeaderCalculator(
         bitstreamContent,
         calculateSubbandLengthOperations,
         calculatorResultsTestDoOperation,
-        calcualtorTestContextInitializer);
+        calculatorTestContextInitializer);
         
     if (expectedCalls === undefined) {
         return;
@@ -100,7 +100,7 @@ function testSubbandLengthInPacketHeaderCalculator(
         bitstreamContent,
         calculateSubbandLengthOperations,
         calculatorCallsLogTestDoOperation,
-        calcualtorTestContextInitializer,
+        calculatorTestContextInitializer,
         /*createNewTransaction=*/undefined,
         /*disableAbortedTransactionTest=*/true);
 }
@@ -375,7 +375,7 @@ testSubbandLengthInPacketHeaderCalculator(
     /*calculateSubbandLengthOperations=*/[
         { bitstreamOffset: 1, qualityLayer: 0, result: resultLayer0 },
         { bitstreamOffset: 35, qualityLayer: 0,
-            exception: jpipExceptions.InternalErrorException }
+            exception: _jGlobals.jpipExceptions.InternalErrorException }
         ]
     );
 
@@ -387,7 +387,7 @@ testSubbandLengthInPacketHeaderCalculator(
     /*calculateSubbandLengthOperations=*/[
         { bitstreamOffset: 1, qualityLayer: 0, result: resultLayer0 },
         { bitstreamOffset: 35, qualityLayer: 0,
-            exception: jpipExceptions.InternalErrorException }
+            exception: _jGlobals.jpipExceptions.InternalErrorException }
         ]
     );
 

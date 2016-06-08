@@ -10,8 +10,14 @@
 		<div id="qunit-fixture"></div>
 		<script src="http://code.jquery.com/qunit/qunit-1.18.0.js"></script>
 		
+        <script>
+        var module = module || {};
+        module.exports = module.exports || {};
+        var jpipExports = module.exports;
+        </script>
+        
 		<script src="../src/misc/j2k-jpip-globals.js"></script>
-		<script src="../src/misc/jpip-runtime-factory.js"></script>
+		<!--<script src="../src/misc/jpip-runtime-factory.js"></script>-->
 		
 		<script src="mocks/mockhelper.js"></script>
 		<script src="mocks/protocol/jpipchannelmock.js"></script>
@@ -51,6 +57,7 @@
 		<script src="mocks/misc/mockfactoryforqualitylayerstest.js"></script>
 		<script src="mocks/misc/mockfactoryforreconnectablerequestertest.js"></script>
 		<script src="mocks/misc/mockfactoryforreconstructortest.js"></script>
+        <script src="mocks/misc/requirestub.js"></script>
 		
 		<script src="../src/databins/composite-array.js"></script>
 		<script src="../src/databins/jpip-databin-parts.js"></script>

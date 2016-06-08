@@ -54,7 +54,7 @@ function createPacketLengthCalculatorForTest(
         }
     };
     
-    var calculator = new JpipPacketLengthCalculator(
+    var calculator = new jpipExports.JpipPacketLengthCalculator(
         tileStructureStub,
         componentStructureStub,
         databin,

@@ -310,7 +310,7 @@ function createReconstructorForTest(databinsSaver) {
     var layersManagerStub = createLayersManagerStubForReconstructorTest(
         codestreamStructureMock, databinsSaver);
     
-    var reconstructor = new JpipCodestreamReconstructor(
+    var reconstructor = new jpipExports.JpipCodestreamReconstructor(
         codestreamStructureMock,
         databinsSaver,
         modifier,

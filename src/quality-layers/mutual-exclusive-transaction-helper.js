@@ -1,6 +1,8 @@
 'use strict';
 
-var mutualExclusiveTransactionHelper = {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.mutualExclusiveTransactionHelper = {
     createTransaction: function createTransaction() {
         // This code is executed a LOT. For optimization, state is represented
         // directly as numbers (I couldn't think about more readable way which
@@ -32,7 +34,7 @@ var mutualExclusiveTransactionHelper = {
         
         function terminate(isSuccessful_) {
             if (!transaction.isActive) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Cannot terminate an already terminated transaction');
             }
             state = isSuccessful_ ? 2 : 3;
@@ -89,14 +91,14 @@ var mutualExclusiveTransactionHelper = {
         
         function ensureAllowedAccess(activeTransaction) {
             if (!activeTransaction.isActive) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Cannot use terminated transaction to access objects');
             }
             
             if (activeTransaction !== lastAccessedTransaction &&
                 lastAccessedTransaction.isActive) {
                 
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Cannot simultanously access transactional object ' +
                     'from two active transactions');
             }

@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
     codestreamPartParams,
     qualityLayerReachedCallback,
     codestreamStructure,
@@ -86,7 +88,7 @@ var JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
 
         do {
             if (!precinctIterator.isInCodestreamPart) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Unexpected precinct not in codestream part');
             }
             
@@ -99,7 +101,7 @@ var JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
                 precinctDatabin);
             
             if (accumulatedData.maxNumQualityLayersInTile !== undefined) {
-                throw new jpipExceptions.InternalErrorException('Tile was ' +
+                throw new jGlobals.jpipExceptions.InternalErrorException('Tile was ' +
                     'iterated twice in codestream part');
             }
             
@@ -195,7 +197,7 @@ var JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
                 accumulatedData.maxNumQualityLayersInTile;
                 
             if (maxNumQualityLayersInTile === undefined) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'No information of maxNumQualityLayersInTile in ' +
                     'JpipRequestDatabinsListener');
             }
@@ -216,17 +218,17 @@ var JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
         }
         
         var length = Math.max(
-            precinctCountByReachedLayerExpected.length,
-            precinctCountByReachedLayer.length);
+            precinctCountByReachedQualityLayerExpected.length,
+            precinctCountByReachedQualityLayer.length);
             
         var minNumQualityLayersReachedExpected = 'max';
         
-        for (var i = 0; i < length; ++i) {
-            var isExpectedZero = (precinctCountByReachedQualityLayerExpected[i] || 0) === 0;
-            var isActualZero = (precinctCountByReachedQualityLayer[i] || 0) === 0;
+        for (var j = 0; j < length; ++j) {
+            var isExpectedZero = (precinctCountByReachedQualityLayerExpected[j] || 0) === 0;
+            var isActualZero = (precinctCountByReachedQualityLayer[j] || 0) === 0;
             
             if (isExpectedZero !== isActualZero) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Wrong accumulated statistics in JpipRequestDatabinsListener');
             }
             
@@ -234,20 +236,20 @@ var JpipRequestDatabinsListener = function JpipRequestDatabinsListener(
                 continue;
             }
             
-            if (precinctCountByReachedQualityLayer[i] !==
-                precinctCountByReachedQualityLayerExpected[i]) {
+            if (precinctCountByReachedQualityLayer[j] !==
+                precinctCountByReachedQualityLayerExpected[j]) {
                 
-                throw new jpipExceptions.InternalErrorException('Wrong ' +
+                throw new jGlobals.jpipExceptions.InternalErrorException('Wrong ' +
                     'accumulated statistics in JpipRequestDatabinsListener');
             }
             
             if (minNumQualityLayersReachedExpected === 'max') {
-                minNumQualityLayersReachedExpected = i;
+                minNumQualityLayersReachedExpected = j;
             }
         }
         
         if (minNumQualityLayersReached !== minNumQualityLayersReachedExpected) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Wrong minNumQualityLayersReached in JpipRequestDatabinsListener');
         }
     }

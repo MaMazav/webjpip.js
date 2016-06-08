@@ -1,6 +1,6 @@
 'use strict';
 
-var jpipCodingPassesNumberParser = (function JpipCodingPassesNumberParserClosure() {
+module.exports.JpipCodingPassesNumberParser = (function JpipCodingPassesNumberParserClosure() {
     // Table B.4 in part 1 of the Jpeg2000 standard shows 7 cases
     // of values. The algorithm shown here separates those cases
     // into 16 cases, depends on the number of ones in the prefix
@@ -86,7 +86,7 @@ var jpipCodingPassesNumberParser = (function JpipCodingPassesNumberParserClosure
         result[16] = 0;
         
         return result;
-    };
+    }
     
     function createAddToResultAfterCountOfOnesMap() {
         var result = new Array(17);
@@ -117,17 +117,17 @@ var jpipCodingPassesNumberParser = (function JpipCodingPassesNumberParserClosure
         
         // The cases of '1111 11111 ...' (codewords for 37 to 164):
         // After 9 ones and single zero, add 37 to other 0/1/2/3/4/5/6 bits value
-        result[ 9] = 37 + 0x00 // b0000000;
-        result[10] = 37 + 0x40 // b1000000;
-        result[11] = 37 + 0x60 // b1100000;
-        result[12] = 37 + 0x70 // b1110000;
-        result[13] = 37 + 0x78 // b1111000;
-        result[14] = 37 + 0x7C // b1111100;
-        result[15] = 37 + 0x7E // b1111110;
-        result[16] = 37 + 0x7F // b1111111;
+        result[ 9] = 37 + 0x00; // b000000
+        result[10] = 37 + 0x40; // b100000
+        result[11] = 37 + 0x60; // b110000
+        result[12] = 37 + 0x70; // b111000
+        result[13] = 37 + 0x78; // b111100
+        result[14] = 37 + 0x7C; // b111110
+        result[15] = 37 + 0x7E; // b111111
+        result[16] = 37 + 0x7F; // b111111
         
         return result;
-    };
+    }
     
     return jpipCodingPassesNumberParser;
 })();

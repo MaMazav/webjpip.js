@@ -30,7 +30,7 @@ function performDatabinPartsTest(
     }
     
     QUnit.test(testName, function(assert) {
-        var databin = new JpipDatabinParts(
+        var databin = new jpipExports.JpipDatabinParts(
             'Dummy Class-ID',
             'Dummy In-Class-ID',
             mockFactoryForDatabinPartsTest);

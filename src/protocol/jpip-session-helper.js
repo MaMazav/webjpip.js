@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipSessionHelper = function JpipSessionHelper(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipSessionHelper = function JpipSessionHelper(
     dataRequestUrl,
     knownTargetId,
     codestreamStructure,
@@ -74,7 +76,7 @@ var JpipSessionHelper = function JpipSessionHelper(
             if (targetId === '0') {
                 targetId = targetIdFromServer;
             } else if (targetId !== targetIdFromServer) {
-                throw new jpipExceptions.IllegalDataException(
+                throw new jGlobals.jpipExceptions.IllegalDataException(
                     'Server returned unmatched target ID');
             }
         }
@@ -201,7 +203,7 @@ var JpipSessionHelper = function JpipSessionHelper(
     };
     
     function generalFailureCallback(ajaxResponse) {
-        var exception = new jpipExceptions.InternalErrorException(
+        var exception = new jGlobals.jpipExceptions.InternalErrorException(
             'Bad jpip server response (status = ' + ajaxResponse.status + ')');
             
         onStatusChange(exception);
@@ -218,5 +220,5 @@ var JpipSessionHelper = function JpipSessionHelper(
                 exception: exception
             });
         }
-    };
+    }
 };

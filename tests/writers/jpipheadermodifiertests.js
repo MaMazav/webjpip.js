@@ -37,7 +37,7 @@ function createModifierForTest(progressionOrder, mainHeaderDatabin, codestreamSt
     
     var offsetsCalculator = new JpipOffsetsCalculatorStub(mainHeaderDatabin);
 
-    var result = new JpipHeaderModifier(
+    var result = new jpipExports.JpipHeaderModifier(
         codestreamStructure,
         offsetsCalculator,
         progressionOrder);
@@ -165,14 +165,14 @@ QUnit.test('IllegalDataException', function(assert) {
         function() {
             createModifierForTest('CLPR');
         },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'encodeProgressionOrder(illegal CLPR order)');
 
     assert.throws(
         function() {
             createModifierForTest('Gibrish');
         },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'encodeProgressionOrder(illegal Gibrish order)');
     });
 

@@ -12,7 +12,7 @@ function createMarkersParserForTest(mainHeaderDatabin) {
         mainHeaderDatabin.clearCacheForTest();
     }
     
-    var result = new JpipMarkersParser(
+    var result = new jpipExports.JpipMarkersParser(
         mainHeaderDatabin, jpipMessageHeaderParserStub, jpipMockFactory);
     return result;
 }
@@ -27,7 +27,7 @@ QUnit.test('getMandatoryMarkerOffsetInDatabin InternalErrorException',
                     databinStubs.notRecievedMarkerDatabinStub,
                     /*isMandatory=*/true);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'getMandatoryMarkerOffsetInDatabin (marker not ' +
             'recieved, exception is expected)');
     });
@@ -50,7 +50,7 @@ QUnit.test('getMandatoryMarkerOffsetInDatabin InternalErrorException',
 //            parserWithSameIdForMainHeaderAndTileDatabinsSaver.getMarkerOffsetInDatabin(
 //                databinStubs.emptyDatabinStub, arbitraryMarker);
 //        },
-//        jpipExceptions.InternalErrorException,
+//        _jGlobals.jpipExceptions.InternalErrorException,
 //        'Same ID for main header and tile header databins expects to throw exception');
 //    
 //    var parserWithSameIdForMainHeaderAndTileDatabinsSaver =
@@ -65,7 +65,7 @@ QUnit.test('getMandatoryMarkerOffsetInDatabin InternalErrorException',
 //                databinStubs.tileHeaderWithCodingStyleDatabinStub,
 //                arbitraryMarker);
 //        },
-//        jpipExceptions.InternalErrorException,
+//        _jGlobals.jpipExceptions.InternalErrorException,
 //        'Same ID for two tile header databins expects to throw exception');
 //    });
 
@@ -76,20 +76,20 @@ QUnit.test('IllegalDataException', function(assert) {
     assert.throws(
         function() {
             parserWithInvalidMainHeader.getMarkerOffsetInDatabin(
-                invalidMainHeader, j2kMarkers.CodingStyleDefault);
+                invalidMainHeader, _jGlobals.j2kMarkers.CodingStyleDefault);
             },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'parseCodestreamStructure without SOC marker expected to throw excetion');
 
     assert.throws(
         function() {
             parserWithInvalidMainHeader.getMandatoryMarkerOffsetInDatabin(
                 invalidMainHeader,
-                j2kMarkers.CodingStyleDefault,
+                _jGlobals.j2kMarkers.CodingStyleDefault,
                 'COD segment name for exception in test',
                 'Dummy standard section for exception in test');
             },
-        j2kExceptions.IllegalDataException,
+        _jGlobals.j2kExceptions.IllegalDataException,
         'getMandatoryMarkerOffsetInDatabin without SOC marker expected to throw excetion');
     });
 
@@ -107,7 +107,7 @@ QUnit.test('checkSupportedMarkers unsupported marker presents (black list)',
                     unsupportedMarkers,
                     /*isMarkerSupported=*/false);
             },
-            j2kExceptions.InternalErrorException,
+            _jGlobals.j2kExceptions.InternalErrorException,
             'checkSupportedMarkers (marker not supported, exception is expected');
     });
 
@@ -125,7 +125,7 @@ QUnit.test('checkSupportedMarkers unsupported marker presents (white list)',
                     onlySupportedMarkers,
                     /*isMarkerSupported=*/true);
             },
-            j2kExceptions.InternalErrorException,
+            _jGlobals.j2kExceptions.InternalErrorException,
             'checkSupportedMarkers (marker not supported, exception is expected');
     });
 
@@ -198,7 +198,7 @@ QUnit.test('getMandatoryMarkerOffsetInDatabin exception expected (not found mark
                     'Arbitrary marker name',
                     'Section in standard');
             },
-            j2kExceptions.IllegalDataException,
+            _jGlobals.j2kExceptions.IllegalDataException,
             'getMandatoryMarkerOffsetInDatabin (marker ' +
             'not exist, exception is expected');
     });
@@ -248,7 +248,7 @@ QUnit.test('getMarkerOffsetInDatabin exception expected (invalid marker not star
                     databinStubs.mainHeaderDatabinStub,
                     invalidMarker);
             },
-            j2kExceptions.InternalErrorException,
+            _jGlobals.j2kExceptions.InternalErrorException,
             'getMarkerOffsetInDatabin (invalid ' +
             'marker, exception is expected');
     });
@@ -286,7 +286,7 @@ QUnit.test('getMarkerOffsetInDatabin exception expected (not recieved some data)
             function() {
                 parser.getMarkerOffsetInDatabin(databin, arbitraryMarker);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'getMarkerOffsetInDatabin (data not recieved, ' +
             'exception is expected)');
     });
@@ -307,7 +307,7 @@ QUnit.test('getMarkerOffsetInDatabin exception expected (not recieved some data 
             function() {
                 parser.getMarkerOffsetInDatabin(databin, notRecievedMarker);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'getMarkerOffsetInDatabin (data not recieved, ' +
             'exception is expected)');
         
@@ -330,7 +330,7 @@ QUnit.test('getMarkerOffsetInDatabin exception expected (not recieved all data)'
             function() {
                 parser.getMarkerOffsetInDatabin(databin, arbitraryMarker);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'getMarkerOffsetInDatabin (data not recieved, ' +
             'exception is expected)');
     });
@@ -342,7 +342,7 @@ QUnit.test('getMandatoryMarkerOffsetInDatabin', function(assert) {
         parser.getMandatoryMarkerOffsetInDatabin(
             databinStubs
                 .notRecievedCodingStyleSegmentContentDatabinStub,
-            j2kMarkers.CodingStyleDefault);
+            _jGlobals.j2kMarkers.CodingStyleDefault);
             
     var codOffsetInHeaderWithoutCodContentExpected = databinStubs
         .tileHeaderContentWithCOD.markerOffsets.COD;
@@ -359,7 +359,7 @@ QUnit.test('isMarker', function(assert) {
     var databinsSaverStub = null;
     var messageHeaderParserStub = null;
     
-    var parser = new JpipMarkersParser(
+    var parser = new jpipExports.JpipMarkersParser(
         databinsSaverStub, messageHeaderParserStub, jpipMockFactory);
     
     var isMarkerTrueActual = parser.isMarker([0xF4, 0xFF, 0xF6, 0x45], [0xFF, 0xF6], 1);

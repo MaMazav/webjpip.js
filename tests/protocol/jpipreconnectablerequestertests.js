@@ -35,7 +35,7 @@ function createReconnectableRequesterForTest(options) {
     var maxRequestsWaitingForResponseInChannel =
         options.maxRequestsWaitingForResponseInChannel || 1;
     
-    return new JpipReconnectableRequester(
+    return new jpipExports.JpipReconnectableRequester(
         maxChannelsInSession,
         maxRequestsWaitingForResponseInChannel,
         codestreamStructure,
@@ -438,7 +438,7 @@ QUnit.test('open() with undefined URL should throw exception', function (assert)
         function openWithUndefinedURL() {
             requester.open(undefined);
         },
-        jpipExceptions.ArgumentException,
+        _jGlobals.jpipExceptions.ArgumentException,
         'Expected ArgumentException on open()');
 
     clearForReconnectableRequesterTest();
@@ -453,7 +453,7 @@ QUnit.test('open() with null URL should throw exception', function (assert) {
         function openWithNullURL() {
             requester.open(null);
         },
-        jpipExceptions.ArgumentException,
+        _jGlobals.jpipExceptions.ArgumentException,
         'Expected ArgumentException on open()');
 
     clearForReconnectableRequesterTest();
@@ -468,7 +468,7 @@ QUnit.test('open() twice should throw exception', function (assert) {
         function openSecondTime() {
             opened.requester.open('Another URL');
         },
-        jpipExceptions.IllegalOperationException,
+        _jGlobals.jpipExceptions.IllegalOperationException,
         'Expected IllegalOperationException on second open()');
 
     clearForReconnectableRequesterTest();

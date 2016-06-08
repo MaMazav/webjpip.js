@@ -1,6 +1,9 @@
 'use strict';
 
-var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
+var jGlobals = require('j2k-jpip-globals.js');
+var jpipRuntimeFactory = require('jpip-runtime-factory.js'); 
+
+module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
     options = options || {};
     var jpipFactory = jpipRuntimeFactory;
 
@@ -61,7 +64,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
     
     this.open = function open(baseUrl) {
         requester.open(baseUrl);
-    }
+    };
     
     this.close = function close(closedCallback) {
         requester.close(closedCallback);
@@ -69,7 +72,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
     
     this.getSizesParams = function getSizesParams() {
         if (!requester.getIsReady()) {
-            throw new jpipExceptions.IllegalOperationException(
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
                 'Cannot get codestream structure before image is ready');
         }
         
@@ -92,7 +95,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
         
         options = options || {};
         if (options.isOnlyWaitForData !== undefined) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 'options.isOnlyWaitForData',
                 options.isOnlyWaitForData,
                 'isOnlyWaitForData is supported only for progressive request');
@@ -136,7 +139,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
         
         options = options || {};
         if (options.useCachedDataOnly !== undefined) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 'options.useCachedDataOnly',
                 options.useCachedDataOnly,
                 'useCachedDataOnly is not supported for progressive request');
@@ -151,7 +154,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
                 codestreamPartParamsModified.maxNumQualityLayers);
         } else {
             progressivenessModified = castProgressivenessParams(
-                progressiveness, codestreamPartParamsModified.maxNumQualityLayers);
+                progressiveness, codestreamPartParamsModified.maxNumQualityLayers, 'maxNumQualityLayers');
         }
         
         var requestContext = jpipFactory.createRequestContext(
@@ -167,7 +170,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
             });
         
         return requestContext;
-    }
+    };
     
     this.createMovableRequest = function createMovableRequest(
         callback, userContextVars) {
@@ -209,7 +212,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
         statusCallback(status);
     }
     
-    function castProgressivenessParams(progressiveness, maxNumQualityLayers) {
+    function castProgressivenessParams(progressiveness, maxNumQualityLayers, propertyName) {
         // Ensure than minNumQualityLayers is given for all items
         
         var result = new Array(progressiveness.length);
@@ -221,7 +224,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
                 if (maxNumQualityLayers !== undefined &&
                     minNumQualityLayers > maxNumQualityLayers) {
                     
-                    throw new ArgumentException(
+                    throw new jGlobals.jpipExceptions.ArgumentException(
                         'progressiveness[' + i + '].minNumQualityLayers',
                         minNumQualityLayers,
                         'minNumQualityLayers is bigger than ' +
@@ -297,14 +300,14 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
         var maxY = validateNumericParam(
             codestreamPartParams.maxYExclusive, 'maxYExclusive');
         
-        var levelWidth = codestreamStructure.getLevelWidth(numResolutionLevelsToCut)
-        var levelHeight = codestreamStructure.getLevelHeight(numResolutionLevelsToCut)
+        var levelWidth = codestreamStructure.getLevelWidth(numResolutionLevelsToCut);
+        var levelHeight = codestreamStructure.getLevelHeight(numResolutionLevelsToCut);
         
         if (minX < 0 || maxX > levelWidth ||
             minY < 0 || maxY > levelHeight ||
             minX >= maxX || minY >= maxY) {
             
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 'codestreamPartParams', codestreamPartParams);
         }
         
@@ -332,7 +335,7 @@ var JpipCodestreamClient = function JpipCodestreamClientClosure(options) {
         
         var result = +inputValue;
         if (isNaN(result) || result !== Math.floor(result)) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 propertyName, inputValue);
         }
         

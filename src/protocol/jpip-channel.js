@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipChannel = function JpipChannel(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipChannel = function JpipChannel(
     maxRequestsWaitingForResponseInChannel, sessionHelper, jpipFactory) {
     
     var self = this;
@@ -24,7 +26,7 @@ var JpipChannel = function JpipChannel(
             var allWaitingRequests = getAllQueuedRequestCount();
             
             if (allWaitingRequests >= maxRequestsWaitingForResponseInChannel) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Channel has too many requests not responded yet');
             }
         }
@@ -53,7 +55,7 @@ var JpipChannel = function JpipChannel(
     
     this.sendMinimalRequest = function sendMinimalRequest(callback) {
         if (channelId === null && requestsWaitingForResponse.length > 0) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Minimal requests should be used for first request or keep ' +
                 'alive message. Keep alive requires an already initialized ' +
                 'channel, and first request requires to not have any ' +
@@ -76,7 +78,7 @@ var JpipChannel = function JpipChannel(
     
     this.dedicateForMovableRequest = function dedicateForMovableRequest() {
         if (isDedicatedForMovableRequest) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Channel already dedicated for movable request');
         }
         
@@ -128,7 +130,7 @@ var JpipChannel = function JpipChannel(
         }
         
         if (!isFound) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'channel.requestsWaitingForResponse inconsistency');
         }
         
@@ -171,7 +173,7 @@ var JpipChannel = function JpipChannel(
             requestUrl += '&tid=' + targetId;
         }
         
-        var alreadySentMessagesOnChannel = channelId != null;
+        var alreadySentMessagesOnChannel = channelId !== null;
         
         if (alreadySentMessagesOnChannel) {
             var isStopPrevious =

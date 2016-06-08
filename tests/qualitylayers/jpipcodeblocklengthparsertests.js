@@ -14,7 +14,7 @@ function codeblockLengthTestDoOperation(parser, operation, assert, index) {
 }
 
 function codeblockLengthTestContextInitializer(bitstreamReader) {
-    var parser = new JpipCodeblockLengthParser(
+    var parser = new jpipExports.JpipCodeblockLengthParser(
         bitstreamReader, transactionHelperStub);
     
     return parser;
@@ -45,7 +45,7 @@ QUnit.test(
     function(assert) {
         var dummyBitsteramContent = [1, 1, 0];
         var bitstreamReader = new JpipBitstreamReaderStub(dummyBitsteramContent);
-        var parser = new JpipCodeblockLengthParser(
+        var parser = new jpipExports.JpipCodeblockLengthParser(
             bitstreamReader, transactionHelperStub);
             
         var illegalCodingPasses = 256;
@@ -54,7 +54,7 @@ QUnit.test(
             function() {
                 parser.parse(illegalCodingPasses);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'parse() expected to throw exception');
     });
 

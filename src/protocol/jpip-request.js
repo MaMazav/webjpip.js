@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipRequest = function JpipRequest(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipRequest = function JpipRequest(
     sessionHelper,
     messageHeaderParser,
     channel,
@@ -23,10 +25,10 @@ var JpipRequest = function JpipRequest(
     
     this.startRequest = function startRequest() {
         if (isActive) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'startRequest called twice');
         } else if (endedByUser) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'request was already stopped');
         }
         
@@ -42,7 +44,7 @@ var JpipRequest = function JpipRequest(
     
     this.getLastRequestId = function getLastRequestId() {
         if (!isActive) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Unexpected call to getLastRequestId on inactive request');
         }
         
@@ -99,7 +101,7 @@ var JpipRequest = function JpipRequest(
     
     function processAjaxResponse(ajaxResponse, isResponseDone) {
         if (!isResponseDone) {
-            throw new jpipExceptions.InternalErrorException('AJAX ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('AJAX ' +
                 'callback called although response is not done yet ' +
                 'and chunked encoding is not enabled');
         }
@@ -110,14 +112,14 @@ var JpipRequest = function JpipRequest(
         if (createdChannel !== null) {
             if (channel.getChannelId() !== null) {
                 sessionHelper.onException(
-                    new jpipExceptions.IllegalDataException(
+                    new jGlobals.jpipExceptions.IllegalDataException(
                         'Channel created although was not requested', 'D.2.3'));
             } else {
                 channel.setChannelId(createdChannel);
             }
         } else if (channel.getChannelId() === null) {
             sessionHelper.onException(
-                new jpipExceptions.IllegalDataException(
+                new jGlobals.jpipExceptions.IllegalDataException(
                     'Cannot extract cid from cnew response', 'D.2.3'));
         }
         
@@ -168,20 +170,20 @@ var JpipRequest = function JpipRequest(
         if (offset > bytes.length - 2 ||
             bytes[offset] !== 0) {
             
-            throw new jpipExceptions.IllegalDataException('Could not find ' +
+            throw new jGlobals.jpipExceptions.IllegalDataException('Could not find ' +
                 'End Of Response (EOR) code at the end of response', 'D.3');
         }
         
         switch (bytes[offset + 1]) {
-            case jpipEndOfResponseReasons.IMAGE_DONE:
-            case jpipEndOfResponseReasons.WINDOW_DONE:
-            case jpipEndOfResponseReasons.QUALITY_LIMIT:
+            case jGlobals.jpipEndOfResponseReasons.IMAGE_DONE:
+            case jGlobals.jpipEndOfResponseReasons.WINDOW_DONE:
+            case jGlobals.jpipEndOfResponseReasons.QUALITY_LIMIT:
                 endResponseResult = RESPONSE_ENDED_SUCCESS;
                 break;
             
-            case jpipEndOfResponseReasons.WINDOW_CHANGE:
+            case jGlobals.jpipEndOfResponseReasons.WINDOW_CHANGE:
                 if (!endedByUser) {
-                    throw new jpipExceptions.IllegalOperationException(
+                    throw new jGlobals.jpipExceptions.IllegalOperationException(
                         'Server response was terminated due to newer ' +
                         'request issued on same channel. That may be an ' +
                         'internal webjpip.js error - Check that movable ' +
@@ -189,8 +191,8 @@ var JpipRequest = function JpipRequest(
                 }
                 break;
             
-            case jpipEndOfResponseReasons.BYTE_LIMIT:
-            case jpipEndOfResponseReasons.RESPONSE_LIMIT:
+            case jGlobals.jpipEndOfResponseReasons.BYTE_LIMIT:
+            case jGlobals.jpipEndOfResponseReasons.RESPONSE_LIMIT:
                 if (!endedByUser) {
                     sendMessageOfDataRequest();
                     endResponseResult = RESPONSE_ENDED_SENT_ANOTHER_MESSAGE;
@@ -198,22 +200,22 @@ var JpipRequest = function JpipRequest(
                 
                 break;
             
-            case jpipEndOfResponseReasons.SESSION_LIMIT:
+            case jGlobals.jpipEndOfResponseReasons.SESSION_LIMIT:
                 sessionHelper.onException(
-                    new jpipExceptions.IllegalOperationException(
+                    new jGlobals.jpipExceptions.IllegalOperationException(
                         'Server resources associated with the session is ' +
                         'limitted, no further requests should be issued to ' +
                         'this session'));
                 break;
             
-            case jpipEndOfResponseReasons.NON_SPECIFIED:
-                sessionHelper.onException(new jpipExceptions.IllegalOperationException(
+            case jGlobals.jpipEndOfResponseReasons.NON_SPECIFIED:
+                sessionHelper.onException(new jGlobals.jpipExceptions.IllegalOperationException(
                     'Server error terminated response with no reason specified'));
                 break;
                     
             default:
                 sessionHelper.onException(
-                    new jpipExceptions.IllegalDataException(
+                    new jGlobals.jpipExceptions.IllegalDataException(
                         'Server responded with illegal End Of Response ' +
                         '(EOR) code: ' + bytes[offset + 1]));
                 break;
@@ -227,7 +229,7 @@ var JpipRequest = function JpipRequest(
             var bytes = new Uint8Array(ajaxResponse.response);
             
             var offset = 0;
-            var previousHeader = undefined;
+            var previousHeader;
             
             while (offset < bytes.length) {
                 if (bytes[offset] === 0) {

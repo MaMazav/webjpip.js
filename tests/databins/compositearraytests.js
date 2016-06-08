@@ -112,20 +112,20 @@ function pushRange(compositeArray, rangeStartOffset, rangeLength) {
 QUnit.module('CompositeArray');
 
 QUnit.test('empty CompositeArray', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     
     testCompositeArrayContent(assert, compositeArray, 2, 0);
     });
 
 QUnit.test('Single pushSubArray', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 4);
     
     testCompositeArrayContent(assert, compositeArray, 2, 4);
     });
 
 QUnit.test('pushSubArray twice', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 4);
     pushRange(compositeArray, 6, 1);
     
@@ -133,7 +133,7 @@ QUnit.test('pushSubArray twice', function(assert) {
     });
 
 QUnit.test('pushSubArray of zero length', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 4);
     pushRange(compositeArray, 6, 0);
     
@@ -141,10 +141,10 @@ QUnit.test('pushSubArray of zero length', function(assert) {
     });
 
 QUnit.test('copyToOther (simple)', function(assert) {
-    var target = new CompositeArray(2);
+    var target = new jpipExports.CompositeArray(2);
     pushRange(target, 2, 3);
     
-    var source = new CompositeArray(5);
+    var source = new jpipExports.CompositeArray(5);
     pushRange(source, 5, 7);
     
     source.copyToOther(target);
@@ -154,10 +154,10 @@ QUnit.test('copyToOther (simple)', function(assert) {
     });
 
 QUnit.test('copyToOther (target is empty)', function(assert) {
-    var target = new CompositeArray(5);
+    var target = new jpipExports.CompositeArray(5);
     pushRange(target, 5, 0);
     
-    var source = new CompositeArray(5);
+    var source = new jpipExports.CompositeArray(5);
     pushRange(source, 5, 7);
     
     source.copyToOther(target);
@@ -167,10 +167,10 @@ QUnit.test('copyToOther (target is empty)', function(assert) {
     });
 
 QUnit.test('copyToOther (source is empty)', function(assert) {
-    var target = new CompositeArray(4);
+    var target = new jpipExports.CompositeArray(4);
     pushRange(target, 4, 3);
     
-    var source = new CompositeArray(7);
+    var source = new jpipExports.CompositeArray(7);
     pushRange(source, 7, 0);
     
     source.copyToOther(target);
@@ -180,11 +180,11 @@ QUnit.test('copyToOther (source is empty)', function(assert) {
     });
 
 QUnit.test('copyToOther (after two pushSubArray)', function(assert) {
-    var target = new CompositeArray(2);
+    var target = new jpipExports.CompositeArray(2);
     pushRange(target, 2, 1);
     pushRange(target, 3, 2);
     
-    var source = new CompositeArray(5);
+    var source = new jpipExports.CompositeArray(5);
     pushRange(source, 5, 4);
     pushRange(source, 9, 3);
     
@@ -195,10 +195,10 @@ QUnit.test('copyToOther (after two pushSubArray)', function(assert) {
     });
 
 QUnit.test('copyToOther (with overlapping)', function(assert) {
-    var target = new CompositeArray(2);
+    var target = new jpipExports.CompositeArray(2);
     pushRange(target, 2, 7);
     
-    var source = new CompositeArray(5);
+    var source = new jpipExports.CompositeArray(5);
     pushRange(source, 5, 7);
     
     source.copyToOther(target);
@@ -208,12 +208,12 @@ QUnit.test('copyToOther (with overlapping)', function(assert) {
     });
 
 QUnit.test('copyToOther (with no new data)', function(assert) {
-    var target = new CompositeArray(0);
+    var target = new jpipExports.CompositeArray(0);
     pushRange(target, 0, 4);
     pushRange(target, 4, 9);
     pushRange(target, 13, 5);
     
-    var source = new CompositeArray(0);
+    var source = new jpipExports.CompositeArray(0);
     pushRange(source, 0, 3);
     pushRange(source, 3, 10);
     pushRange(source, 13, 2);
@@ -225,22 +225,22 @@ QUnit.test('copyToOther (with no new data)', function(assert) {
     });
 
 QUnit.test('Illegal copyToOther (source.offset < target.offset', function(assert) {
-    var target = new CompositeArray(2);
+    var target = new jpipExports.CompositeArray(2);
     pushRange(target, 2, 1);
     
-    var source = new CompositeArray(1);
+    var source = new jpipExports.CompositeArray(1);
     pushRange(source, 1, 3);
     
     assert.throws(
         function() {
             source.copyToOther(target);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'IllegalOperationException expected on copy');
     });
 
 QUnit.test('Illegal copyToArray (minOffset = undefined)', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 1);
     
     assert.throws(
@@ -248,12 +248,12 @@ QUnit.test('Illegal copyToArray (minOffset = undefined)', function(assert) {
             var array = [];
             compositeArray.copyToArray(array, 0, undefined, 3);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'IllegalOperationException expected on copy');
     });
 
 QUnit.test('Illegal copyToArray (maxOffset = undefined)', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 1);
     
     assert.throws(
@@ -261,12 +261,12 @@ QUnit.test('Illegal copyToArray (maxOffset = undefined)', function(assert) {
             var array = [];
             compositeArray.copyToArray(array, 0, 2, undefined);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'IllegalOperationException expected on copy');
     });
 
 QUnit.test('Illegal copyToArray (minOffset is too small)', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 1);
     
     assert.throws(
@@ -274,12 +274,12 @@ QUnit.test('Illegal copyToArray (minOffset is too small)', function(assert) {
             var array = [];
             compositeArray.copyToArray(array, 0, 1, 3);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'IllegalOperationException expected on copy');
     });
 
 QUnit.test('Illegal copyToArray (maxOffset is too large)', function(assert) {
-    var compositeArray = new CompositeArray(2);
+    var compositeArray = new jpipExports.CompositeArray(2);
     pushRange(compositeArray, 2, 1);
     
     assert.throws(
@@ -287,6 +287,6 @@ QUnit.test('Illegal copyToArray (maxOffset is too large)', function(assert) {
             var array = [];
             compositeArray.copyToArray(array, 0, 2, 5);
         },
-        jpipExceptions.InternalErrorException,
+        _jGlobals.jpipExceptions.InternalErrorException,
         'IllegalOperationException expected on copy');
     });

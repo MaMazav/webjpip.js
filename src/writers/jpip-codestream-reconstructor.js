@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructor(
     codestreamStructure,
     databinsSaver,
     headerModifier,
@@ -19,14 +21,14 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         var numTiles =
             codestreamStructure.getNumTilesX() * codestreamStructure.getNumTilesY();
         
-        var codestreamPart = undefined;
+        var codestreamPart;
         
         if (minNumQualityLayers === undefined) {
             minNumQualityLayers = 'max';
         }
         
         for (var tileId = 0; tileId < numTiles; ++tileId) {
-            var bytesCopied = createTile(
+            var tileBytesCopied = createTile(
                 result,
                 currentOffset,
                 tileId,
@@ -34,16 +36,16 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
                 codestreamPart,
                 minNumQualityLayers);
             
-            currentOffset += bytesCopied;
+            currentOffset += tileBytesCopied;
             
-            if (bytesCopied === null) {
+            if (tileBytesCopied === null) {
                 return null;
             }
         }
         
-        var bytesCopied = copyBytes(
-            result, currentOffset, j2kMarkers.EndOfCodestream);
-        currentOffset += bytesCopied;
+        var markerBytesCopied = copyBytes(
+            result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
+        currentOffset += markerBytesCopied;
         result.length = currentOffset;
 
         return result;
@@ -76,7 +78,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         do {
             var tileIdOriginal = tileIterator.tileIndex;
             
-            var bytesCopied = createTile(
+            var tileBytesCopied = createTile(
                 codestream,
                 currentOffset,
                 tileIdToWrite++,
@@ -85,16 +87,16 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
                 minNumQualityLayers,
                 isOnlyHeadersWithoutBitstream);
                 
-            currentOffset += bytesCopied;
+            currentOffset += tileBytesCopied;
         
-            if (bytesCopied === null) {
+            if (tileBytesCopied === null) {
                 return null;
             }
         } while (tileIterator.tryAdvance());
         
-        var bytesCopied = copyBytes(
-            codestream, currentOffset, j2kMarkers.EndOfCodestream);
-        currentOffset += bytesCopied;
+        var markerBytesCopied = copyBytes(
+            codestream, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
+        currentOffset += markerBytesCopied;
 
         headerModifier.modifyImageSize(codestream, params);
         
@@ -131,7 +133,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
             maxNumQualityLayers: maxNumQualityLayers
             };
         
-        var bytesCopied = createTile(
+        var tileBytesCopied = createTile(
             result,
             currentOffset,
             /*tileIdToWrite=*/0,
@@ -139,15 +141,15 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
             codestreamPartParams,
             minNumQualityLayers);
             
-        currentOffset += bytesCopied;
+        currentOffset += tileBytesCopied;
         
-        if (bytesCopied === null) {
+        if (tileBytesCopied === null) {
             return null;
         }
 
-        var bytesCopied = copyBytes(
-            result, currentOffset, j2kMarkers.EndOfCodestream);
-        currentOffset += bytesCopied;
+        var markerBytesCopied = copyBytes(
+            result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
+        currentOffset += markerBytesCopied;
         
         var numTilesX = codestreamStructure.getNumTilesX();
         var tileX = tileId % numTilesX;
@@ -168,7 +170,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
     
     function createMainHeader(result, numResolutionLevelsToCut) {
         if (databinsSaver.getIsJpipTilePartStream()) {
-            throw new jpipExceptions.UnsupportedFeatureException(
+            throw new jGlobals.jpipExceptions.UnsupportedFeatureException(
                 'reconstruction of codestream from JPT (Jpip Tile-part) stream', 'A.3.4');
         }
         
@@ -208,7 +210,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         var tileHeaderDatabin = databinsSaver.getTileHeaderDatabin(
             tileIdOriginal);
         
-        var numResolutionLevelsToCut = undefined;
+        var numResolutionLevelsToCut;
         if (codestreamPartParams !== undefined) {
             numResolutionLevelsToCut = codestreamPartParams.numResolutionLevelsToCut;
         }
@@ -227,7 +229,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         currentOffset = tileHeaderOffsets.endTileHeaderOffset;
         
         if (!isOnlyHeadersWithoutBitstream) {
-            var bytesCopied = createTileBitstream(
+            var tileBytesCopied = createTileBitstream(
                 result,
                 currentOffset,
                 tileStructure,
@@ -235,9 +237,9 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
                 codestreamPartParams,
                 minNumQualityLayers);
                 
-            currentOffset += bytesCopied;
+            currentOffset += tileBytesCopied;
             
-            if (bytesCopied === null) {
+            if (tileBytesCopied === null) {
                 return null;
             }
         }
@@ -266,7 +268,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         var startOfTileHeaderOffset = currentOffset;
     
         var bytesCopied = copyBytes(
-            result, currentOffset, j2kMarkers.StartOfTile);
+            result, currentOffset, jGlobals.j2kMarkers.StartOfTile);
         currentOffset += bytesCopied;
         
         // A.4.2
@@ -279,7 +281,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         bytesCopied = copyBytes(result, currentOffset, tileIndex);
         currentOffset += bytesCopied;
         
-        var headerAndDataLengthPlaceholderOffset = currentOffset
+        var headerAndDataLengthPlaceholderOffset = currentOffset;
         var headerAndDataLengthPlaceholder = [0, 0, 0, 0]; // Psot
         bytesCopied = copyBytes(result, currentOffset, headerAndDataLengthPlaceholder);
         currentOffset += bytesCopied;
@@ -304,12 +306,12 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         }
         
         var isEndedWithStartOfDataMarker =
-            result[currentOffset - 2] === j2kMarkers.StartOfData[0] &&
-            result[currentOffset - 1] === j2kMarkers.StartOfData[1];
+            result[currentOffset - 2] === jGlobals.j2kMarkers.StartOfData[0] &&
+            result[currentOffset - 1] === jGlobals.j2kMarkers.StartOfData[1];
             
         if (!isEndedWithStartOfDataMarker) {
             bytesCopied = copyBytes(
-                result, currentOffset, j2kMarkers.StartOfData);
+                result, currentOffset, jGlobals.j2kMarkers.StartOfData);
             currentOffset += bytesCopied;
         }
         
@@ -339,7 +341,7 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         minNumQualityLayers) {
         
         var numQualityLayersInTile = tileStructure.getNumQualityLayers();
-        var maxNumQualityLayers = undefined;
+        var maxNumQualityLayers;
         var iterator = tileStructure.getPrecinctIterator(
             tileIdOriginal,
             codestreamPartParams,
@@ -427,4 +429,4 @@ var JpipCodestreamReconstructor = function JpipCodestreamReconstructorClosure(
         
         return bytesToCopy.length;
     }
-}
+};

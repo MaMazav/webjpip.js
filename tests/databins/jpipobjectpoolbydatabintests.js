@@ -8,7 +8,7 @@ function createDatabinStub(classId, inClassId) {
 }
 
 function checkDifferentDatabins(assert, databinA, databinB) {
-    var pool = new JpipObjectPoolByDatabin();
+    var pool = new jpipExports.JpipObjectPoolByDatabin();
 
     var someValueInDatabinA = 'Some dummy value 142';
     var someValueInDatabinB = 'Some dummy value 932';
@@ -45,7 +45,7 @@ function checkDifferentDatabins(assert, databinA, databinB) {
 QUnit.module('JpipObjectPoolByDatabin');
 
 QUnit.test('Object is correctly cached', function(assert) {
-    var pool = new JpipObjectPoolByDatabin();
+    var pool = new jpipExports.JpipObjectPoolByDatabin();
     var databin = createDatabinStub(152, 294);
     
     var someValue = 'Some dummy value 412';
@@ -84,7 +84,7 @@ QUnit.test('Two different databins with same in-class ID are correctly cached', 
 QUnit.test(
     'Expected exception for different databins with same class ID and in-class ID',
     function(assert) {
-        var pool = new JpipObjectPoolByDatabin();
+        var pool = new jpipExports.JpipObjectPoolByDatabin();
         var databinA = createDatabinStub(664, 938);
         var databinB = createDatabinStub(664, 938);
         
@@ -97,6 +97,6 @@ QUnit.test(
             function() {
                 pool.getObject(databinB);
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'Expected exception on second duplicated databin access');
     });

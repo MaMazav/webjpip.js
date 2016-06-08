@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
     jpipStructureParser,
     jpipFactory,
     progressionOrder) {
@@ -23,14 +25,14 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
         
         var numTiles = sizesCalculator.getNumTilesX();
         return numTiles;
-    }
+    };
     
     this.getNumTilesY = function getNumTilesY() {
         validateParams();
         
         var numTiles = sizesCalculator.getNumTilesY();
         return numTiles;
-    }
+    };
 
     this.getNumComponents = function() {
         validateParams();
@@ -108,7 +110,7 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
             sizesCalculator.getFirstTileWidth(numResolutionLevelsToCut);
         
         return tileLeft;
-    }
+    };
     
     this.getTileTop = function getTileTop(tileIndex, numResolutionLevelsToCut) {
         validateParams();
@@ -123,7 +125,7 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
             sizesCalculator.getFirstTileHeight(numResolutionLevelsToCut);
         
         return tileTop;
-    }
+    };
     
     this.getDefaultTileStructure = function getDefaultTileStructure() {
         validateParams();
@@ -201,11 +203,11 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
         
         var size = sizesCalculator.getSizeOfPart(codestreamPartParams);
         return size;
-    }
+    };
     
     function tryAdvanceTileIterator(setableIterator, bounds) {
         if (setableIterator.currentY >= bounds.maxTileYExclusive) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Cannot advance tile iterator after end');
         }
         
@@ -230,7 +232,7 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
             sizesCalculator.getNumTilesX() * sizesCalculator.getNumTilesY()- 1;
         
         if (tileId < 0 || tileId > maxTileId) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 'tileId',
                 tileId,
                 'Expected value between 0 and ' + maxTileId);
@@ -259,7 +261,7 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
 
     function validateArgumentInRange(paramName, paramValue, suprimumParamValue) {
         if (paramValue < 0 || paramValue >= suprimumParamValue) {
-            throw new jpipExceptions.ArgumentException(
+            throw new jGlobals.jpipExceptions.ArgumentException(
                 paramName,
                 paramValue,
                 paramName + ' is expected to be between 0 and ' + suprimumParamValue - 1);
@@ -293,7 +295,7 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
         var tileStructure = structureByVerticalType[edgeType.verticalEdgeType];
         
         return tileStructure;
-    };
+    }
     
     function createTileStructure(tileParams, edgeType) {
         validateParams();
@@ -318,15 +320,10 @@ var JpipCodestreamStructure = function JpipCodestreamStructureClosure(
     function validateParams(self) {
         if (!params) {
             params = jpipStructureParser.parseCodestreamStructure();
-            sizesCalculator = new JpipCodestreamSizesCalculator(params);
-            
-            // NOTE: Now the sizesCalculator and codestreamStructure are
-            // considered one unit in testing. They should be tested
-            // separately. Also some classes (like tileStructure) can refer
-            // directly to the sizesCalculator and it doesn't need the
-            // codestreamStructure at all.
+            sizesCalculator = jpipFactory.createCodestreamSizesCalculator(
+                params);
         }
-    };
+    }
     
     return this;
 };

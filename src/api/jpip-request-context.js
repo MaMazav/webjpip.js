@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipRequestContext = (function JpipRequestContextClosure() {
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipRequestContext = (function JpipRequestContext() {
     var STATUS_ACTIVE = 1;
     var STATUS_WAITING_FOR_USER_INPUT = 2;
     var STATUS_PAUSED = 3;
@@ -59,7 +61,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             // codestreamClient to here
             
             if (!isMovable) {
-                throw new jpipExceptions.InvalidOperationException(
+                throw new jGlobals.jpipExceptions.InvalidOperationException(
                     'createMovedRequest() is supported only for movable ' +
                     'requests. Create the request with options.isMovable = true');
             }
@@ -103,7 +105,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
                 isOnlyHeadersWithoutBitstream);
             
             if (codestream === null) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Could not reconstruct codestream although ' +
                     'progressiveness stage has been reached');
             }
@@ -117,8 +119,8 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             ensureNoFailure();
 
             if (alreadyReturnedCodeblocks === null) {
-                var codeblocksData = getAllCodeblocksData();
-                return codeblocksData;
+                var result = getAllCodeblocksData();
+                return result;
             }
             
             var params = getParamsForDataWriter(maxNumQualityLayers);
@@ -129,7 +131,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
                     alreadyReturnedCodeblocks);
             
             if (codeblocksData === null) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Could not collect codeblocks although progressiveness ' +
                     'stage has been reached');
             }
@@ -139,7 +141,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
         
         this.endAsync = function endAsync() {
             if (isMovable) {
-                throw new jpipExceptions.InvalidOperationException(
+                throw new jGlobals.jpipExceptions.InvalidOperationException(
                     'endAsync() is not supported for movable requests');
             }
 
@@ -175,7 +177,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
                 params.minNumQualityLayers);
             
             if (codeblocks.codeblocksData === null) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Could not collect codeblocks although progressiveness ' +
                     'stage has been reached');
             }
@@ -205,8 +207,9 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
                     STATUS_ACTIVE, 'tryContinueRequest(): isWaitingForServer');
                 
                 if (isRequestDone) {
-                    throw new InternalErrorException('Inconsistent state: ' +
-                        'isWaitingForServer=true, needMoreRequests=false');
+                    throw new jGlobals.jpipExceptions.InternalErrorException(
+                        'Inconsistent state: isWaitingForServer=true, ' +
+                        'needMoreRequests=false');
                 }
                 
                 return !isRequestDone;
@@ -258,8 +261,8 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
         
         function requesterCallbackOnAllDataRecieved(request, isResponseDone) {
             if (isResponseDone && request === lastServerRequest) {
-                throw new jpipExceptions.IllegalDataException('JPIP server not ' +
-                    'returned all data', 'D.3');
+                throw new jGlobals.jpipExceptions.IllegalDataException(
+                    'JPIP server not returned all data', 'D.3');
             }
         }
         
@@ -277,8 +280,8 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             qualityLayersReached = qualityLayersReached_;
             
             if (status === STATUS_ENDED) {
-                throw new jpipExcpetions.InternalErrorException('Callback from ' +
-                    'requestDatabinsListener after request ended');
+                throw new jGlobals.jpipExcpetions.InternalErrorException(
+                    'Callback from requestDatabinsListener after request ended');
             }
             
             if (!isWaitingForQualityLayer /* && !disableServerRequests */) {
@@ -298,7 +301,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             // after tryContinueRequest() returns
             
             if (isRequestDone) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Request already done but callback is called');
             }
             
@@ -340,7 +343,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             ensureNotEnded(status, /*allowZombie=*/true);
             
             if (codestreamPartParams === null) {
-                throw new jpipExceptions.InvalidOperationException('Cannot ' +
+                throw new jGlobals.jpipExceptions.InvalidOperationException('Cannot ' +
                     'get data of zombie request with no codestreamPartParams');
             }
             
@@ -350,7 +353,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             }
             
             if (progressiveStagesFinished === 0) {
-                throw new jpipExceptions.IllegalOperationException(
+                throw new jGlobals.jpipExceptions.IllegalOperationException(
                     'Cannot create codestream before first progressiveness ' +
                     'stage has been reached');
             }
@@ -377,6 +380,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
         
         function updateStatus(newStatus, location) {
             if (showLogs) {
+                /* global console: false */
                 console.log('Request ' + requestId + ' status changed: ' +
                     status + ' -> ' + newStatus + ' (' + location + ')');
             }
@@ -400,12 +404,12 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
 
         function ensureNoFailure() {
             if (isFailure) {
-                throw new jpipExceptions.InternalErrorException(
+                throw new jGlobals.jpipExceptions.InternalErrorException(
                     'An error occurred while previous request from server. ' +
                     'Use ignorePreviousFailure() to ignore and continue');
             }
         }
-    };
+    }
     
     function ensureNotEnded(status, allowZombie) {
         var notEndedDescription =
@@ -438,7 +442,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
     
     function ensureNoStatus(status, unexpectedStatus, exceptionDescription) {
         if (status === unexpectedStatus) {
-            throw new jpipExceptions.IllegalOperationException(
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
                 exceptionDescription);
         }
     }
@@ -450,7 +454,7 @@ var JpipRequestContext = (function JpipRequestContextClosure() {
             return STATUS_ZOMBIE_OF_MOVABLE_REQUEST;
         }
         
-        throw new jpipExceptions.ArgumentException(
+        throw new jGlobals.jpipExceptions.ArgumentException(
             'codestreamPartParams',
             codestreamPartParams,
             'Non movable request must  have codestreamPartParams !== null');

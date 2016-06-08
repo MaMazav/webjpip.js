@@ -20,7 +20,7 @@ function createChannel(options) {
     sessionHelper.resultByFunctionForTest['getCodestreamStructure'] =
         new JpipCodestreamStructureStub(null, null, levelSizes);
     
-    var channel = new JpipChannel(
+    var channel = new jpipExports.JpipChannel(
         maxRequestsWaitingForResponseInChannel,
         sessionHelper,
         mockFactoryForProtocolTest);
@@ -202,7 +202,7 @@ function testExceptionOnTooManyRequests(testName, operationBefore) {
                     'dummyCallback',
                     'dummyFailureCallback');
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'Expected exception when too many requests waiting for channel ' +
                 'creation');
         
@@ -551,7 +551,7 @@ QUnit.test(
             function() {
                 created.channel.sendMinimalRequest();
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'Expected exception if active request exist');
 
         clearForChannelTest();
@@ -671,7 +671,7 @@ QUnit.test(
             function() {
                 created.channel.dedicateForMovableRequest();
             },
-            jpipExceptions.InternalErrorException,
+            _jGlobals.jpipExceptions.InternalErrorException,
             'Second dedicateForMovableRequest call should throw exception');
         
         clearForChannelTest();

@@ -1,39 +1,38 @@
 'use strict';
 
-module.exports = {};
+var simpleAjaxHelper                 = require('simple-ajax-helper.js'                 ).simpleAjaxHelper;
+var mutualExclusiveTransactionHelper = require('mutual-exclusive-transaction-helper.js').mutualExclusiveTransactionHelper;
 
-var simpleAjaxHelper = require('simple-ajax-helper.js');
-var mutualExclusiveTransactionHelper = require('mutual-exclusive-transaction-helper.js');
+var jpipCodingPassesNumberParser = require('jpip-coding-passes-number-parser.js').jpipCodingPassesNumberParser;
+var jpipMessageHeaderParser      = require('jpip-message-header-parser.js'      ).jpipMessageHeaderParser;
 
-var jpipCodingPassesNumberParser = require('jpip-coding-passes-number-parser.js');
-var jpipMessageHeaderParser = require('jpip-message-header-parser.js');
-
-var JpipChannel = require('jpip-channel.js');
-var JpipCodestreamReconstructor = require('jpip-codestream-reconstructor.js');
-var JpipCodestreamStructure = require('jpip-codestream-structure.js');
-var JpipComponentStructure = require('jpip-component-structure.js');
-var CompositeArray = require('composite-array.js');
-var JpipDatabinParts = require('jpip-databin-parts.js');
-var JpipDatabinsSaver = require('jpip-databins-saver.js');
-var JpipHeaderModifier = require('jpip-header-modifier.js');
-var JpipMarkersParser = require('jpip-markers-parser.js');
-var JpipObjectPoolByDatabin = require('jpip-object-pool-by-databin.js');
-var JpipOffsetsCalculator = require('jpip-offsets-calculator.js');
-var JpipPacketsDataCollector = require('jpip-packets-data-collector.js');
-var JpipRequestContext = require('jpip-request-context.js');
-var JpipRequestDatabinsListener = require('jpip-request-databins-listener.js');
-var JpipRequest = require('jpip-request.js');
-var JpipSessionHelper = require('jpip-.js');
-var JpipSession = require('jpip-.js');
-var JpipReconnectableRequester = require('jpip-reconnectable-requester.js');
-var JpipStructureParser = require('jpip-structure-parser.js');
-var JpipTileStructure = require('jpip-tile-structure.js');
-var JpipBitstreamReader = require('jpip-bitstream-reader.js');
-var JpipTagTree = require('jpip-tag-tree.js');
-var JpipCodeblockLengthParser = require('jpip-codeblock-length-parser.js');
-var JpipSubbandLengthInPacketHeaderCalculator = require('jpip-subband-length-in-packet-header-calculator.js');
-var JpipPacketLengthCalculator = require('jpip-packet-length-calculator.js');
-var JpipQualityLayersCache = require('jpip-quality-layers-cache.js');
+var JpipChannel                               = require('jpip-channel.js'                                   ).JpipChannel;
+var JpipCodestreamReconstructor               = require('jpip-codestream-reconstructor.js'                  ).JpipCodestreamReconstructor;
+var JpipCodestreamSizesCalculator             = require('jpip-codestream-sizes-calculator.js'               ).JpipCodestreamSizesCalculator;
+var JpipCodestreamStructure                   = require('jpip-codestream-structure.js'                      ).JpipCodestreamStructure;
+var JpipComponentStructure                    = require('jpip-component-structure.js'                       ).JpipComponentStructure;
+var CompositeArray                            = require('composite-array.js'                                ).CompositeArray;
+var JpipDatabinParts                          = require('jpip-databin-parts.js'                             ).JpipDatabinParts;
+var JpipDatabinsSaver                         = require('jpip-databins-saver.js'                            ).JpipDatabinsSaver;
+var JpipHeaderModifier                        = require('jpip-header-modifier.js'                           ).JpipHeaderModifier;
+var JpipMarkersParser                         = require('jpip-markers-parser.js'                            ).JpipMarkersParser;
+var JpipObjectPoolByDatabin                   = require('jpip-object-pool-by-databin.js'                    ).JpipObjectPoolByDatabin;
+var JpipOffsetsCalculator                     = require('jpip-offsets-calculator.js'                        ).JpipOffsetsCalculator;
+var JpipPacketsDataCollector                  = require('jpip-packets-data-collector.js'                    ).JpipPacketsDataCollector;
+var JpipRequestContext                        = require('jpip-request-context.js'                           ).JpipRequestContext;
+var JpipRequestDatabinsListener               = require('jpip-request-databins-listener.js'                 ).JpipRequestDatabinsListener;
+var JpipRequest                               = require('jpip-request.js'                                   ).JpipRequest;
+var JpipSessionHelper                         = require('jpip-session-helper.js'                            ).JpipSessionHelper;
+var JpipSession                               = require('jpip-session.js'                                   ).JpipSession;
+var JpipReconnectableRequester                = require('jpip-reconnectable-requester.js'                   ).JpipReconnectableRequester;
+var JpipStructureParser                       = require('jpip-structure-parser.js'                          ).JpipStructureParser;
+var JpipTileStructure                         = require('jpip-tile-structure.js'                            ).JpipTileStructure;
+var JpipBitstreamReader                       = require('jpip-bitstream-reader.js'                          ).JpipBitstreamReader;
+var JpipTagTree                               = require('jpip-tag-tree.js'                                  ).JpipTagTree;
+var JpipCodeblockLengthParser                 = require('jpip-codeblock-length-parser.js'                   ).JpipCodeblockLengthParser;
+var JpipSubbandLengthInPacketHeaderCalculator = require('jpip-subband-length-in-packet-header-calculator.js').JpipSubbandLengthInPacketHeaderCalculator;
+var JpipPacketLengthCalculator                = require('jpip-packet-length-calculator.js'                  ).JpipPacketLengthCalculator;
+var JpipQualityLayersCache                    = require('jpip-quality-layers-cache.js'                      ).JpipQualityLayersCache;
 
 var jpipRuntimeFactory = {
     createChannel: function createChannel(
@@ -53,6 +52,10 @@ var jpipRuntimeFactory = {
             databinsSaver,
             headerModifier,
             qualityLayersCache);
+    },
+    
+    createCodestreamSizesCalculator: function(params) {
+        return new JpipCodestreamSizesCalculator(params);
     },
     
     createCodestreamStructure: function(structureParser, progressionOrder) {
@@ -260,3 +263,5 @@ var jpipRuntimeFactory = {
             jpipRuntimeFactory);
     }
 };
+
+module.exports.jpipRuntimeFactory = jpipRuntimeFactory;

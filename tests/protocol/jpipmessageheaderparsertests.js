@@ -276,12 +276,12 @@ QUnit.test('parseMessageHeader', function(assert) {
 
     assert.throws(
         function() { jpipMessageHeaderParser.parseMessageHeader(message, /*startOffset=*/10); },
-        jpipExceptions.ParseException,
+        _jGlobals.jpipExceptions.ParseException,
         'Forbidden combination of class and Csn existance bits');
     
     assert.throws(
         function() { jpipMessageHeaderParser.parseMessageHeader(message, /*startOffset=*/10, previousHeader); },
-        jpipExceptions.ParseException,
+        _jGlobals.jpipExceptions.ParseException,
         'Forbidden combination of class and Csn existance bits (with previous header)');
     
     var withClassIdActual = jpipMessageHeaderParser.parseMessageHeader(message, /*startOffset=*/15);

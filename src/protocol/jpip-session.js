@@ -1,6 +1,8 @@
 'use strict';
 
-var JpipSession = function JpipSession(
+var jGlobals = require('j2k-jpip-globals.js');
+
+module.exports.JpipSession = function JpipSession(
     maxChannelsInSession,
     maxRequestsWaitingForResponseInChannel,
     knownTargetId,
@@ -30,7 +32,7 @@ var JpipSession = function JpipSession(
     
     this.open = function open(baseUrl) {
         if (sessionHelper !== null) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'session.open() should be called only once');
         }
         
@@ -117,12 +119,12 @@ var JpipSession = function JpipSession(
     
     this.close = function close(closedCallback) {
         if (channelsCreated === 0) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Cannot close session before open');
         }
 
         if (isCloseCalled) {
-            throw new jpipExceptions.InternalErrorException(
+            throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Cannot close session twice');
         }
         
@@ -193,7 +195,7 @@ var JpipSession = function JpipSession(
     function sessionReadyCallback() {
         var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
         if (!mainHeaderDatabin.isAllDatabinLoaded()) {
-            throw new jpipExceptions.IllegalDataException(
+            throw new jGlobals.jpipExceptions.IllegalDataException(
                 'Main header was not loaded on session creation');
         }
         
@@ -225,7 +227,7 @@ var JpipSession = function JpipSession(
     
     function ensureReady() {
         if (sessionHelper === null || !sessionHelper.getIsReady()) {
-            throw new jpipExceptions.InternalErrorException('Cannot perform ' +
+            throw new jGlobals.jpipExceptions.InternalErrorException('Cannot perform ' +
                 'this operation when the session is not ready');
         }
     }
