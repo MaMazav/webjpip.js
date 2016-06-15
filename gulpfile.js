@@ -17,7 +17,7 @@ var mergeStream = require('merge-stream');
 var sources = [
     './src/api/jpip-codestream-client.js',
     './src/api/jpip-codestream-sizes-calculator.js',
-    './src/api/jpip-request-context.js',
+    './src/api/jpip-image-data-context.js',
     './src/databins/composite-array.js',
     './src/databins/jpip-databin-parts.js',
     './src/databins/jpip-databins-saver.js',

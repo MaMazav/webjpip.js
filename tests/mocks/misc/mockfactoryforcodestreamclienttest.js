@@ -32,8 +32,8 @@ mockFactoryForCodestreamClientTest.codestreamStructure =
 mockFactoryForCodestreamClientTest.databinsSaver =
     new JpipDatabinsSaverStub(dummyObjectsForCodestreamTest.mainHeaderDatabin);
     
-mockFactoryForCodestreamClientTest.requestContext = {
-    tryContinueRequest: function() { return true; }
+mockFactoryForCodestreamClientTest.imageDataContext = {
+    //tryContinueRequest: function() { return true; }
 };
 
 mockFactoryForCodestreamClientTest.createReconnectableRequester = function createReconnectableRequester(
@@ -125,27 +125,25 @@ mockFactoryForCodestreamClientTest.createPacketsDataCollector = function(
     return dummyObjectsForCodestreamTest.packetsDataCollector;
 };
 
-mockFactoryForCodestreamClientTest.createRequestContext = function createRequestContext(
+mockFactoryForCodestreamClientTest.createImageDataContext = function createImageDataContext(
     jpipObjects,
     codestreamPartParams,
-    callback,
-    progressiveness,
-    options) {
+    progressiveness) {
     
-    mockFactoryForCodestreamClientTest.requestContextArgs = {
+    mockFactoryForCodestreamClientTest.imageDataContextArgs = {
         reconnectableRequester: jpipObjects.reconnectableRequester,
         reconstructor: jpipObjects.reconstructor,
         packetsDataCollector: jpipObjects.packetsDataCollector,
         qualityLayersCache: jpipObjects.qualityLayersCache,
         codestreamPartParams: codestreamPartParams,
-        callback: callback,
-        progressiveness: progressiveness,
-        disableServerRequests: !!options.disableServerRequests,
-        isMovable: !!options.isMovable,
-        userContextVars: options.userContextVars
+        //callback: callback,
+        progressiveness: progressiveness
+        //disableServerRequests: !!options.disableServerRequests,
+        //isMovable: !!options.isMovable,
+        //userContextVars: options.userContextVars
         };
         
-    return mockFactoryForCodestreamClientTest.requestContext;
+    return mockFactoryForCodestreamClientTest.imageDataContext;
 };
 
 mockFactoryForCodestreamClientTest.createStructureParser = function(databinsSaver, markersParser, offsetsCalculator) {

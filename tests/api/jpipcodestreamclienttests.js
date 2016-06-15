@@ -219,34 +219,12 @@ function testNaNParams(params, progressiveness) {
         function(assert) {
             var client = createCodestreamForTest();
             
-            var testedFunctions = [ {
-                    name: 'createDataRequest',
-                    func: function createDataRequestIllegalParamsCall() {
-                        client.createDataRequest(
-                            params,
-                            function callback() {
-                                throw 'Unexpected call to callback. Fix implementation';
-                            }
-                            );
-                    }
-                }, {
-                    name: 'createProgressiveDataRequest',
-                    func: function createProgressiveDataRequestIllegalParamsCall() {
-                        client.createProgressiveDataRequest(
-                            params,
-                            function callback() {
-                                throw 'Unexpected call to callback. Fix implementation';
-                            }
-                            );
-                    }
-                } ];
-            
-            for (var i = 0; i < testedFunctions.length; ++i) {
-                assert.throws(
-                    testedFunctions[i].func,
-                    _jGlobals.jpipExceptions.ArgumentException,
-                    testedFunctions[i].name + ' expected to throw exception');
-            }
+            assert.throws(
+                function createIllegalParamsCall() {
+                    client.createImageDataContext(params);
+                },
+                _jGlobals.jpipExceptions.ArgumentException,
+                'createImageDataContext expected to throw exception');
         });
 }
 
@@ -254,14 +232,14 @@ var dummyExceptionForCodestreamClientTest =
     'Dummy reconstruction exception, should be internally caught ' +
     'codestreamClient implementation. Fix implementation';
 
-function testCreateDataRequest(
+function testCreateImageDataContext(
     testName,
     codestreamPartParams,
     useCachedDataOnly,
     expectedCodestreamPartParamsAfterModify,
     expectedProgressivenessAfterModify) {
     
-    QUnit.test('createDataRequest: ' + testName, function(assert) {
+    QUnit.test('createImageDataContext: ' + testName, function(assert) {
         clearForCodestreamClientTest();
         
         var callback = 'dummy callback';
@@ -274,44 +252,47 @@ function testCreateDataRequest(
             qualityLayersCache: dummyObjectsForCodestreamTest.qualityLayersCache,
             };
         
-        mockFactoryForCodestreamClientTest.createRequestContext(
+        mockFactoryForCodestreamClientTest.createImageDataContext(
             jpipObjects,
             expectedCodestreamPartParamsAfterModify,
-            callback,
-            expectedProgressivenessAfterModify,
-            {
-                useCachedDataOnly: useCachedDataOnly,
-                isMovable: false,
-                userContextVars: userContextVars
-            });
+            //callback,
+            expectedProgressivenessAfterModify);
+            //{
+            //    useCachedDataOnly: useCachedDataOnly,
+            //    isMovable: false,
+            //    userContextVars: userContextVars
+            //});
         
-        var requestContextExpected = mockFactoryForCodestreamClientTest.requestContext;
-        var requestContextArgsExpected =
-            mockFactoryForCodestreamClientTest.requestContextArgs;
+        var imageDataContextExpected = mockFactoryForCodestreamClientTest.imageDataContext;
+        var imageDataContextArgsExpected =
+            mockFactoryForCodestreamClientTest.imageDataContextArgs;
         
-        mockFactoryForCodestreamClientTest.requestContextArgs = null;
+        mockFactoryForCodestreamClientTest.imageDataContextArgs = null;
         
         var client = createCodestreamForTest();
 
         // Act
         
-        var requestContextActual = client.createDataRequest(
-            codestreamPartParams, callback, userContextVars, useCachedDataOnly);
+        var imageDataContextActual = client.createImageDataContext(
+            codestreamPartParams, {
+                useCachedDataOnly: useCachedDataOnly,
+                disableProgressiveness: true
+            });
             
-        var requestContextArgsActual =
-            mockFactoryForCodestreamClientTest.requestContextArgs;
+        var imageDataContextArgsActual =
+            mockFactoryForCodestreamClientTest.imageDataContextArgs;
         
         // Assert
         
         assert.deepEqual(
-            requestContextActual,
-            requestContextExpected,
-            'Correctness of returned requestContext object');
+            imageDataContextActual,
+            imageDataContextExpected,
+            'Correctness of returned imageDataContext object');
         
         assert.deepEqual(
-            requestContextArgsActual,
-            requestContextArgsExpected,
-            'Correctness of arguments passed to requestContext c`tor');
+            imageDataContextArgsActual,
+            imageDataContextArgsExpected,
+            'Correctness of arguments passed to imageDataContext c`tor');
 
         clearForCodestreamClientTest();
     });
@@ -332,7 +313,7 @@ expectedModifiedSimpleCodestreamPart.maxNumQualityLayers = undefined;
 
 var expectedSimpleProgressiveness = [ { minNumQualityLayers: 'max' } ];
 
-testCreateDataRequest(
+testCreateImageDataContext(
     'Simple codestreamPartParams and progressiveness',
     simpleCodestreamPart,
     /*useCachedDataOnly=*/false,
@@ -351,7 +332,7 @@ expectedModifiedCodestreamPartWithUndefinedLevels.numResolutionLevelsToCut =
 expectedModifiedCodestreamPartWithUndefinedLevels.maxNumQualityLayers =
     undefined;
 
-testCreateDataRequest(
+testCreateImageDataContext(
     'numResolutionLevelsToCut = undefined',
     codestreamPartWithUndefinedLevels,
     /*useCachedDataOnly=*/false,
@@ -364,7 +345,7 @@ var codestreamPartStrings = {
     numResolutionLevelsToCut: '3'
     };
 
-testCreateDataRequest(
+testCreateImageDataContext(
     'codestreamPartParams\' properties are strings',
     codestreamPartStrings,
     /*useCachedDataOnly=*/false,

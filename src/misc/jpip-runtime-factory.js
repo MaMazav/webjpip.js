@@ -15,11 +15,11 @@ var CompositeArray                            = require('composite-array.js'    
 var JpipDatabinParts                          = require('jpip-databin-parts.js'                             ).JpipDatabinParts;
 var JpipDatabinsSaver                         = require('jpip-databins-saver.js'                            ).JpipDatabinsSaver;
 var JpipHeaderModifier                        = require('jpip-header-modifier.js'                           ).JpipHeaderModifier;
+var JpipImageDataContext                      = require('jpip-image-data-context.js'                        ).JpipImageDataContext;
 var JpipMarkersParser                         = require('jpip-markers-parser.js'                            ).JpipMarkersParser;
 var JpipObjectPoolByDatabin                   = require('jpip-object-pool-by-databin.js'                    ).JpipObjectPoolByDatabin;
 var JpipOffsetsCalculator                     = require('jpip-offsets-calculator.js'                        ).JpipOffsetsCalculator;
 var JpipPacketsDataCollector                  = require('jpip-packets-data-collector.js'                    ).JpipPacketsDataCollector;
-var JpipRequestContext                        = require('jpip-request-context.js'                           ).JpipRequestContext;
 var JpipRequestDatabinsListener               = require('jpip-request-databins-listener.js'                 ).JpipRequestDatabinsListener;
 var JpipRequest                               = require('jpip-request.js'                                   ).JpipRequest;
 var JpipSessionHelper                         = require('jpip-session-helper.js'                            ).JpipSessionHelper;
@@ -86,6 +86,13 @@ var jpipRuntimeFactory = {
             codestreamStructure, offsetsCalculator, progressionOrder);
     },
     
+    createImageDataContext: function(
+        jpipObjects, codestreamPartParams, progressiveness) {
+        
+        return new JpipImageDataContext(
+            jpipObjects, codestreamPartParams, progressiveness);
+    },
+    
     createMarkersParser: function(mainHeaderDatabin) {
         return new JpipMarkersParser(
             mainHeaderDatabin, jpipMessageHeaderParser, jpipRuntimeFactory);
@@ -107,21 +114,6 @@ var jpipRuntimeFactory = {
             databinsSaver,
             qualityLayersCache,
             jpipRuntimeFactory);
-    },
-    
-    createRequestContext: function(
-        jpipObjects,
-        codestreamPartParams,
-        callback,
-        progressiveness,
-        options) {
-        
-        return new JpipRequestContext(
-            jpipObjects,
-            codestreamPartParams,
-            callback,
-            progressiveness,
-            options);
     },
     
     createRequestDatabinsListener: function createRequestDatabinsListener(

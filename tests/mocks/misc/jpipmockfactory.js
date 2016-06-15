@@ -43,6 +43,12 @@ var jpipMockFactory = {
         throw 'Unexpected call to createHeaderModifier. Fix test';
     },
     
+    createImageDataContext: function(
+        jpipObjects, codestreamPartParams, progressiveness) {
+        
+        throw 'Unexpected call to createImageDataContext. Fix test';
+    },
+    
     createMarkersParser: function(mainHeaderDatabin) {
         throw 'Unexpected call to createMarkersParser. Fix test';
     },
@@ -99,7 +105,7 @@ var jpipMockFactory = {
         progressiveness,
         options) {
         
-        throw 'Unexpected call to createRequestContext. Fix test';
+        throw 'Unexpected call to old function createRequestContext (replaced with createImageDataContext and createFetchHandle). Fix test';
     },
     
     createRequestDatabinsListener: function createRequestDatabinsListener(

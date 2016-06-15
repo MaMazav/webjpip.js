@@ -90,109 +90,157 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         return clonedParams;
     };
     
-    this.createDataRequest = function createDataRequest(
-        codestreamPartParams, callback, userContextVars, options) {
-        
-        options = options || {};
-        if (options.isOnlyWaitForData !== undefined) {
-            throw new jGlobals.jpipExceptions.ArgumentException(
-                'options.isOnlyWaitForData',
-                options.isOnlyWaitForData,
-                'isOnlyWaitForData is supported only for progressive request');
-        }
-        
-        var codestreamPartParamsModified = castCodestreamPartParams(
-            codestreamPartParams);
-        
-        var progressiveness;
-        if (options.useCachedDataOnly) {
-            progressiveness = [ { minNumQualityLayers: 0 } ];
-        } else {
-            var maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
-            var minNumQualityLayers =
-                maxNumQualityLayers === undefined ? 'max' : maxNumQualityLayers;
+    this.createImageDataContext = function createImageDataContext(
+        codestreamPartParams, options) {
             
-            progressiveness = [ { minNumQualityLayers: minNumQualityLayers } ];
-        }
-        
-        var requestContext = jpipFactory.createRequestContext(
-            jpipObjectsForRequestContext,
-            codestreamPartParamsModified,
-            callback,
-            progressiveness,
-            {
-                disableServerRequests: !!options.useCachedDataOnly,
-                isMovable: false,
-                userContextVars: userContextVars,
-                failureCallback: options.failureCallback
-            });
-        
-        return requestContext;
-    };
-    
-    this.createProgressiveDataRequest = function createProgressiveDataRequest(
-        codestreamPartParams,
-        callback,
-        userContextVars,
-        options,
-        progressiveness) {
-        
         options = options || {};
-        if (options.useCachedDataOnly !== undefined) {
-            throw new jGlobals.jpipExceptions.ArgumentException(
-                'options.useCachedDataOnly',
-                options.useCachedDataOnly,
-                'useCachedDataOnly is not supported for progressive request');
-        }
-        
+
         var codestreamPartParamsModified = castCodestreamPartParams(
             codestreamPartParams);
         
         var progressivenessModified;
-        if (progressiveness === undefined) {
+        if (options.progressiveness !== undefined) {
+            if (options['useCachedDataOnly'] || options['disableProgressiveness']) {
+                throw new jGlobals.jpipExceptions.ArgumentException(
+                    'options.progressiveness',
+                    options.progressiveness,
+                    'options contradiction: cannot accept both progressiveness' +
+                    'and useCachedDataOnly/disableProgressiveness options');
+            }
+            progressivenessModified = castProgressivenessParams(
+                options.progressiveness,
+                codestreamPartParamsModified.maxNumQualityLayers,
+                'maxNumQualityLayers');
+        } else  if (options['useCachedDataOnly']) {
+            progressivenessModified = [ { minNumQualityLayers: 0 } ];
+        } else if (options['disableProgressiveness']) {
+            var maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
+            var minNumQualityLayers =
+                maxNumQualityLayers === undefined ? 'max' : maxNumQualityLayers;
+            
+            progressivenessModified = [ { minNumQualityLayers: minNumQualityLayers } ];
+        } else {
             progressivenessModified = getAutomaticProgressivenessStages(
                 codestreamPartParamsModified.maxNumQualityLayers);
-        } else {
-            progressivenessModified = castProgressivenessParams(
-                progressiveness, codestreamPartParamsModified.maxNumQualityLayers, 'maxNumQualityLayers');
         }
         
-        var requestContext = jpipFactory.createRequestContext(
+        var imageDataContext = jpipFactory.createImageDataContext(
             jpipObjectsForRequestContext,
             codestreamPartParamsModified,
-            callback,
-            progressivenessModified,
-            {
-                disableServerRequests: !!options.isOnlyWaitForData,
-                isMovable: false,
-                userContextVars: userContextVars,
-                failureCallback: options.failureCallback
-            });
+            progressivenessModified);
+            //{
+            //    disableServerRequests: !!options.isOnlyWaitForData,
+            //    isMovable: false,
+            //    userContextVars: userContextVars,
+            //    failureCallback: options.failureCallback
+            //});
         
-        return requestContext;
+        return imageDataContext;
     };
     
-    this.createMovableRequest = function createMovableRequest(
-        callback, userContextVars) {
-        
-        // NOTE: Think of the correct API of progressiveness in movable requests
-        
-        var zombieCodestreamPartParams = null;
-        var progressiveness = getAutomaticProgressivenessStages();
-        
-        var requestContext = jpipFactory.createRequestContext(
-            jpipObjectsForRequestContext,
-            zombieCodestreamPartParams,
-            callback,
-            progressiveness,
-            {
-                disableServerRequests: false,
-                isMovable: true,
-                userContextVars: userContextVars
-            });
-            
-        return requestContext;
-    };
+    //this.createDataRequest = function createDataRequest(
+    //    codestreamPartParams, callback, userContextVars, options) {
+    //    
+    //    options = options || {};
+    //    if (options.isOnlyWaitForData !== undefined) {
+    //        throw new jGlobals.jpipExceptions.ArgumentException(
+    //            'options.isOnlyWaitForData',
+    //            options.isOnlyWaitForData,
+    //            'isOnlyWaitForData is supported only for progressive request');
+    //    }
+    //    
+    //    var codestreamPartParamsModified = castCodestreamPartParams(
+    //        codestreamPartParams);
+    //    
+    //    var progressiveness;
+    //    if (options.useCachedDataOnly) {
+    //        progressiveness = [ { minNumQualityLayers: 0 } ];
+    //    } else {
+    //        var maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
+    //        var minNumQualityLayers =
+    //            maxNumQualityLayers === undefined ? 'max' : maxNumQualityLayers;
+    //        
+    //        progressiveness = [ { minNumQualityLayers: minNumQualityLayers } ];
+    //    }
+    //    
+    //    var requestContext = jpipFactory.createRequestContext(
+    //        jpipObjectsForRequestContext,
+    //        codestreamPartParamsModified,
+    //        callback,
+    //        progressiveness,
+    //        {
+    //            disableServerRequests: !!options.useCachedDataOnly,
+    //            isMovable: false,
+    //            userContextVars: userContextVars,
+    //            failureCallback: options.failureCallback
+    //        });
+    //    
+    //    return requestContext;
+    //};
+    //
+    //this.createProgressiveDataRequest = function createProgressiveDataRequest(
+    //    codestreamPartParams,
+    //    callback,
+    //    userContextVars,
+    //    options,
+    //    progressiveness) {
+    //    
+    //    options = options || {};
+    //    if (options.useCachedDataOnly !== undefined) {
+    //        throw new jGlobals.jpipExceptions.ArgumentException(
+    //            'options.useCachedDataOnly',
+    //            options.useCachedDataOnly,
+    //            'useCachedDataOnly is not supported for progressive request');
+    //    }
+    //    
+    //    var codestreamPartParamsModified = castCodestreamPartParams(
+    //        codestreamPartParams);
+    //    
+    //    var progressivenessModified;
+    //    if (progressiveness === undefined) {
+    //        progressivenessModified = getAutomaticProgressivenessStages(
+    //            codestreamPartParamsModified.maxNumQualityLayers);
+    //    } else {
+    //        progressivenessModified = castProgressivenessParams(
+    //            progressiveness, codestreamPartParamsModified.maxNumQualityLayers, 'maxNumQualityLayers');
+    //    }
+    //    
+    //    var requestContext = jpipFactory.createRequestContext(
+    //        jpipObjectsForRequestContext,
+    //        codestreamPartParamsModified,
+    //        callback,
+    //        progressivenessModified,
+    //        {
+    //            disableServerRequests: !!options.isOnlyWaitForData,
+    //            isMovable: false,
+    //            userContextVars: userContextVars,
+    //            failureCallback: options.failureCallback
+    //        });
+    //    
+    //    return requestContext;
+    //};
+    
+    //this.createMovableRequest = function createMovableRequest(
+    //    callback, userContextVars) {
+    //    
+    //    // NOTE: Think of the correct API of progressiveness in movable requests
+    //    
+    //    var zombieCodestreamPartParams = null;
+    //    var progressiveness = getAutomaticProgressivenessStages();
+    //    
+    //    var requestContext = jpipFactory.createRequestContext(
+    //        jpipObjectsForRequestContext,
+    //        zombieCodestreamPartParams,
+    //        callback,
+    //        progressiveness,
+    //        {
+    //            disableServerRequests: false,
+    //            isMovable: true,
+    //            userContextVars: userContextVars
+    //        });
+    //        
+    //    return requestContext;
+    //};
     
     this.reconnect = function reconnect() {
         requester.reconnect();
