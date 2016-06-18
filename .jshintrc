@@ -3,6 +3,9 @@
 	"browserify": true,
 	"globals": {
 		"AsyncProxy": false,
-		"ResourceScheduler": false
+		"ResourceScheduler": false,
+		"JpxImage": false,
+		"Promise": false,
+		"ImageData": false
 	}
 }

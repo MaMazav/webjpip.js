@@ -14,6 +14,7 @@ var JpipComponentStructure                    = require('jpip-component-structur
 var CompositeArray                            = require('composite-array.js'                                ).CompositeArray;
 var JpipDatabinParts                          = require('jpip-databin-parts.js'                             ).JpipDatabinParts;
 var JpipDatabinsSaver                         = require('jpip-databins-saver.js'                            ).JpipDatabinsSaver;
+var JpipFetchHandle                           = require('jpip-fetch-handle.js'                              ).JpipFetchHandle;
 var JpipHeaderModifier                        = require('jpip-header-modifier.js'                           ).JpipHeaderModifier;
 var JpipImageDataContext                      = require('jpip-image-data-context.js'                        ).JpipImageDataContext;
 var JpipMarkersParser                         = require('jpip-markers-parser.js'                            ).JpipMarkersParser;
@@ -77,6 +78,13 @@ var jpipRuntimeFactory = {
     
     createDatabinsSaver: function(isJpipTilepartStream) {
         return new JpipDatabinsSaver(isJpipTilepartStream, jpipRuntimeFactory);
+    },
+    
+    createFetchHandle: function(
+        requester, imageDataContext, dedicatedChannelHandle) {
+            
+        return new JpipFetchHandle(
+            requester, imageDataContext, dedicatedChannelHandle);
     },
     
     createHeaderModifier: function(

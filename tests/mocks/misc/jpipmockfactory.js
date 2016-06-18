@@ -37,6 +37,12 @@ var jpipMockFactory = {
         throw 'Unexpected call to createDatabinsSaver. Fix test';
     },
     
+    createFetchHandle: function(
+        requester, imageDataContext, dedicatedChannelHandle) {
+            
+        throw 'Unexpected call to createFetchHandle. Fix test';
+    },
+    
     createHeaderModifier: function(
         codestreamStructure, offsetsCalculator, progressionOrder) {
         

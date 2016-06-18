@@ -17,7 +17,10 @@ var mergeStream = require('merge-stream');
 var sources = [
     './src/api/jpip-codestream-client.js',
     './src/api/jpip-codestream-sizes-calculator.js',
+    './src/api/jpip-fetch-handle.js',
     './src/api/jpip-image-data-context.js',
+    './src/api/jpip-image-implementation.js',
+    './src/api/pdfjs-jpx-decoder.js',
     './src/databins/composite-array.js',
     './src/databins/jpip-databin-parts.js',
     './src/databins/jpip-databins-saver.js',
@@ -61,9 +64,9 @@ var vendorsProd = [
 ];
 
 var vendorsDebug = [
-    './vendor/imagedecoderframework-debug.js',
+    //'./vendor/imagedecoderframework-debug.js',
     './vendor/pdf.js/arithmetic_decoder.js',
-    './vendor/pdf.js/async-jpx-image.js',
+    //'./vendor/pdf.js/async-jpx-image.js',
     './vendor/pdf.js/jpx.js',
     './vendor/pdf.js/util.js'
 ];

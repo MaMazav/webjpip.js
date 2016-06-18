@@ -1,7 +1,7 @@
 'use strict';
 
 var jGlobals = require('j2k-jpip-globals.js');
-var jpipRuntimeFactory = require('jpip-runtime-factory.js'); 
+var jpipRuntimeFactory = require('jpip-runtime-factory.js').jpipRuntimeFactory; 
 
 module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
     options = options || {};
@@ -94,13 +94,15 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         codestreamPartParams, options) {
             
         options = options || {};
+        var useCachedDataOnly = options.useCachedDataOnly;
+        var disableProgressiveness = options.disableProgressiveness;
 
         var codestreamPartParamsModified = castCodestreamPartParams(
             codestreamPartParams);
         
         var progressivenessModified;
         if (options.progressiveness !== undefined) {
-            if (options['useCachedDataOnly'] || options['disableProgressiveness']) {
+            if (useCachedDataOnly || disableProgressiveness) {
                 throw new jGlobals.jpipExceptions.ArgumentException(
                     'options.progressiveness',
                     options.progressiveness,
@@ -111,9 +113,9 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
                 options.progressiveness,
                 codestreamPartParamsModified.maxNumQualityLayers,
                 'maxNumQualityLayers');
-        } else  if (options['useCachedDataOnly']) {
+        } else  if (useCachedDataOnly) {
             progressivenessModified = [ { minNumQualityLayers: 0 } ];
-        } else if (options['disableProgressiveness']) {
+        } else if (disableProgressiveness) {
             var maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
             var minNumQualityLayers =
                 maxNumQualityLayers === undefined ? 'max' : maxNumQualityLayers;
@@ -136,6 +138,27 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
             //});
         
         return imageDataContext;
+    };
+    
+    this.fetch = function fetch(imageDataContext) {
+        var fetchHandle = jpipFactory.createFetchHandle(requester, imageDataContext);
+        fetchHandle.resume();
+        return fetchHandle;
+    };
+    
+    this.startMovableFetch = function startMovableFetch(imageDataContext, movableFetchState) {
+        movableFetchState.dedicatedChannelHandle =
+            requester.dedicateChannelForMovableRequest();
+        movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
+            requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
+        movableFetchState.resume();
+    };
+    
+    this.moveFetch = function moveFetch(imageDataContext, movableFetchState) {
+        movableFetchState.fetchHandle.stopAsync();
+        movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
+            requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
+        movableFetchState.resume();
     };
     
     //this.createDataRequest = function createDataRequest(

@@ -27,10 +27,12 @@ function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness
 
 JpipImageDataContext.prototype.hasData = function hasData() {
     //ensureNoFailure();
+    this._ensureNotDisposed();
     return this._progressiveStagesFinished > 0;
 };
 
 JpipImageDataContext.prototype.getFetchedData = function getFetchedData(maxNumQualityLayers) {
+    this._ensureNotDisposed();
     if (!this.hasData()) {
         throw 'JpipImageDataContext error: cannot call getFetchedData before hasData = true';
     }
@@ -41,25 +43,40 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(maxNumQu
         params.codestreamPartParams,
         params.minNumQualityLayers);
     
+    var headersCodestream = this._reconstructor.createCodestreamForRegion(
+        params.codestreamPartParams,
+        params.minNumQualityLayers,
+        /*isOnlyHeadersWithoutBitstream=*/true);
+    
     if (codeblocks.codeblocksData === null) {
         throw new jGlobals.jpipExceptions.InternalErrorException(
             'Could not collect codeblocks although progressiveness ' +
             'stage has been reached');
     }
     
+    if (codestream === null) {
+        throw new jGlobals.jpipExceptions.InternalErrorException(
+            'Could not reconstruct codestream although ' +
+            'progressiveness stage has been reached');
+    }
+    
     //alreadyReturnedCodeblocks = codeblocks.alreadyReturnedCodeblocks;
-    return codeblocks.codeblocksData;
+    return {
+        headersCodestream: headersCodestream,
+        codeblocksData: codeblocks.codeblocksData,
+        codestreamPartParams: codestreamPartParams
+    };
 };
 
-JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedDataAsCodestream(isOnlyHeadersWithoutBitstream, maxNumQualityLayers) {
+JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedDataAsCodestream(maxNumQualityLayers) {
+    this._ensureNotDisposed();
     //ensureNoFailure();
     
     var params = this._getParamsForDataWriter(maxNumQualityLayers);
     
     var codestream = this._reconstructor.createCodestreamForRegion(
         params.codestreamPartParams,
-        params.minNumQualityLayers,
-        isOnlyHeadersWithoutBitstream);
+        params.minNumQualityLayers);
     
     if (codestream === null) {
         throw new jGlobals.jpipExceptions.InternalErrorException(
@@ -71,9 +88,7 @@ JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedD
 };
 
 JpipImageDataContext.prototype.on = function on(event, listener) {
-    if (this._isDisposed) {
-        throw 'Cannot register to event on disposed ImageDataContext';
-    }
+    this._ensureNotDisposed();
     if (event !== 'data') {
         throw 'JpipImageDataContext error: Unexpected event ' + event;
     }
@@ -82,13 +97,18 @@ JpipImageDataContext.prototype.on = function on(event, listener) {
 };
 
 JpipImageDataContext.prototype.isDone = function isDone() {
+    this._ensureNotDisposed();
     return this._isRequestDone;
 };
 
 JpipImageDataContext.prototype.dispose = function dispose() {
+    this._ensureNotDisposed();
+    this._listener.unregister();
+    this._listener = null;
 };
 
 JpipImageDataContext.prototype.setIsProgressive = function setIsProgressive(isProgressive) {
+    this._ensureNotDisposed();
     var oldIsProgressive = this._isProgressive;
     this._isProgressive = isProgressive;
     if (!oldIsProgressive && isProgressive && this.hasData()) {
@@ -97,6 +117,26 @@ JpipImageDataContext.prototype.setIsProgressive = function setIsProgressive(isPr
         }
     }
 };
+
+// Methods for JpipFetchHandle
+
+JpipImageDataContext.prototype.isDisposed = function isDisposed() {
+    return this._listener !== null;
+};
+
+JpipImageDataContext.prototype.getCodestreamPartParams =
+    function getCodestreamPartParams() {
+        
+    return this._codestreamPartParams;
+};
+
+JpipImageDataContext.prototype.getNextQualityLayer =
+    function getNextQualityLayer() {
+        
+    return this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;
+};
+
+// Private methods
 
 JpipImageDataContext.prototype._tryAdvanceProgressiveStage = function tryAdvanceProgressiveStage() {
     var numQualityLayersToWait = this._progressiveness[
@@ -140,12 +180,16 @@ JpipImageDataContext.prototype._qualityLayerReachedCallback = function qualityLa
         return;
     }
     
+    if (!this._isProgressive && !this._isRequestDone) {
+        return;
+    }
+    
     for (var i = 0; i < this._dataListeners.length; ++i) {
         this._dataListeners[i](this);
     }
 };
 
-JpipImageDataContext._getParamsForDataWriter = function getParamsForDataWriter(maxNumQualityLayers) {
+JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDataWriter(maxNumQualityLayers) {
     //ensureNotEnded(status, /*allowZombie=*/true);
     
     //if (codestreamPartParams === null) {
@@ -182,4 +226,10 @@ JpipImageDataContext._getParamsForDataWriter = function getParamsForDataWriter(m
         codestreamPartParams: newParams,
         minNumQualityLayers: minNumQualityLayers
         };
+};
+
+JpipImageDataContext.prototype._ensureNotDisposed = function ensureNotDisposed() {
+    if (this.isDisposed()) {
+        throw new jpipExceptions.IllegalOperationException('Cannot use ImageDataContext after disposed');
+    }
 };

@@ -8,7 +8,7 @@ var _jGlobals = {
 
 var requiresMap = {
     'j2k-jpip-globals': _jGlobals,
-    'jpip-runtime-factory': mockFactoryForCodestreamClientTest
+    'jpip-runtime-factory': { jpipRuntimeFactory: mockFactoryForCodestreamClientTest }
 };
 
 function require(path) {
