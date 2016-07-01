@@ -81,7 +81,7 @@ module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListene
         
         var tileIndex = tileHeaderDatabin.getInClassId();
         var tileStructure = codestreamStructure.getTileStructure(tileIndex);
-        var maxNumQualityLayersInTile = tileStructure.getNumQualityLayers();
+        var qualityInTile = tileStructure.getNumQualityLayers();
         
         var precinctIterator = tileStructure.getPrecinctIterator(
             tileIndex, codestreamPartParams);
@@ -100,12 +100,12 @@ module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListene
             var accumulatedData = accumulatedDataPerDatabin.getObject(
                 precinctDatabin);
             
-            if (accumulatedData.maxNumQualityLayersInTile !== undefined) {
+            if (accumulatedData.qualityInTile !== undefined) {
                 throw new jGlobals.jpipExceptions.InternalErrorException('Tile was ' +
                     'iterated twice in codestream part');
             }
             
-            accumulatedData.maxNumQualityLayersInTile = maxNumQualityLayersInTile;
+            accumulatedData.qualityInTile = qualityInTile;
             incrementPrecinctQualityLayers(
                 precinctDatabin, accumulatedData, precinctIterator);
             
@@ -121,10 +121,10 @@ module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListene
             precinctDatabin);
 
         var oldQualityLayersReached = accumulatedData.numQualityLayersReached;
-        var maxNumQualityLayersInTile =
-            accumulatedData.maxNumQualityLayersInTile;
+        var qualityInTile =
+            accumulatedData.qualityInTile;
 
-        if (oldQualityLayersReached === maxNumQualityLayersInTile) {
+        if (oldQualityLayersReached === qualityInTile) {
             return;
         }
         
@@ -139,16 +139,16 @@ module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListene
         
         var qualityLayers = qualityLayersCache.getQualityLayerOffset(
             precinctDatabin,
-            codestreamPartParams.maxNumQualityLayers,
+            codestreamPartParams.quality,
             precinctIteratorOptional);
 
         var numQualityLayersReached = qualityLayers.numQualityLayers;
         accumulatedData.numQualityLayersReached = numQualityLayersReached;
 
-        var maxNumQualityLayersInTile =
-            accumulatedData.maxNumQualityLayersInTile;
+        var qualityInTile =
+            accumulatedData.qualityInTile;
 
-        if (numQualityLayersReached === maxNumQualityLayersInTile) {
+        if (numQualityLayersReached === qualityInTile) {
             return;
         }
         
@@ -193,20 +193,20 @@ module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListene
             var accumulatedData = accumulatedDataPerDatabin.getObject(
                 registeredPrecinctDatabins[i]);
             
-            var maxNumQualityLayersInTile =
-                accumulatedData.maxNumQualityLayersInTile;
+            var qualityInTile =
+                accumulatedData.qualityInTile;
                 
-            if (maxNumQualityLayersInTile === undefined) {
+            if (qualityInTile === undefined) {
                 throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'No information of maxNumQualityLayersInTile in ' +
+                    'No information of qualityInTile in ' +
                     'JpipRequestDatabinsListener');
             }
             
             var qualityLayers = qualityLayersCache.getQualityLayerOffset(
                 registeredPrecinctDatabins[i],
-                codestreamPartParams.maxNumQualityLayers);
+                codestreamPartParams.quality);
             
-            if (qualityLayers.numQualityLayers === maxNumQualityLayersInTile) {
+            if (qualityLayers.numQualityLayers === qualityInTile) {
                 continue;
             }
             

@@ -26,10 +26,10 @@ JpipFetchHandle.prototype.resume = function resume() {
             'Cannot fetch data with disposed imageDataContext');
     }
     
-    if (this._dedicatedChannelHandle) {
+    if (this._isMoved) {
         throw new jGlobals.jpipExceptions.IllegalOperationException(
-            'Cannot resume movable fetch; Should start a new fetch with same' +
-            ' dedicatedChannelHandle instead');
+            'Cannot resume movable fetch which has been already moved; Should' +
+            ' start a new fetch with same dedicatedChannelHandle instead');
     }
     
     if (this._imageDataContext.isDone()) {

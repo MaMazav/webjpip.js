@@ -45,18 +45,18 @@ module.exports.JpipPacketsDataCollector = function JpipPacketsDataCollector(
             var precinctIterator = tileStructure.getPrecinctIterator(
                 tileIterator.tileIndex, codestreamPartParams);
             
-            var maxNumQualityLayers = tileStructure.getNumQualityLayers();
+            var quality = tileStructure.getNumQualityLayers();
             
-            if (codestreamPartParams.maxNumQualityLayers !== undefined) {
-                maxNumQualityLayers = Math.min(
-                    maxNumQualityLayers, codestreamPartParams.maxNumQualityLayers);
+            if (codestreamPartParams.quality !== undefined) {
+                quality = Math.min(
+                    quality, codestreamPartParams.quality);
             }
             
             if (minNumQualityLayers === 'max') {
-                minNumQualityLayers = maxNumQualityLayers;
-            } else if (minNumQualityLayers > maxNumQualityLayers) {
+                minNumQualityLayers = quality;
+            } else if (minNumQualityLayers > quality) {
                 throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'minNumQualityLayers is larger than maxNumQualityLayers');
+                    'minNumQualityLayers is larger than quality');
             }
             
             do {
@@ -83,7 +83,7 @@ module.exports.JpipPacketsDataCollector = function JpipPacketsDataCollector(
                     precinctIterator,
                     precinctDatabin,
                     returnedInPrecinct,
-                    maxNumQualityLayers);
+                    quality);
                 
                 if (layerReached < minNumQualityLayers) {
                     // NOTE: alreadyReturnedCodeblocks is wrong in this stage,
@@ -116,12 +116,12 @@ module.exports.JpipPacketsDataCollector = function JpipPacketsDataCollector(
         precinctIterator,
         precinctDatabin,
         returnedCodeblocksInPrecinct,
-        maxNumQualityLayers) {
+        quality) {
         
         var layer;
         var offsetInPrecinctDatabin;
         
-        for (layer = 0; layer < maxNumQualityLayers; ++layer) {
+        for (layer = 0; layer < quality; ++layer) {
             var codeblockOffsetsInDatabin =
                 qualityLayersCache.getPacketOffsetsByCodeblockIndex(
                     precinctDatabin, layer, precinctIterator);

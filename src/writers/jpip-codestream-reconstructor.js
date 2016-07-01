@@ -56,7 +56,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         
         var codestream = [];
         var currentOffset = createMainHeader(
-            codestream, params.numResolutionLevelsToCut);
+            codestream, params.level);
         
         if (currentOffset === null) {
             return null;
@@ -68,9 +68,9 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         var firstTileId = tileIterator.tileIndex;
         
         var firstTileLeft = codestreamStructure.getTileLeft(
-            firstTileId, params.numResolutionLevelsToCut);
+            firstTileId, params.level);
         var firstTileTop = codestreamStructure.getTileTop(
-            firstTileId, params.numResolutionLevelsToCut);
+            firstTileId, params.level);
             
         var offsetX = params.minX - firstTileLeft;
         var offsetY = params.minY - firstTileTop;
@@ -115,12 +115,12 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
     
     this.createCodestreamForTile = function createCodestreamForTile(
         tileId,
-        numResolutionLevelsToCut,
+        level,
         minNumQualityLayers,
-        maxNumQualityLayers) {
+        quality) {
         
         var result = [];
-        var currentOffset = createMainHeader(result, numResolutionLevelsToCut);
+        var currentOffset = createMainHeader(result, level);
         
         if (currentOffset === null) {
             return null;
@@ -129,8 +129,8 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         // TODO: Delete this function and test createCodestreamForRegion instead
         
         var codestreamPartParams = {
-            numResolutionLevelsToCut: numResolutionLevelsToCut,
-            maxNumQualityLayers: maxNumQualityLayers
+            level: level,
+            quality: quality
             };
         
         var tileBytesCopied = createTile(
@@ -156,7 +156,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         var tileY = Math.floor(tileId / numTilesX);
         
         headerModifier.modifyImageSize(result, {
-            numResolutionLevelsToCut: numResolutionLevelsToCut,
+            level: level,
             minTileX: tileX,
             maxTileXExclusive: tileX + 1,
             minTileY: tileY,
@@ -168,7 +168,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         return result;
     };
     
-    function createMainHeader(result, numResolutionLevelsToCut) {
+    function createMainHeader(result, level) {
         if (databinsSaver.getIsJpipTilePartStream()) {
             throw new jGlobals.jpipExceptions.UnsupportedFeatureException(
                 'reconstruction of codestream from JPT (Jpip Tile-part) stream', 'A.3.4');
@@ -184,7 +184,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         }
         
         var bytesAdded = headerModifier.modifyMainOrTileHeader(
-            result, mainHeader, /*offset=*/0, numResolutionLevelsToCut);
+            result, mainHeader, /*offset=*/0, level);
         
         currentOffset += bytesAdded;
         
@@ -210,9 +210,9 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         var tileHeaderDatabin = databinsSaver.getTileHeaderDatabin(
             tileIdOriginal);
         
-        var numResolutionLevelsToCut;
+        var level;
         if (codestreamPartParams !== undefined) {
-            numResolutionLevelsToCut = codestreamPartParams.numResolutionLevelsToCut;
+            level = codestreamPartParams.level;
         }
         
         var tileHeaderOffsets = createTileHeaderAndGetOffsets(
@@ -220,7 +220,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
             currentOffset,
             tileHeaderDatabin,
             tileIdToWrite,
-            numResolutionLevelsToCut);
+            level);
         
         if (tileHeaderOffsets === null) {
             return null;
@@ -263,7 +263,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         currentOffset,
         tileHeaderDatabin,
         tileIdToWrite,
-        numResolutionLevelsToCut) {
+        level) {
         
         var startOfTileHeaderOffset = currentOffset;
     
@@ -319,7 +319,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
             result,
             tileHeaderDatabin,
             afterStartOfTileSegmentOffset,
-            numResolutionLevelsToCut);
+            level);
         
         currentOffset += bytesAdded;
 
@@ -341,7 +341,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         minNumQualityLayers) {
         
         var numQualityLayersInTile = tileStructure.getNumQualityLayers();
-        var maxNumQualityLayers;
+        var quality;
         var iterator = tileStructure.getPrecinctIterator(
             tileIdOriginal,
             codestreamPartParams,
@@ -351,7 +351,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
         var hasMorePackets;
         
         if (codestreamPartParams !== undefined) {
-            maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
+            quality = codestreamPartParams.quality;
         }
         
         if (minNumQualityLayers === 'max') {
@@ -368,7 +368,7 @@ module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructo
                 
                 var qualityLayerOffset = qualityLayersCache.getQualityLayerOffset(
                     precinctDatabin,
-                    maxNumQualityLayers,
+                    quality,
                     iterator);
                 
                 var bytesToCopy = qualityLayerOffset.endOffset;

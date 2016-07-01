@@ -28,15 +28,15 @@ module.exports.JpipPacketLengthCalculator = function JpipPacketLengthCalculator(
     var subbandParsers = initSubbandParsers();
     
     this.calculateEndOffsetOfLastFullPacket =
-        function calculateFullPacketsAvailableOffsets(maxNumQualityLayers) {
+        function calculateFullPacketsAvailableOffsets(quality) {
         
         var isAllowedFullQuality =
-            maxNumQualityLayers === undefined ||
-            maxNumQualityLayers >= numQualityLayersInTile;
+            quality === undefined ||
+            quality >= numQualityLayersInTile;
         
         var numQualityLayersToParse;
         if (!isAllowedFullQuality) {
-            numQualityLayersToParse = maxNumQualityLayers;
+            numQualityLayersToParse = quality;
         } else if (!databin.isAllDatabinLoaded()) {
             numQualityLayersToParse = numQualityLayersInTile;
         } else {
@@ -183,9 +183,9 @@ module.exports.JpipPacketLengthCalculator = function JpipPacketLengthCalculator(
             };
     }
     
-    function getFullQualityLayersEndOffset(maxNumQualityLayers) {
+    function getFullQualityLayersEndOffset(quality) {
         var numParsedQualityLayer = Math.min(
-            maxNumQualityLayers, calculatedLengths.length);
+            quality, calculatedLengths.length);
         
         if (numParsedQualityLayer === 0) {
             return {

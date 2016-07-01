@@ -1,6 +1,7 @@
 'use strict';
 
 var jGlobals = require('j2k-jpip-globals.js');
+var LOG2 = Math.log(2);
 
 module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
     params) {
@@ -21,10 +22,6 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
     
     this.getNumTilesY = getNumTilesY;
     
-    this.getLevelWidth = getLevelWidth;
-    
-    this.getLevelHeight = getLevelHeight;
-    
     this.getTileWidth = getTileWidth;
     
     this.getTileHeight = getTileHeight;
@@ -41,8 +38,32 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
     
     this.getTileSize = getTileSize;
     
-    this.getDefaultNumResolutionLevels =
-        function getDefaultNumResolutionLevels() {
+    // Public methods for imageDecoderFramework.js
+    
+    this.getLevelWidth = getLevelWidth;
+    
+    this.getLevelHeight = getLevelHeight;
+    
+    this.getImageLevel = function getImageLevel() {
+        return 0;
+    };
+    
+    this.getLevel = function getLevel(regionImageLevel) {
+        if (params.defaultNumResolutionLevels === undefined) {
+            throw 'This method is available only when jpipSizesCalculator ' +
+                'is created from params returned by jpipCodestreamClient. ' +
+                'It shall be used for JPIP API purposes only';
+        }
+        
+		var levelX = Math.log((regionImageLevel.maxXExclusive - regionImageLevel.minX) / regionImageLevel.screenWidth ) / LOG2;
+		var levelY = Math.log((regionImageLevel.maxYExclusive - regionImageLevel.minY) / regionImageLevel.screenHeight) / LOG2;
+		var level = Math.ceil(Math.max(levelX, levelY));
+		level = Math.max(0, Math.min(params.defaultNumResolutionLevels - 1, level));
+		return level;
+    };
+    
+    this.getNumResolutionLevelsForLimittedViewer =
+        function getNumResolutionLevelsForLimittedViewer() {
         
         if (params.defaultNumResolutionLevels === undefined) {
             throw 'This method is available only when jpipSizesCalculator ' +
@@ -53,9 +74,11 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
         return params.defaultNumResolutionLevels;
     };
     
-    this.getDefaultNumQualityLayers =
-        function getDefaultNumQualityLayers() {
-        
+    this.getLowestQuality = function getLowestQuality() {
+        return 1;
+    };
+    
+    this.getHighestQuality = function getHighestQuality() {
         if (params.defaultNumQualityLayers === undefined) {
             throw 'This method is available only when jpipSizesCalculator ' +
                 'is created from params returned by jpipCodestreamClient. ' +
@@ -65,11 +88,13 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
         return params.defaultNumQualityLayers;
     };
     
+    // Private methods
+    
     function getSizeOfPart(codestreamPartParams) {
-        var numResolutionLevelsToCut =
-            codestreamPartParams.numResolutionLevelsToCut;
-        var tileWidth = getTileWidth(numResolutionLevelsToCut);
-        var tileHeight = getTileHeight(numResolutionLevelsToCut);
+        var level =
+            codestreamPartParams.level;
+        var tileWidth = getTileWidth(level);
+        var tileHeight = getTileHeight(level);
         
         var tileBounds = getTilesFromPixels(codestreamPartParams);
         
@@ -82,8 +107,8 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
         
         var firstEdgeType = isEdgeTileId(firstTileIndex);
         var lastEdgeType = isEdgeTileId(lastTileIndex);
-        var firstSize = getTileSize(firstEdgeType, numResolutionLevelsToCut);
-        var lastSize = getTileSize(lastEdgeType, numResolutionLevelsToCut);
+        var firstSize = getTileSize(firstEdgeType, level);
+        var lastSize = getTileSize(lastEdgeType, level);
         
         var width = firstSize[0];
         var height = firstSize[1];
@@ -108,14 +133,14 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
     }
     
     function getTilesFromPixels(partParams) {
-        var numResolutionLevelsToCut =
-            partParams.numResolutionLevelsToCut;
+        var level =
+            partParams.level;
 
-        var tileWidth = getTileWidth(numResolutionLevelsToCut);
-        var tileHeight = getTileHeight(numResolutionLevelsToCut);
+        var tileWidth = getTileWidth(level);
+        var tileHeight = getTileHeight(level);
         
-        var firstTileWidth = getFirstTileWidth(numResolutionLevelsToCut);
-        var firstTileHeight = getFirstTileHeight(numResolutionLevelsToCut);
+        var firstTileWidth = getFirstTileWidth(level);
+        var firstTileHeight = getFirstTileHeight(level);
         
         var startXNoFirst = (partParams.minX - firstTileWidth) / tileWidth;
         var startYNoFirst = (partParams.minY - firstTileHeight) / tileHeight;
@@ -137,7 +162,7 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
         return bounds;
     }
 
-    function getTileSize(edgeType, numResolutionLevelsToCut) {
+    function getTileSize(edgeType, level) {
         var tileWidth = getTileDimensionSize(
             edgeType.horizontalEdgeType,
             getFirstTileWidth,
@@ -150,8 +175,8 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
             getLevelHeight,
             getTileHeight);
         
-        if (numResolutionLevelsToCut !== undefined) {
-            var scale = 1 << numResolutionLevelsToCut;
+        if (level !== undefined) {
+            var scale = 1 << level;
             tileWidth = Math.ceil(tileWidth / scale);
             tileHeight = Math.ceil(tileHeight / scale);
         }
@@ -231,8 +256,8 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
         return numTilesY;
     }
     
-    function getLevelWidth(numResolutionLevelsToCut) {
-        if (numResolutionLevelsToCut === undefined) {
+    function getLevelWidth(level) {
+        if (level === undefined) {
             return params.imageWidth;
         }
         
@@ -241,14 +266,14 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
             maxXExclusive: params.imageWidth,
             minY: 0,
             maxYExclusive: params.imageHeight,
-            numResolutionLevelsToCut: numResolutionLevelsToCut
+            level: level
             });
         
         return size.width;
     }
     
-    function getLevelHeight(numResolutionLevelsToCut) {
-        if (numResolutionLevelsToCut === undefined) {
+    function getLevelHeight(level) {
+        if (level === undefined) {
             return params.imageHeight;
         }
         
@@ -257,28 +282,28 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
             maxXExclusive: params.imageWidth,
             minY: 0,
             maxYExclusive: params.imageHeight,
-            numResolutionLevelsToCut: numResolutionLevelsToCut
+            level: level
             });
         
         return size.height;
     }
 
-    function getTileWidth(numResolutionLevelsToCut) {
-        if (numResolutionLevelsToCut === undefined) {
+    function getTileWidth(level) {
+        if (level === undefined) {
             return params.tileWidth;
         }
     
-        var scale = 1 << numResolutionLevelsToCut;
+        var scale = 1 << level;
         var width = Math.ceil(params.tileWidth / scale);
         return width;
     }
     
-    function getTileHeight(numResolutionLevelsToCut) {
-        if (numResolutionLevelsToCut === undefined) {
+    function getTileHeight(level) {
+        if (level === undefined) {
             return params.tileHeight;
         }
     
-        var scale = 1 << numResolutionLevelsToCut;
+        var scale = 1 << level;
         var height = Math.ceil(params.tileHeight / scale);
         return height;
     }
@@ -291,7 +316,7 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
         return params.firstTileOffsetY;
     }
 
-    function getFirstTileWidth(numResolutionLevelsToCut) {
+    function getFirstTileWidth(level) {
         var firstTileWidthBestLevel =
             getTileWidth() - getFirstTileOffsetX();
         
@@ -300,13 +325,13 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
             firstTileWidthBestLevel = imageWidth;
         }
         
-        var scale = 1 << numResolutionLevelsToCut;
+        var scale = 1 << level;
         var firstTileWidth = Math.ceil(firstTileWidthBestLevel / scale);
         
         return firstTileWidth;
     }
     
-    function getFirstTileHeight(numResolutionLevelsToCut) {
+    function getFirstTileHeight(level) {
         var firstTileHeightBestLevel =
             getTileHeight() - getFirstTileOffsetY();
         
@@ -315,7 +340,7 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
             firstTileHeightBestLevel = imageHeight;
         }
         
-        var scale = 1 << numResolutionLevelsToCut;
+        var scale = 1 << level;
         var firstTileHeight = Math.ceil(firstTileHeightBestLevel / scale);
 
         return firstTileHeight;

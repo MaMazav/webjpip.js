@@ -9,6 +9,7 @@ function PdfjsJpxDecoder() {
 }
 
 PdfjsJpxDecoder.prototype.decode = function decode(data) {
+    var self = this;
     return new Promise(function(resolve, reject) {
         var regionToParse = {
             left  : data.headersCodestream.offsetX,
@@ -17,17 +18,17 @@ PdfjsJpxDecoder.prototype.decode = function decode(data) {
             bottom: data.codestreamPartParams.maxYExclusive - data.codestreamPartParams.minY
         };
         
-        var currentContext = this._image.parseCodestream(
+        var currentContext = self._image.parseCodestream(
             data.headersCodestream.codestream,
             0,
             data.headersCodestream.codestream.length,
             { isOnlyParseHeaders: true });
         
-        this._image.addPacketsData(currentContext, data.codeblocksData);
+        self._image.addPacketsData(currentContext, data.codeblocksData);
         
-        this._image.decode(currentContext, { regionToParse: regionToParse });
+        self._image.decode(currentContext, { regionToParse: regionToParse });
 
-        var result = this._copyTilesPixelsToOnePixelsArray(this._image.tiles, regionToParse, this._image.componentsCount);
+        var result = self._copyTilesPixelsToOnePixelsArray(self._image.tiles, regionToParse, self._image.componentsCount);
         resolve(result);
     });
 };

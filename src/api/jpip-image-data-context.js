@@ -14,13 +14,14 @@ function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness
 
     this._progressiveStagesFinished = 0;
     this._qualityLayersReached = 0;
+    this._dataListeners = [];
     
-    this._listener = jpipFactory.createRequestDatabinsListener(
+    this._listener = this._jpipFactory.createRequestDatabinsListener(
         codestreamPartParams,
         this._qualityLayerReachedCallback.bind(this),
-        codestreamStructure,
-        databinsSaver,
-        qualityLayersCache);
+        this._codestreamStructure,
+        this._databinsSaver,
+        this._qualityLayersCache);
     
     this._tryAdvanceProgressiveStage();
 }
@@ -31,14 +32,14 @@ JpipImageDataContext.prototype.hasData = function hasData() {
     return this._progressiveStagesFinished > 0;
 };
 
-JpipImageDataContext.prototype.getFetchedData = function getFetchedData(maxNumQualityLayers) {
+JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality) {
     this._ensureNotDisposed();
     if (!this.hasData()) {
         throw 'JpipImageDataContext error: cannot call getFetchedData before hasData = true';
     }
     
-    ensureNoFailure();
-    var params = this._getParamsForDataWriter(maxNumQualityLayers);
+    //ensureNoFailure();
+    var params = this._getParamsForDataWriter(quality);
     var codeblocks = this._packetsDataCollector.getAllCodeblocksData(
         params.codestreamPartParams,
         params.minNumQualityLayers);
@@ -54,7 +55,7 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(maxNumQu
             'stage has been reached');
     }
     
-    if (codestream === null) {
+    if (headersCodestream === null) {
         throw new jGlobals.jpipExceptions.InternalErrorException(
             'Could not reconstruct codestream although ' +
             'progressiveness stage has been reached');
@@ -64,15 +65,15 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(maxNumQu
     return {
         headersCodestream: headersCodestream,
         codeblocksData: codeblocks.codeblocksData,
-        codestreamPartParams: codestreamPartParams
+        codestreamPartParams: this._codestreamPartParams
     };
 };
 
-JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedDataAsCodestream(maxNumQualityLayers) {
+JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedDataAsCodestream(quality) {
     this._ensureNotDisposed();
     //ensureNoFailure();
     
-    var params = this._getParamsForDataWriter(maxNumQualityLayers);
+    var params = this._getParamsForDataWriter(quality);
     
     var codestream = this._reconstructor.createCodestreamForRegion(
         params.codestreamPartParams,
@@ -121,7 +122,7 @@ JpipImageDataContext.prototype.setIsProgressive = function setIsProgressive(isPr
 // Methods for JpipFetchHandle
 
 JpipImageDataContext.prototype.isDisposed = function isDisposed() {
-    return this._listener !== null;
+    return !this._listener;
 };
 
 JpipImageDataContext.prototype.getCodestreamPartParams =
@@ -163,7 +164,7 @@ JpipImageDataContext.prototype._tryAdvanceProgressiveStage = function tryAdvance
         ++this._progressiveStagesFinished;
     }
     
-    this._isRequestDone = this._progressiveStagesFinished === progressiveness.length;
+    this._isRequestDone = this._progressiveStagesFinished === this._progressiveness.length;
 
     return true;
 };
@@ -189,7 +190,7 @@ JpipImageDataContext.prototype._qualityLayerReachedCallback = function qualityLa
     }
 };
 
-JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDataWriter(maxNumQualityLayers) {
+JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDataWriter(quality) {
     //ensureNotEnded(status, /*allowZombie=*/true);
     
     //if (codestreamPartParams === null) {
@@ -212,13 +213,13 @@ JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDa
         this._progressiveness[this._progressiveStagesFinished - 1].minNumQualityLayers;
     
     var newParams = this._codestreamPartParams;
-    if (maxNumQualityLayers !== undefined) {
+    if (quality !== undefined) {
         newParams = Object.create(this._codestreamPartParams);
-        newParams.maxNumQualityLayers = maxNumQualityLayers;
+        newParams.quality = quality;
         
         if (minNumQualityLayers !== 'max') {
             minNumQualityLayers = Math.min(
-                minNumQualityLayers, maxNumQualityLayers);
+                minNumQualityLayers, quality);
         }
     }
     

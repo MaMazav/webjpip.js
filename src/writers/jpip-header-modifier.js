@@ -8,24 +8,24 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);
         
     this.modifyMainOrTileHeader = function modifyMainOrTileHeader(
-        result, originalDatabin, databinOffsetInResult, numResolutionLevelsToCut) {
+        result, originalDatabin, databinOffsetInResult, level) {
         
         modifyProgressionOrder(result, originalDatabin, databinOffsetInResult);
         
-        if (numResolutionLevelsToCut === undefined) {
+        if (level === undefined) {
             return 0;
         }
         
         var bestResolutionLevelsRanges =
             offsetsCalculator.getRangesOfBestResolutionLevelsData(
-                originalDatabin, numResolutionLevelsToCut);
+                originalDatabin, level);
         
         if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null) {
             var offset =
                 databinOffsetInResult +
                 bestResolutionLevelsRanges.numDecompositionLevelsOffset;
                 
-            result[offset] -= numResolutionLevelsToCut;
+            result[offset] -= level;
         }
         
         var bytesRemoved = removeRanges(
@@ -37,9 +37,9 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
     
     this.modifyImageSize = function modifyImageSize(result, codestreamPartParams) {
         var newTileWidth = codestreamStructure.getTileWidth(
-            codestreamPartParams.numResolutionLevelsToCut);
+            codestreamPartParams.level);
         var newTileHeight = codestreamStructure.getTileHeight(
-            codestreamPartParams.numResolutionLevelsToCut);
+            codestreamPartParams.level);
         
         var newReferenceGridSize = codestreamStructure.getSizeOfPart(
             codestreamPartParams);

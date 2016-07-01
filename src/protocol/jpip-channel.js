@@ -197,9 +197,9 @@ module.exports.JpipChannel = function JpipChannel(
         var codestreamStructure = sessionHelper.getCodestreamStructure();
         
         var frameWidth = codestreamStructure.getLevelWidth(
-            codestreamPartParams.numResolutionLevelsToCut);
+            codestreamPartParams.level);
         var frameHeight = codestreamStructure.getLevelHeight(
-            codestreamPartParams.numResolutionLevelsToCut);
+            codestreamPartParams.level);
         
         var regionWidth =
             codestreamPartParams.maxXExclusive - codestreamPartParams.minX;

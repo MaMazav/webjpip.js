@@ -14,7 +14,7 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
     var showLogs = false;
     
     function JpipRequestContext(
-        jpipObjects, codestreamPartParams, callback, progressiveness, options) {
+        requester, /*jpipObjects, codestreamPartParams, callback, progressiveness, */options) {
         
         var disableServerRequests = options.disableServerRequests;
         var isMovable = options.isMovable;
@@ -24,27 +24,27 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
         var statusWhenFinished = isMovable ?
             STATUS_ZOMBIE_OF_MOVABLE_REQUEST: STATUS_WAITING_FOR_USER_INPUT;
         
-        var requester = jpipObjects.requester;
-        var reconstructor = jpipObjects.reconstructor;
-        var packetsDataCollector = jpipObjects.packetsDataCollector;
-        var qualityLayersCache = jpipObjects.qualityLayersCache;
-        var codestreamStructure = jpipObjects.codestreamStructure;
-        var databinsSaver = jpipObjects.databinsSaver;
-        var jpipFactory = jpipObjects.jpipFactory;
+        //var requester = jpipObjects.requester;
+        //var reconstructor = jpipObjects.reconstructor;
+        //var packetsDataCollector = jpipObjects.packetsDataCollector;
+        //var qualityLayersCache = jpipObjects.qualityLayersCache;
+        //var codestreamStructure = jpipObjects.codestreamStructure;
+        //var databinsSaver = jpipObjects.databinsSaver;
+        //var jpipFactory = jpipObjects.jpipFactory;
         
-        var listener = null;
+        //var listener = null;
         
         var self = this;
-        var progressiveStagesFinished = 0;
+        //var progressiveStagesFinished = 0;
         var alreadyReturnedCodeblocks = null;
-        var qualityLayersReached = 0;
+        //var qualityLayersReached = 0;
 
         var status = getInitialStatus(codestreamPartParams, isMovable);
         
         var isFailure = false;
         var isWaitingForQualityLayer = false;
         var isWaitingForServer = false;
-        var isRequestDone = false;
+        //var isRequestDone = false;
         
         var dedicatedChannelHandle = options.dedicatedChannelHandle;
         
@@ -92,29 +92,29 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
             isFailure = false;
         };
         
-        this.createCodestream = function createCodestream(
-            isOnlyHeadersWithoutBitstream, maxNumQualityLayers) {
-            
-            ensureNoFailure();
-            
-            var params = getParamsForDataWriter(maxNumQualityLayers);
-            
-            var codestream = reconstructor.createCodestreamForRegion(
-                params.codestreamPartParams,
-                params.minNumQualityLayers,
-                isOnlyHeadersWithoutBitstream);
-            
-            if (codestream === null) {
-                throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'Could not reconstruct codestream although ' +
-                    'progressiveness stage has been reached');
-            }
-            
-            return codestream;
-        };
+        //this.createCodestream = function createCodestream(
+        //    isOnlyHeadersWithoutBitstream, quality) {
+        //    
+        //    ensureNoFailure();
+        //    
+        //    var params = getParamsForDataWriter(quality);
+        //    
+        //    var codestream = reconstructor.createCodestreamForRegion(
+        //        params.codestreamPartParams,
+        //        params.minNumQualityLayers,
+        //        isOnlyHeadersWithoutBitstream);
+        //    
+        //    if (codestream === null) {
+        //        throw new jGlobals.jpipExceptions.InternalErrorException(
+        //            'Could not reconstruct codestream although ' +
+        //            'progressiveness stage has been reached');
+        //    }
+        //    
+        //    return codestream;
+        //};
         
         this.getNewCodeblocksData = function getNewCodeblocksData(
-            maxNumQualityLayers) {
+            quality) {
             
             ensureNoFailure();
 
@@ -123,7 +123,7 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
                 return result;
             }
             
-            var params = getParamsForDataWriter(maxNumQualityLayers);
+            var params = getParamsForDataWriter(quality);
             var codeblocksData = packetsDataCollector
                 .getNewCodeblocksDataAndUpdateReturnedCodeblocks(
                     params.codestreamPartParams,
@@ -160,47 +160,47 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
             updateStatus(STATUS_PAUSED, 'pauseAsync()');
         };
         
-        this.hasData = function hasData() {
-            ensureNoFailure();
-            return progressiveStagesFinished > 0;
-        };
+        //this.hasData = function hasData() {
+        //    ensureNoFailure();
+        //    return progressiveStagesFinished > 0;
+        //};
         
-        this.getAllCodeblocksData = getAllCodeblocksData;
+        //this.getAllCodeblocksData = getAllCodeblocksData;
         
         this.tryContinueRequest = tryContinueRequest;
         
-        function getAllCodeblocksData(maxNumQualityLayers) {
-            ensureNoFailure();
-            var params = getParamsForDataWriter(maxNumQualityLayers);
-            var codeblocks = packetsDataCollector.getAllCodeblocksData(
-                params.codestreamPartParams,
-                params.minNumQualityLayers);
-            
-            if (codeblocks.codeblocksData === null) {
-                throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'Could not collect codeblocks although progressiveness ' +
-                    'stage has been reached');
-            }
-            
-            alreadyReturnedCodeblocks = codeblocks.alreadyReturnedCodeblocks;
-            return codeblocks.codeblocksData;
-        }
+        //function getAllCodeblocksData(quality) {
+        //    ensureNoFailure();
+        //    var params = getParamsForDataWriter(quality);
+        //    var codeblocks = packetsDataCollector.getAllCodeblocksData(
+        //        params.codestreamPartParams,
+        //        params.minNumQualityLayers);
+        //    
+        //    if (codeblocks.codeblocksData === null) {
+        //        throw new jGlobals.jpipExceptions.InternalErrorException(
+        //            'Could not collect codeblocks although progressiveness ' +
+        //            'stage has been reached');
+        //    }
+        //    
+        //    alreadyReturnedCodeblocks = codeblocks.alreadyReturnedCodeblocks;
+        //    return codeblocks.codeblocksData;
+        //}
         
         function tryContinueRequest() {
             ensureNoFailure();
             ensureNotEnded(status);
             
-            if (listener === null) {
-                listener = jpipFactory.createRequestDatabinsListener(
-                    codestreamPartParams,
-                    qualityLayerReachedCallback,
-                    codestreamStructure,
-                    databinsSaver,
-                    qualityLayersCache);
-                
-                tryAdvanceProgressiveStage();
-                isRequestDone = progressiveStagesFinished === progressiveness.length;
-            }
+            //if (listener === null) {
+            //    listener = jpipFactory.createRequestDatabinsListener(
+            //        codestreamPartParams,
+            //        qualityLayerReachedCallback,
+            //        codestreamStructure,
+            //        databinsSaver,
+            //        qualityLayersCache);
+            //    
+            //    tryAdvanceProgressiveStage();
+            //    isRequestDone = progressiveStagesFinished === progressiveness.length;
+            //}
             
             if (isWaitingForServer) {
                 updateStatus(
@@ -241,40 +241,40 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
             }
                 
             isWaitingForServer = true;
-            var numQualityLayersToWait =
-                progressiveness[progressiveStagesFinished].minNumQualityLayers;
+            //var numQualityLayersToWait =
+            //    progressiveness[progressiveStagesFinished].minNumQualityLayers;
             
-            if (isMovable && dedicatedChannelHandle === undefined) {
-                dedicatedChannelHandle =
-                    requester.dedicateChannelForMovableRequest();
-            }
+            //if (isMovable && dedicatedChannelHandle === undefined) {
+            //    dedicatedChannelHandle =
+            //        requester.dedicateChannelForMovableRequest();
+            //}
             
-            lastServerRequest = requester.requestData(
-                codestreamPartParams,
-                requesterCallbackOnAllDataRecieved,
-                requesterCallbackOnFailure,
-                numQualityLayersToWait,
-                dedicatedChannelHandle);
+            //lastServerRequest = requester.requestData(
+            //    codestreamPartParams,
+            //    requesterCallbackOnAllDataRecieved,
+            //    requesterCallbackOnFailure,
+            //    numQualityLayersToWait,
+            //    dedicatedChannelHandle);
 
             return !isRequestDone;
         }
         
-        function requesterCallbackOnAllDataRecieved(request, isResponseDone) {
-            if (isResponseDone && request === lastServerRequest) {
-                throw new jGlobals.jpipExceptions.IllegalDataException(
-                    'JPIP server not returned all data', 'D.3');
-            }
-        }
-        
-        function requesterCallbackOnFailure() {
-            updateStatus(STATUS_ENDED, 'endAsync()');
-            
-            if (failureCallback !== undefined) {
-                failureCallback(self, userContextVars);
-            } else {
-                isFailure = true;
-            }
-        }
+        //function requesterCallbackOnAllDataRecieved(request, isResponseDone) {
+        //    if (isResponseDone && request === lastServerRequest) {
+        //        throw new jGlobals.jpipExceptions.IllegalDataException(
+        //            'JPIP server not returned all data', 'D.3');
+        //    }
+        //}
+        //
+        //function requesterCallbackOnFailure() {
+        //    updateStatus(STATUS_ENDED, 'endAsync()');
+        //    
+        //    if (failureCallback !== undefined) {
+        //        failureCallback(self, userContextVars);
+        //    } else {
+        //        isFailure = true;
+        //    }
+        //}
         
         function qualityLayerReachedCallback(qualityLayersReached_) {
             qualityLayersReached = qualityLayersReached_;
@@ -295,7 +295,7 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
             
             updateStatus(
                 STATUS_WAITING_FOR_USER_INPUT, 'qualityLayerReachedCallback');
-
+        
             // Do not call callback from within tryContinueRequest() called
             // by the user: avoid recursive calls, he can perform his operations
             // after tryContinueRequest() returns
@@ -307,76 +307,76 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
             
             isRequestDone = progressiveStagesFinished === progressiveness.length;
             callback(self, userContextVars, isRequestDone);
-
+        
             ensureNotWaitingForUserInput(status);
         }
         
-        function tryAdvanceProgressiveStage() {
-            var numQualityLayersToWait =
-                progressiveness[progressiveStagesFinished].minNumQualityLayers;
-
-            if (qualityLayersReached < numQualityLayersToWait) {
-                return false;
-            }
-            
-            if (qualityLayersReached === 'max') {
-                progressiveStagesFinished = progressiveness.length;
-            }
-            
-            while (progressiveStagesFinished < progressiveness.length) {
-                var qualityLayersRequired =
-                    progressiveness[progressiveStagesFinished].minNumQualityLayers;
-                
-                if (qualityLayersRequired === 'max' ||
-                    qualityLayersRequired > qualityLayersReached) {
-                    
-                    break;
-                }
-                
-                ++progressiveStagesFinished;
-            }
-            
-            return true;
-        }
+        //function tryAdvanceProgressiveStage() {
+        //    var numQualityLayersToWait =
+        //        progressiveness[progressiveStagesFinished].minNumQualityLayers;
+        //
+        //    if (qualityLayersReached < numQualityLayersToWait) {
+        //        return false;
+        //    }
+        //    
+        //    if (qualityLayersReached === 'max') {
+        //        progressiveStagesFinished = progressiveness.length;
+        //    }
+        //    
+        //    while (progressiveStagesFinished < progressiveness.length) {
+        //        var qualityLayersRequired =
+        //            progressiveness[progressiveStagesFinished].minNumQualityLayers;
+        //        
+        //        if (qualityLayersRequired === 'max' ||
+        //            qualityLayersRequired > qualityLayersReached) {
+        //            
+        //            break;
+        //        }
+        //        
+        //        ++progressiveStagesFinished;
+        //    }
+        //    
+        //    return true;
+        //}
         
-        function getParamsForDataWriter(maxNumQualityLayers) {
-            ensureNotEnded(status, /*allowZombie=*/true);
-            
-            if (codestreamPartParams === null) {
-                throw new jGlobals.jpipExceptions.InvalidOperationException('Cannot ' +
-                    'get data of zombie request with no codestreamPartParams');
-            }
-            
-            var isRequestDone = progressiveStagesFinished === progressiveness.length;
-            if (!isRequestDone) {
-                ensureNotWaitingForUserInput(status);
-            }
-            
-            if (progressiveStagesFinished === 0) {
-                throw new jGlobals.jpipExceptions.IllegalOperationException(
-                    'Cannot create codestream before first progressiveness ' +
-                    'stage has been reached');
-            }
-            
-            var minNumQualityLayers =
-                progressiveness[progressiveStagesFinished - 1].minNumQualityLayers;
-            
-            var newParams = codestreamPartParams;
-            if (maxNumQualityLayers !== undefined) {
-                newParams = Object.create(codestreamPartParams);
-                newParams.maxNumQualityLayers = maxNumQualityLayers;
-                
-                if (minNumQualityLayers !== 'max') {
-                    minNumQualityLayers = Math.min(
-                        minNumQualityLayers, maxNumQualityLayers);
-                }
-            }
-            
-            return {
-                codestreamPartParams: newParams,
-                minNumQualityLayers: minNumQualityLayers
-                };
-        }
+        //function getParamsForDataWriter(quality) {
+        //    ensureNotEnded(status, /*allowZombie=*/true);
+        //    
+        //    if (codestreamPartParams === null) {
+        //        throw new jGlobals.jpipExceptions.InvalidOperationException('Cannot ' +
+        //            'get data of zombie request with no codestreamPartParams');
+        //    }
+        //    
+        //    var isRequestDone = progressiveStagesFinished === progressiveness.length;
+        //    if (!isRequestDone) {
+        //        ensureNotWaitingForUserInput(status);
+        //    }
+        //    
+        //    if (progressiveStagesFinished === 0) {
+        //        throw new jGlobals.jpipExceptions.IllegalOperationException(
+        //            'Cannot create codestream before first progressiveness ' +
+        //            'stage has been reached');
+        //    }
+        //    
+        //    var minNumQualityLayers =
+        //        progressiveness[progressiveStagesFinished - 1].minNumQualityLayers;
+        //    
+        //    var newParams = codestreamPartParams;
+        //    if (quality !== undefined) {
+        //        newParams = Object.create(codestreamPartParams);
+        //        newParams.quality = quality;
+        //        
+        //        if (minNumQualityLayers !== 'max') {
+        //            minNumQualityLayers = Math.min(
+        //                minNumQualityLayers, quality);
+        //        }
+        //    }
+        //    
+        //    return {
+        //        codestreamPartParams: newParams,
+        //        minNumQualityLayers: minNumQualityLayers
+        //        };
+        //}
         
         function updateStatus(newStatus, location) {
             if (showLogs) {
@@ -385,10 +385,10 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
                     status + ' -> ' + newStatus + ' (' + location + ')');
             }
             
-            if (listener !== null && newStatus === STATUS_ENDED) {
-                listener.unregister();
-                listener = null;
-            }
+            //if (listener !== null && newStatus === STATUS_ENDED) {
+            //    listener.unregister();
+            //    listener = null;
+            //}
 
             status = newStatus;
             
@@ -396,10 +396,10 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
                 return;
             }
             
-            if (lastServerRequest !== null) {
-                requester.stopRequestAsync(lastServerRequest);
-                lastServerRequest = null;
-            }
+            //if (lastServerRequest !== null) {
+            //    requester.stopRequestAsync(lastServerRequest);
+            //    lastServerRequest = null;
+            //}
         }
 
         function ensureNoFailure() {

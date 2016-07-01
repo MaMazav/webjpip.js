@@ -111,19 +111,19 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
             }
             progressivenessModified = castProgressivenessParams(
                 options.progressiveness,
-                codestreamPartParamsModified.maxNumQualityLayers,
-                'maxNumQualityLayers');
+                codestreamPartParamsModified.quality,
+                'quality');
         } else  if (useCachedDataOnly) {
             progressivenessModified = [ { minNumQualityLayers: 0 } ];
         } else if (disableProgressiveness) {
-            var maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
+            var quality = codestreamPartParams.quality;
             var minNumQualityLayers =
-                maxNumQualityLayers === undefined ? 'max' : maxNumQualityLayers;
+                quality === undefined ? 'max' : quality;
             
             progressivenessModified = [ { minNumQualityLayers: minNumQualityLayers } ];
         } else {
             progressivenessModified = getAutomaticProgressivenessStages(
-                codestreamPartParamsModified.maxNumQualityLayers);
+                codestreamPartParamsModified.quality);
         }
         
         var imageDataContext = jpipFactory.createImageDataContext(
@@ -151,14 +151,14 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
             requester.dedicateChannelForMovableRequest();
         movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
             requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
-        movableFetchState.resume();
+        movableFetchState.fetchHandle.resume();
     };
     
     this.moveFetch = function moveFetch(imageDataContext, movableFetchState) {
         movableFetchState.fetchHandle.stopAsync();
         movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
             requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
-        movableFetchState.resume();
+        movableFetchState.fetchHandle.resume();
     };
     
     //this.createDataRequest = function createDataRequest(
@@ -179,9 +179,9 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
     //    if (options.useCachedDataOnly) {
     //        progressiveness = [ { minNumQualityLayers: 0 } ];
     //    } else {
-    //        var maxNumQualityLayers = codestreamPartParams.maxNumQualityLayers;
+    //        var quality = codestreamPartParams.quality;
     //        var minNumQualityLayers =
-    //            maxNumQualityLayers === undefined ? 'max' : maxNumQualityLayers;
+    //            quality === undefined ? 'max' : quality;
     //        
     //        progressiveness = [ { minNumQualityLayers: minNumQualityLayers } ];
     //    }
@@ -222,10 +222,10 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
     //    var progressivenessModified;
     //    if (progressiveness === undefined) {
     //        progressivenessModified = getAutomaticProgressivenessStages(
-    //            codestreamPartParamsModified.maxNumQualityLayers);
+    //            codestreamPartParamsModified.quality);
     //    } else {
     //        progressivenessModified = castProgressivenessParams(
-    //            progressiveness, codestreamPartParamsModified.maxNumQualityLayers, 'maxNumQualityLayers');
+    //            progressiveness, codestreamPartParamsModified.quality, 'quality');
     //    }
     //    
     //    var requestContext = jpipFactory.createRequestContext(
@@ -283,7 +283,7 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         statusCallback(status);
     }
     
-    function castProgressivenessParams(progressiveness, maxNumQualityLayers, propertyName) {
+    function castProgressivenessParams(progressiveness, quality, propertyName) {
         // Ensure than minNumQualityLayers is given for all items
         
         var result = new Array(progressiveness.length);
@@ -292,14 +292,14 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
             var minNumQualityLayers = progressiveness[i].minNumQualityLayers;
             
             if (minNumQualityLayers !== 'max') {
-                if (maxNumQualityLayers !== undefined &&
-                    minNumQualityLayers > maxNumQualityLayers) {
+                if (quality !== undefined &&
+                    minNumQualityLayers > quality) {
                     
                     throw new jGlobals.jpipExceptions.ArgumentException(
                         'progressiveness[' + i + '].minNumQualityLayers',
                         minNumQualityLayers,
                         'minNumQualityLayers is bigger than ' +
-                            'fetchParams.maxNumQualityLayers');
+                            'fetchParams.quality');
                 }
                 
                 minNumQualityLayers = validateNumericParam(
@@ -314,7 +314,7 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         return result;
     }
     
-    function getAutomaticProgressivenessStages(maxNumQualityLayers) {
+    function getAutomaticProgressivenessStages(quality) {
         // Create progressiveness of (1, 2, 3, (#max-quality/2), (#max-quality))
 
         var progressiveness = [];
@@ -322,12 +322,12 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         // No progressiveness, wait for all quality layers to be fetched
         var tileStructure = codestreamStructure.getDefaultTileStructure();
         var numQualityLayersNumeric = tileStructure.getNumQualityLayers();
-        var maxNumQualityLayersNumericOrMax = 'max';
+        var qualityNumericOrMax = 'max';
         
-        if (maxNumQualityLayers !== undefined) {
+        if (quality !== undefined) {
             numQualityLayersNumeric = Math.min(
-                numQualityLayersNumeric, maxNumQualityLayers);
-            maxNumQualityLayersNumericOrMax = numQualityLayersNumeric;
+                numQualityLayersNumeric, quality);
+            qualityNumericOrMax = numQualityLayersNumeric;
         }
         
         var firstQualityLayersCount = numQualityLayersNumeric < 4 ?
@@ -343,22 +343,22 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         }
         
         progressiveness.push({
-            minNumQualityLayers: maxNumQualityLayersNumericOrMax
+            minNumQualityLayers: qualityNumericOrMax
             });
         
         return progressiveness;
     }
     
     function castCodestreamPartParams(codestreamPartParams) {
-        var numResolutionLevelsToCut = validateNumericParam(
-            codestreamPartParams.numResolutionLevelsToCut,
-            'numResolutionLevelsToCut',
+        var level = validateNumericParam(
+            codestreamPartParams.level,
+            'level',
             /*defaultValue=*/undefined,
             /*allowUndefiend=*/true);
 
-        var maxNumQualityLayers = validateNumericParam(
-            codestreamPartParams.maxNumQualityLayers,
-            'maxNumQualityLayers',
+        var quality = validateNumericParam(
+            codestreamPartParams.quality,
+            'quality',
             /*defaultValue=*/undefined,
             /*allowUndefiend=*/true);
         
@@ -371,8 +371,8 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         var maxY = validateNumericParam(
             codestreamPartParams.maxYExclusive, 'maxYExclusive');
         
-        var levelWidth = codestreamStructure.getLevelWidth(numResolutionLevelsToCut);
-        var levelHeight = codestreamStructure.getLevelHeight(numResolutionLevelsToCut);
+        var levelWidth = codestreamStructure.getLevelWidth(level);
+        var levelHeight = codestreamStructure.getLevelHeight(level);
         
         if (minX < 0 || maxX > levelWidth ||
             minY < 0 || maxY > levelHeight ||
@@ -388,8 +388,8 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
             maxXExclusive: maxX,
             maxYExclusive: maxY,
             
-            numResolutionLevelsToCut: numResolutionLevelsToCut,
-            maxNumQualityLayers: maxNumQualityLayers
+            level: level,
+            quality: quality
             };
         
         return result;

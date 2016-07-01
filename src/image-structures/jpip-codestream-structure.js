@@ -53,31 +53,31 @@ module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
         return size;
     };
     
-    this.getLevelWidth = function(numResolutionLevelsToCut) {
+    this.getLevelWidth = function(level) {
         validateParams();
 
-        var size = sizesCalculator.getLevelWidth(numResolutionLevelsToCut);
+        var size = sizesCalculator.getLevelWidth(level);
         return size;
     };
     
-    this.getLevelHeight = function(numResolutionLevelsToCut) {
+    this.getLevelHeight = function(level) {
         validateParams();
 
-        var size = sizesCalculator.getLevelHeight(numResolutionLevelsToCut);
+        var size = sizesCalculator.getLevelHeight(level);
         return size;
     };
     
-    this.getTileWidth = function(numResolutionLevelsToCut) {
+    this.getTileWidth = function(level) {
         validateParams();
 
-        var size = sizesCalculator.getTileWidth(numResolutionLevelsToCut);
+        var size = sizesCalculator.getTileWidth(level);
         return size;
     };
     
-    this.getTileHeight = function(numResolutionLevelsToCut) {
+    this.getTileHeight = function(level) {
         validateParams();
 
-        var size = sizesCalculator.getTileHeight(numResolutionLevelsToCut);
+        var size = sizesCalculator.getTileHeight(level);
         return size;
     };
     
@@ -96,7 +96,7 @@ module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
     };
     
     this.getTileLeft = function getTileLeft(
-        tileIndex, numResolutionLevelsToCut) {
+        tileIndex, level) {
         
         validateParams();
         
@@ -106,13 +106,13 @@ module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
         }
         
         var tileLeft =
-            (tileX - 1) * sizesCalculator.getTileWidth(numResolutionLevelsToCut) +
-            sizesCalculator.getFirstTileWidth(numResolutionLevelsToCut);
+            (tileX - 1) * sizesCalculator.getTileWidth(level) +
+            sizesCalculator.getFirstTileWidth(level);
         
         return tileLeft;
     };
     
-    this.getTileTop = function getTileTop(tileIndex, numResolutionLevelsToCut) {
+    this.getTileTop = function getTileTop(tileIndex, level) {
         validateParams();
         
         var tileY = Math.floor(tileIndex / sizesCalculator.getNumTilesX());
@@ -121,8 +121,8 @@ module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
         }
         
         var tileTop =
-            (tileY - 1) * sizesCalculator.getTileHeight(numResolutionLevelsToCut) +
-            sizesCalculator.getFirstTileHeight(numResolutionLevelsToCut);
+            (tileY - 1) * sizesCalculator.getTileHeight(level) +
+            sizesCalculator.getFirstTileHeight(level);
         
         return tileTop;
     };

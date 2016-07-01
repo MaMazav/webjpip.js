@@ -158,16 +158,16 @@ module.exports.JpipTileStructure = function JpipTileStructure(
     this.getPrecinctIterator = function getPrecinctIterator(
         tileIndex, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
         
-        var numResolutionLevelsToCut = 0;
+        var level = 0;
         if (codestreamPartParams !== undefined &&
-            codestreamPartParams.numResolutionLevelsToCut !== undefined) {
+            codestreamPartParams.level !== undefined) {
             
-            numResolutionLevelsToCut = codestreamPartParams.numResolutionLevelsToCut;
+            level = codestreamPartParams.level;
             
-            if (minNumResolutionLevels <= numResolutionLevelsToCut) {
+            if (minNumResolutionLevels <= level) {
                 throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'Cannot advance resolution: numResolutionLevelsToCut=' +
-                    codestreamPartParams.numResolutionLevelsToCut + ' but should ' +
+                    'Cannot advance resolution: level=' +
+                    codestreamPartParams.level + ' but should ' +
                     'be smaller than ' + minNumResolutionLevels);
             }
         }
@@ -214,7 +214,7 @@ module.exports.JpipTileStructure = function JpipTileStructure(
         iterator.tryAdvance = function tryAdvance() {
             var isSucceeded = tryAdvancePrecinctIterator(
                 setableIterator,
-                numResolutionLevelsToCut,
+                level,
                 precinctsInCodestreamPartPerLevelPerComponent,
                 isIteratePrecinctsNotInCodestreamPart);
             
@@ -368,13 +368,13 @@ module.exports.JpipTileStructure = function JpipTileStructure(
         
         var components = codestreamStructure.getNumComponents();
         var perComponentResult = new Array(components);
-        var numResolutionLevelsToCut =
-            codestreamPartParams.numResolutionLevelsToCut || 0;
+        var minLevel =
+            codestreamPartParams.level || 0;
         
         var tileLeftInLevel = codestreamStructure.getTileLeft(
-            tileIndex, numResolutionLevelsToCut);
+            tileIndex, minLevel);
         var tileTopInLevel = codestreamStructure.getTileTop(
-            tileIndex, numResolutionLevelsToCut);
+            tileIndex, minLevel);
         
         var minXInTile =
             codestreamPartParams.minX - tileLeftInLevel;
@@ -386,14 +386,14 @@ module.exports.JpipTileStructure = function JpipTileStructure(
             codestreamPartParams.maxYExclusive - tileTopInLevel;
         
         var codestreamPartLevelWidth = codestreamStructure.getLevelWidth(
-            numResolutionLevelsToCut);
+            minLevel);
         var codestreamPartLevelHeight = codestreamStructure.getLevelHeight(
-            numResolutionLevelsToCut);
+            minLevel);
 
         for (var component = 0; component < components; ++component) {
             var componentStructure = componentStructures[component];
             var levels = componentStructure.getNumResolutionLevels();
-            var levelsInCodestreamPart = levels - numResolutionLevelsToCut;
+            var levelsInCodestreamPart = levels - minLevel;
             var numResolutionLevels = componentStructure.getNumResolutionLevels();
             var perLevelResult = new Array(levels);
         
@@ -439,7 +439,7 @@ module.exports.JpipTileStructure = function JpipTileStructure(
     
     function tryAdvancePrecinctIterator(
         setableIterator,
-        numResolutionLevelsToCut,
+        level,
         precinctsInCodestreamPartPerLevelPerComponent,
         isIteratePrecinctsNotInCodestreamPart) {
         
@@ -451,7 +451,7 @@ module.exports.JpipTileStructure = function JpipTileStructure(
         
         for (var i = 2; i >= 0; --i) {
             var newValue = advanceProgressionOrderMember(
-                setableIterator, i, numResolutionLevelsToCut, precinctsRangeHash);
+                setableIterator, i, level, precinctsRangeHash);
             
             needAdvanceNextMember = newValue === 0;
             if (!needAdvanceNextMember) {
@@ -504,7 +504,7 @@ module.exports.JpipTileStructure = function JpipTileStructure(
     function advanceProgressionOrderMember(
         precinctPosition,
         memberIndex,
-        numResolutionLevelsToCut,
+        level,
         precinctsRange) {
         
         var componentStructure = componentStructures[precinctPosition.component];
@@ -513,7 +513,7 @@ module.exports.JpipTileStructure = function JpipTileStructure(
             case 'R':
                 var numResolutionLevels =
                     componentStructure.getNumResolutionLevels() -
-                    numResolutionLevelsToCut;
+                    level;
                 
                 ++precinctPosition.resolutionLevel;
                 precinctPosition.resolutionLevel %= numResolutionLevels;

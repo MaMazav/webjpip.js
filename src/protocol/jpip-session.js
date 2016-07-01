@@ -204,10 +204,14 @@ module.exports.JpipSession = function JpipSession(
         closeSessionUrl = channelManagementUrl +
             '&cclose=*' +
             '&cid=' + arbitraryChannelId;
-            
+        
         if (isCloseCalled) {
             closeInternal();
             return;
+        }
+        
+        if (arbitraryChannelId === null) {
+            return; // Failure indication already returned in JpipRequest
         }
         
         keepAliveIntervalHandle = setIntervalFunction(

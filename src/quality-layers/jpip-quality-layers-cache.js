@@ -21,7 +21,7 @@ module.exports.JpipQualityLayersCache = function JpipQualityLayersCache(
     };
     
     this.getQualityLayerOffset = function getQualityLayerOffset(
-        precinctDatabin, maxNumQualityLayers, precinctPosition) {
+        precinctDatabin, quality, precinctPosition) {
         
         var loadedRanges = precinctDatabin.getExistingRanges();
         var endOffsetLoaded;
@@ -31,14 +31,14 @@ module.exports.JpipQualityLayersCache = function JpipQualityLayersCache(
             
         if (loadedRanges.length < 1 || loadedRanges[0].start > 0) {
             endOffsetLoaded = 0;
-            maxNumQualityLayers = 0;
+            quality = 0;
         } else {
             endOffsetLoaded = loadedRanges[0].start + loadedRanges[0].length;
         }
         
         var layersInPrecinct =
             packetLengthCalculator.calculateEndOffsetOfLastFullPacket(
-                maxNumQualityLayers);
+                quality);
         
         while (endOffsetLoaded < layersInPrecinct.endOffset) {
             var reducedLayersToSearch = layersInPrecinct.numQualityLayers - 1;

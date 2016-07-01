@@ -10,7 +10,7 @@ module.exports.JpipImageImplementation = {
                 if (status.isReady) {
                     resolve({
                         fetcher: codestreamClient,
-                        sizesParams: fetcher.getSizesParams()
+                        sizesParams: codestreamClient.getSizesParams()
                     });
                 } else if (status.exception) {
                     codestreamClient.setStatusCallback(null);
