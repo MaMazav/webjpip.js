@@ -14,8 +14,8 @@ PdfjsJpxDecoder.prototype.decode = function decode(data) {
         var regionToParse = {
             left  : data.headersCodestream.offsetX,
             top   : data.headersCodestream.offsetY,
-            right : data.codestreamPartParams.maxXExclusive - data.codestreamPartParams.minX,
-            bottom: data.codestreamPartParams.maxYExclusive - data.codestreamPartParams.minY
+            right : data.headersCodestream.offsetX + data.codestreamPartParams.maxXExclusive - data.codestreamPartParams.minX,
+            bottom: data.headersCodestream.offsetY + data.codestreamPartParams.maxYExclusive - data.codestreamPartParams.minY
         };
         
         var currentContext = self._image.parseCodestream(
