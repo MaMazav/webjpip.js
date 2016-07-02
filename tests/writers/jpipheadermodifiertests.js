@@ -45,7 +45,7 @@ function createModifierForTest(progressionOrder, mainHeaderDatabin, codestreamSt
     return result;
 }
 
-function testModifyHeader(testName, databin, numResolutionLevelsToCut) {
+function testModifyHeader(testName, databin, level) {
     QUnit.test(testName, function(assert) {
         var arbitraryArrayPrefix = [ 15 ];
         var array = arbitraryArrayPrefix.concat(databin.buffer);
@@ -53,7 +53,7 @@ function testModifyHeader(testName, databin, numResolutionLevelsToCut) {
         var bytesRemovedExpected;
         var expectedArray;
         
-        var levelsToCut = numResolutionLevelsToCut;
+        var levelsToCut = level;
         if (levelsToCut === undefined) {
             levelsToCut = 0;
         }
@@ -62,7 +62,7 @@ function testModifyHeader(testName, databin, numResolutionLevelsToCut) {
             levelsToCut === 0 ?
             [] :
             databin.buffer.rangesOfBestResolutionLevelsData.rangesPerLevelsToCut[
-                numResolutionLevelsToCut];
+                level];
         
         if (rangesToCut.length > 0) {
             expectedArray = [];
@@ -118,7 +118,7 @@ function testModifyHeader(testName, databin, numResolutionLevelsToCut) {
         var databinOffsetInResult = arbitraryArrayPrefix.length;
         
         var bytesAddedActual = modifier.modifyMainOrTileHeader(
-            workingBuffer, databin, databinOffsetInResult, numResolutionLevelsToCut);
+            workingBuffer, databin, databinOffsetInResult, level);
         
         var bytesRemovedActual = -bytesAddedActual;
         var actualArray = workingBuffer.slice(0, workingBuffer.length - bytesRemovedExpected);
@@ -138,27 +138,27 @@ testModifyHeader(
 testModifyHeader(
     'Removal of resolution level information (Derived in QCD and default precinct size)',
     databinStubs.headerWithoutResolutionLevelsToCut,
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 testModifyHeader(
     'Removal of resolution level information (No Coding style segment)',
     databinStubs.tileHeaderWithStartOfDataMarkerOnly,
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 testModifyHeader(
     'Removal of resolution level information (Scalar in QCD and explicit precinct size)',
     databinStubs.headerWithPrecinctSizesAndScalarQCDToRemoveOnResolutionCut,
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 testModifyHeader(
     'Removal of resolution level information (Derived in QCD and explicit precinct size)',
     databinStubs.headerWithPrecinctSizesRangeToRemoveOnResolutionCut,
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 testModifyHeader(
     'Removal of resolution level information (No quantization in QCD and explicit precinct size)',
     databinStubs.headerWithPrecinctSizesAndNoQuantizationQCDToRemoveOnResolutionCut,
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 QUnit.test('IllegalDataException', function(assert) {
     assert.throws(
@@ -250,14 +250,14 @@ QUnit.test('modifyImageSize (with resolution levels to cut)',
     modifiedHeaderExpected[30] = 0x1; // Image height /= 4
     modifiedHeaderExpected[31] = 0x5B; // Image height /= 4
         
-    var numResolutionLevelsToCut = 2;
+    var level = 2;
     var modifiedHeaderActual = getArrayOfLengthForModifierTest(50);
     modifier.modifyImageSize(modifiedHeaderActual, {
         minTileX: 12,
         maxTileXExclusive: 13,
         minTileY: 27,
         maxTileYExclusive: 28,
-        numResolutionLevelsToCut: numResolutionLevelsToCut
+        level: level
         });
     
     assert.deepEqual(
@@ -282,7 +282,7 @@ QUnit.test('modifyMainOrTileHeader (progression order modification)', function(a
             headerToModify,
             /*originalDatabin=*/databinStubs.mainHeaderDatabinStub,
             /*databinOffsetInResult=*/0,
-            /*numResolutionLevelsToCut=*/0);
+            /*level=*/0);
 
         var codeActual = headerToModify[progressionOrderOffset];
         var codeExpected = progressionOrderCodes[i];

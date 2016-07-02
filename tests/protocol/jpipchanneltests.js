@@ -81,7 +81,7 @@ function testUrl(
             minY: minY,
             maxXExclusive: minX + width,
             maxYExclusive: minY + height,
-            numResolutionLevelsToCut: level
+            level: level
             };
         var dummyCallback = 'dummy callback';
         var dummyFailureCallback = 'dummy failure callback';

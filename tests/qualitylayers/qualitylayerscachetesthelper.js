@@ -14,7 +14,7 @@ function testGetPacketOffsetsByCodeblockIndex(expectedResult, testName) {
 
 function testGetQualityLayersOffset(
     expectedResult,
-    maxNumQualityLayers,
+    quality,
     qualityLayersOffsets,
     testName,
     existingRangesInDatabin) {
@@ -27,7 +27,7 @@ function testGetQualityLayersOffset(
         checkQualityLayersCacheFunction(
             assert,
             expectedResult,
-            maxNumQualityLayers,
+            quality,
             packetLengthCalculator,
             'getQualityLayerOffset',
             existingRangesInDatabin);
@@ -37,7 +37,7 @@ function testGetQualityLayersOffset(
 function checkQualityLayersCacheFunction(
     assert,
     expectedResult,
-    maxNumQualityLayers,
+    quality,
     packetLengthCalculator,
     functionName,
     existingRangesInDatabin) {
@@ -71,25 +71,25 @@ function checkQualityLayersCacheFunction(
     
     assert.throws(
         function() {
-            functionToTest(precinctDatabin, maxNumQualityLayers);
+            functionToTest(precinctDatabin, quality);
         },
         _jGlobals.jpipExceptions.InternalErrorException,
         'Expected exception when calling ' + functionName +
             'without precinctPosition argument on the first time');
     
     var actualResult = functionToTest(
-        precinctDatabin, maxNumQualityLayers, precinctPosition);
+        precinctDatabin, quality, precinctPosition);
     
     calculatorToReturnFromFactory =
         wrongNonCachedPacketLengthCalculatorForQualityLayersCacheTest;
     
     var actualResultFromCacheOnSecondTime =
         functionToTest(
-            precinctDatabin, maxNumQualityLayers, precinctPosition);
+            precinctDatabin, quality, precinctPosition);
     
     var actualResultFromCacheOnThirdTimeWithoutPrecinctPosition =
         functionToTest(
-            precinctDatabin, maxNumQualityLayers);
+            precinctDatabin, quality);
     
     assert.deepEqual(
         actualResult,
@@ -232,9 +232,9 @@ function createPacketLengthCalculatorForQualityLayersCacheTest(
         },
         
         calculateEndOffsetOfLastFullPacket:
-            function calculateEndOffsetOfLastFullPacket(maxNumQualityLayers) {
+            function calculateEndOffsetOfLastFullPacket(quality) {
             
-            if (maxNumQualityLayers === 0 || qualityLayersOffsets.length === 0) {
+            if (quality === 0 || qualityLayersOffsets.length === 0) {
                 return {
                     endOffset: 0,
                     numQualityLayers: 0
@@ -243,18 +243,18 @@ function createPacketLengthCalculatorForQualityLayersCacheTest(
             
             var numQualityLayers;
             
-            if (maxNumQualityLayers === undefined) {
+            if (quality === undefined) {
                 numQualityLayers = qualityLayersOffsets.length;
             } else {
-                if (qualityLayersOffsets.length > maxNumQualityLayers &&
-                    qualityLayersOffsets[maxNumQualityLayers] === undefined) {
+                if (qualityLayersOffsets.length > quality &&
+                    qualityLayersOffsets[quality] === undefined) {
 
                     throw 'Missing qualityLayersOffset data in ' +
                         'packetLengthCalculator stub. Fix test';
                 }
                 
                 var numQualityLayers = Math.min(
-                    qualityLayersOffsets.length, maxNumQualityLayers);
+                    qualityLayersOffsets.length, quality);
             }
             
             var result = {

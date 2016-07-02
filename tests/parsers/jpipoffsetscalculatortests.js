@@ -186,9 +186,9 @@ QUnit.test(
         
         assert.throws(
             function() {
-                var numResolutionLevelsToCut = 6;
+                var level = 6;
                 calculator.getRangesOfBestResolutionLevelsData(
-                    databinStubs.mainHeaderDatabinStub, numResolutionLevelsToCut);
+                    databinStubs.mainHeaderDatabinStub, level);
             },
             _jGlobals.j2kExceptions.InternalErrorException,
             'getRangesOfBestResolutionLevelsData (too much levels to ' +

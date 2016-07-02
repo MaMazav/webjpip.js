@@ -8,11 +8,11 @@ function JpipPacketLengthCalculatorStub(
     precinct) {
 
     this.calculateEndOffsetOfLastFullPacket =
-        function calculateFullPacketsAvailableOffsets(maxNumQualityLayers) {
+        function calculateFullPacketsAvailableOffsets(quality) {
     
         var isAllowedFullQuality =
-            maxNumQualityLayers === undefined ||
-            maxNumQualityLayers >= tileStructure.getNumQualityLayers();
+            quality === undefined ||
+            quality >= tileStructure.getNumQualityLayers();
             
         if (isAllowedFullQuality && databin.isAllDatabinLoaded()) {
             return {
@@ -26,7 +26,7 @@ function JpipPacketLengthCalculatorStub(
             throw 'No packet length information in databin stub. Fix test';
         }
         
-        var qualityLayers = maxNumQualityLayers || packetLengths.length;
+        var qualityLayers = quality || packetLengths.length;
         return packetLengths[qualityLayers - 1];
     }
 }

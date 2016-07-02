@@ -20,7 +20,7 @@ var jpipCodestreamReconstructorMock = {
     
     resultForTest: 'dummy createCodestreamForTile result',
     
-    createCodestreamForTile: function(tileIndex, numResolutionLevelsToCut) {
+    createCodestreamForTile: function(tileIndex, level) {
         if (jpipCodestreamReconstructorMock.lastCreateCodestreamForTileArgs !== null) {
             throw 'Two calls for reconstructor without ' +
                 'getLastCreateCodestreamForTileArgs meanwhile. ' +
@@ -29,7 +29,7 @@ var jpipCodestreamReconstructorMock = {
         
         jpipCodestreamReconstructorMock.lastCreateCodestreamForTileArgs = {
             tileIndex: tileIndex,
-            numResolutionLevelsToCut: numResolutionLevelsToCut
+            level: level
             };
             
         var exception = jpipCodestreamReconstructorMock

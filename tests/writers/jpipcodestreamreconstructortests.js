@@ -130,12 +130,12 @@ QUnit.test('createCodestreamForTile (with resolution levels to cut)', function(a
     assert.deepEqual(
         tileReconstructedActual, singleTileReconstructedExpected, 'createCodestreamForTile');
         
-    var numResolutionLevelsToCutExpected = numResolutionLevels;
-    var numResolutionLevelsToCutActual = modifier.numResolutionLevelsToCutArgumentForTest;
+    var levelExpected = numResolutionLevels;
+    var levelActual = modifier.levelArgumentForTest;
     assert.deepEqual(
-        numResolutionLevelsToCutActual,
-        numResolutionLevelsToCutExpected,
-        'Correctness of numResolutionLevelsToCut argument passed to modifier');
+        levelActual,
+        levelExpected,
+        'Correctness of level argument passed to modifier');
     });
 
 QUnit.test('reconstructCodestream (precinct data not recieved)', function(assert) {

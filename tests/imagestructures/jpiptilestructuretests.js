@@ -12,18 +12,18 @@ var codestreamStructureStubForTileStructureTest = {
     getTileTop: function() { return 143; },
     getImageWidth: function() { return 16384; },
     getImageHeight: function() { return 65536; },
-    getLevelWidth: function getLevelWidth(numResolutionLevelsToCut) {
+    getLevelWidth: function getLevelWidth(level) {
         var result = 16384;
-        if (numResolutionLevelsToCut !== undefined) {
-            result /= (1 << numResolutionLevelsToCut);
+        if (level !== undefined) {
+            result /= (1 << level);
         }
         
         return result;
     },
-    getLevelHeight: function getLevelHeight(numResolutionLevelsToCut) {
+    getLevelHeight: function getLevelHeight(level) {
         var result = 65536;
-        if (numResolutionLevelsToCut !== undefined) {
-            result /= (1 << numResolutionLevelsToCut);
+        if (level !== undefined) {
+            result /= (1 << level);
         }
         
         return result;
@@ -71,7 +71,7 @@ QUnit.test('Simple accessors correctness', function(assert) {
     });
 
 QUnit.test(
-    'getPrecinctIterator InternalErrorException on illegal numResolutionLevelsToCut',
+    'getPrecinctIterator InternalErrorException on illegal level',
     function(assert) {
         var tileStructure = createTileStructure(initProgressionOrder);
         
@@ -80,11 +80,11 @@ QUnit.test(
                 tileStructure.getPrecinctIterator(
                     /*tileIndex=*/0,
                     /*codestreamPartParams=*/ {
-                        numResolutionLevelsToCut: initNumResolutionLevels
+                        level: initNumResolutionLevels
                         });
             },
             _jGlobals.jpipExceptions.InternalErrorException,
-            'Too large numResolutionLevelsToCut, exception is expected');
+            'Too large level, exception is expected');
     });
 
 testAllInClassPositionsInStructure(
@@ -102,7 +102,7 @@ testProgressionOrderForUniformPrecinctCount(
 testProgressionOrderForUniformPrecinctCount(
     ['tileIndex', 'component', 'precinctX', 'precinctY', 'resolutionLevel'],
     'RPCL',
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 //testProgressionOrderForUniformPrecinctCount(
 //    ['tileIndex', 'resolutionLevel', 'component', 'precinctX', 'precinctY'],
@@ -119,7 +119,7 @@ testProgressionOrderForNonUniformStructure(
 testProgressionOrderForNonUniformStructure(
     ['tileIndex', 'component', 'precinctX', 'precinctY', 'resolutionLevel'],
     'RPCL',
-    /*numResolutionLevelsToCut=*/1);
+    /*level=*/1);
 
 //testProgressionOrderForNonUniformStructure(
 //    ['tileIndex', 'resolutionLevel', 'component', 'precinctX', 'precinctY'],
@@ -203,12 +203,12 @@ function getAdvanceFunctionSkipInexistPositions(
 }
 
 function testProgressionOrderForUniformPrecinctCount(
-    positionStructureOrderedMembers, progressionOrder, numResolutionLevelsToCut) {
+    positionStructureOrderedMembers, progressionOrder, level) {
     
     var endPrecinctInTile = createEndPrecinctPosition();
     endPrecinctInTile.tileIndex = 1;
-    if (numResolutionLevelsToCut !== undefined) {
-        endPrecinctInTile.resolutionLevel -= numResolutionLevelsToCut;
+    if (level !== undefined) {
+        endPrecinctInTile.resolutionLevel -= level;
     }
 
     var advanceExpectedPositionFunction = getAdvancePositionFunctionByMembers(
@@ -219,11 +219,11 @@ function testProgressionOrderForUniformPrecinctCount(
         advanceExpectedPositionFunction,
         initTileParams,
         'uniform precinct count',
-        numResolutionLevelsToCut);
+        level);
 }
 
 function testProgressionOrderForNonUniformStructure(
-    positionStructureOrderedMembers, progressionOrder, numResolutionLevelsToCut) {
+    positionStructureOrderedMembers, progressionOrder, level) {
     
     var tileParamsArray = prepareCreationParamsForNonUniformTest(progressionOrder);
     
@@ -278,8 +278,8 @@ function testProgressionOrderForNonUniformStructure(
             resolutionLevel: levelsAndPrecinctCounts.maxNumResolutionLevels
             };
             
-        if (numResolutionLevelsToCut !== undefined) {
-            endPrecinctInTile.resolutionLevel -= numResolutionLevelsToCut;
+        if (level !== undefined) {
+            endPrecinctInTile.resolutionLevel -= level;
         }
         
         var advanceExpectedPositionFunctionWithInexistPositions =
@@ -298,7 +298,7 @@ function testProgressionOrderForNonUniformStructure(
             advanceExpectedPositionFunctionSkipInexistPositions,
             tileParams,
             description,
-            numResolutionLevelsToCut);
+            level);
         
         levelsAndPrecinctCounts = null;
     }
@@ -559,7 +559,7 @@ function testProgressionOrder(
     advanceExpectedPositionFunction,
     sizeParams,
     testNameSuffix,
-    numResolutionLevelsToCut) {
+    level) {
     
     QUnit.test(
         progressionOrder + ' progression order, codestreamPart = all tile, ' +
@@ -572,7 +572,7 @@ function testProgressionOrder(
                 progressionOrder, sizeParams);
 
             var allTileCodestreamPart = {
-                numResolutionLevelsToCut: numResolutionLevelsToCut,
+                level: level,
                 minX: codestreamStructureStubForTileStructureTest.getTileLeft(),
                 minY: codestreamStructureStubForTileStructureTest.getTileTop(),
                 maxXExclusive: codestreamStructureStubForTileStructureTest.getTileLeft() + sizeParams.tileSize[0],

@@ -47,12 +47,12 @@ var JpipCodestreamStructureStub = function JpipCodestreamStructureStub(
         return this.getNumTilesY() * defaultTileStructureStub.getTileHeight();
     };
     
-    this.getTileWidth = function getTileWidth(numResolutionLevelsToCut) {
-        return Math.ceil(defaultTileStructureStub.getTileWidth() / (1 << numResolutionLevelsToCut));
+    this.getTileWidth = function getTileWidth(level) {
+        return Math.ceil(defaultTileStructureStub.getTileWidth() / (1 << level));
     };
     
-    this.getTileHeight = function getTileHeight(numResolutionLevelsToCut) {
-        return Math.ceil(defaultTileStructureStub.getTileHeight() / (1 << numResolutionLevelsToCut));
+    this.getTileHeight = function getTileHeight(level) {
+        return Math.ceil(defaultTileStructureStub.getTileHeight() / (1 << level));
     };
     
     this.getSizeOfPart = function getSizeOfPart(codestreamPartParams) {
@@ -63,34 +63,34 @@ var JpipCodestreamStructureStub = function JpipCodestreamStructureStub(
         return sizeOfPartResult;
     };
 
-    this.getLevelWidth = function getLevelWidth(numResolutionLevelsToCut) {
+    this.getLevelWidth = function getLevelWidth(level) {
         if (levelSizesResult === undefined) {
             throw 'Result of getLevelSize is not given to stub. Fix test';
         }
         
-        numResolutionLevelsToCut = numResolutionLevelsToCut || 0;
+        level = level || 0;
         
-        if (levelSizesResult[numResolutionLevelsToCut] === undefined) {
+        if (levelSizesResult[level] === undefined) {
             throw 'Result of getLevelSize is not given to stub for level ' +
-                numResolutionLevelsToCut + '. Fix test';
+                level + '. Fix test';
         }
         
-        return levelSizesResult[numResolutionLevelsToCut][0];
+        return levelSizesResult[level][0];
     };
 
-    this.getLevelHeight = function getLevelWidth(numResolutionLevelsToCut) {
+    this.getLevelHeight = function getLevelWidth(level) {
         if (levelSizesResult === undefined) {
             throw 'Result of getLevelSize is not given to stub. Fix test';
         }
         
-        numResolutionLevelsToCut = numResolutionLevelsToCut || 0;
+        level = level || 0;
         
-        if (levelSizesResult[numResolutionLevelsToCut] === undefined) {
+        if (levelSizesResult[level] === undefined) {
             throw 'Result of getLevelSize is not given to stub for level ' +
-                numResolutionLevelsToCut + '. Fix test';
+                level + '. Fix test';
         }
         
-        return levelSizesResult[numResolutionLevelsToCut][1];
+        return levelSizesResult[level][1];
     };
     
     this.getSizesParams = function getSizesParams() {

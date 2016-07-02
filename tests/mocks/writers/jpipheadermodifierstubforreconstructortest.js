@@ -5,7 +5,7 @@ var JpipHeaderModifierStubForReconstructorTest =
     
     var databinsToOverride = {};
     
-    this.numResolutionLevelsToCutArgumentForTest = null;
+    this.levelArgumentForTest = null;
     this.codestreamPartParamsArgumentForTest = null;
     
     this.addDatabinOverrideDataForTest =
@@ -29,9 +29,9 @@ var JpipHeaderModifierStubForReconstructorTest =
     }
 
     this.modifyMainOrTileHeader = function modifyMainOrTileHeaderClosure(
-        result, originalDatabin, databinOffsetInResult, numResolutionLevelsToCut) {
+        result, originalDatabin, databinOffsetInResult, level) {
         
-        this.numResolutionLevelsToCutArgumentForTest = numResolutionLevelsToCut;
+        this.levelArgumentForTest = level;
         
         var byInClassId = databinsToOverride[originalDatabin.getClassId()];
         if (byInClassId === undefined) {

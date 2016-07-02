@@ -15,12 +15,12 @@ function createCodestreamForTest(options) {
 //    codestreamForTileActual,
 //    tileX,
 //    tileY,
-//    numResolutionLevelsToCut,
+//    level,
 //    requesterNotCalled,
 //    reconstructorNotCalled) {
 //    
-//    if (numResolutionLevelsToCut !== undefined) {
-//        numResolutionLevelsToCut = +numResolutionLevelsToCut;
+//    if (level !== undefined) {
+//        level = +level;
 //    }
 //    
 //    var factory = mockFactoryForCodestreamTest;
@@ -40,7 +40,7 @@ function createCodestreamForTest(options) {
 //        codestreamForTileExpected = factory.codestreamReconstructor.resultForTest;
 //        createCodestreamArgsExpected = {
 //            tileIndex: (+tileX) + (+tileY) * factory.codestreamStructure.getNumTilesX(),
-//            numResolutionLevelsToCut: numResolutionLevelsToCut
+//            level: level
 //        };
 //    }
 //    
@@ -53,8 +53,8 @@ function createCodestreamForTest(options) {
 //                minTileY: +tileY,
 //                maxTileXExclusive: +tileX + 1,
 //                maxTileYExclusive: +tileY + 1,
-//                numResolutionLevelsToCut: numResolutionLevelsToCut,
-//                maxNumQualityLayers: undefined
+//                level: level,
+//                quality: undefined
 //            }
 //            };
 //    }
@@ -76,7 +76,7 @@ function createCodestreamForTest(options) {
 //}
 
 //function testSynchronousOperations(
-//    tileX, tileY, numResolutionLevelsToCut, testNameSuffix) {
+//    tileX, tileY, level, testNameSuffix) {
 //    
 //    if (testNameSuffix === undefined) {
 //        testNameSuffix = '';
@@ -87,10 +87,10 @@ function createCodestreamForTest(options) {
 //        var client = createCodestreamForTest();
 //        
 //        var codestreamForTileActual = client.getCodestreamForTile(
-//            tileX, tileY, numResolutionLevelsToCut);
+//            tileX, tileY, level);
 //
 //        testGetCodestreamForTile(
-//            assert, codestreamForTileActual, tileX, tileY, numResolutionLevelsToCut);
+//            assert, codestreamForTileActual, tileX, tileY, level);
 //        
 //        var pendingCallbackActual =
 //            mockFactoryForCodestreamTest.requester.requestTileCallbackForTest;
@@ -111,7 +111,7 @@ function createCodestreamForTest(options) {
 //        var codestreamForTileActual = client.onlyRequestTile({
 //            minTileX: tileX,
 //            minTileY: tileY,
-//            numResolutionLevelsToCut: numResolutionLevelsToCut
+//            level: level
 //            });
 //
 //        testGetCodestreamForTile(
@@ -119,7 +119,7 @@ function createCodestreamForTest(options) {
 //            codestreamForTileActual,
 //            tileX,
 //            tileY,
-//            numResolutionLevelsToCut,
+//            level,
 //            /*requesterNotCalled=*/false,
 //            /*reconstructorNotCalled=*/true);
 //        
@@ -139,14 +139,14 @@ function createCodestreamForTest(options) {
 //        var client = createCodestreamForTest();
 //        
 //        var codestreamForTileActual = client.onlyCreateCodestreamForTile(
-//            tileX, tileY, numResolutionLevelsToCut);
+//            tileX, tileY, level);
 //
 //        testGetCodestreamForTile(
 //            assert,
 //            codestreamForTileActual,
 //            tileX,
 //            tileY,
-//            numResolutionLevelsToCut,
+//            level,
 //            /*requesterNotCalled=*/true,
 //            /*reconstructorNotCalled=*/false);
 //        
@@ -213,9 +213,9 @@ function testNaNParams(params, progressiveness) {
     QUnit.test(
         'NaN parameters exception (minX=' + params.minX + ', minY=' + params.minY +
             'maxXExclusive=' + params.maxXExclusive + ', maxYExclusive=' +
-            params.maxYExclusive + ', numResolutionLevelsToCut=' +
-            params.numResolutionLevelsToCut + ', maxNumQualityLayers=' +
-            params.maxNumQualityLayers + ', progressiveness=' + progressiveness,
+            params.maxYExclusive + ', level=' +
+            params.level + ', quality=' +
+            params.quality + ', progressiveness=' + progressiveness,
         function(assert) {
             var client = createCodestreamForTest();
             
@@ -303,13 +303,13 @@ QUnit.module('JpipCodestreamClient');
 var simpleCodestreamPart = {
     minX: 120, maxXExclusive: 141,
     minY: 101, maxYExclusive: 189,
-    numResolutionLevelsToCut: 3
+    level: 3
     };
 
 var expectedModifiedSimpleCodestreamPart = JSON.parse(JSON.stringify(
     simpleCodestreamPart));
-//expectedModifiedSimpleCodestreamPart.numResolutionLevelsToCut = undefined;
-expectedModifiedSimpleCodestreamPart.maxNumQualityLayers = undefined;
+//expectedModifiedSimpleCodestreamPart.level = undefined;
+expectedModifiedSimpleCodestreamPart.quality = undefined;
 
 var expectedSimpleProgressiveness = [ { minNumQualityLayers: 'max' } ];
 
@@ -322,18 +322,18 @@ testCreateImageDataContext(
 
 var codestreamPartWithUndefinedLevels = JSON.parse(
     JSON.stringify(simpleCodestreamPart));
-codestreamPartWithUndefinedLevels.numResolutionLevelsToCut =
+codestreamPartWithUndefinedLevels.level =
     undefined;
 
 var expectedModifiedCodestreamPartWithUndefinedLevels =
     JSON.parse(JSON.stringify(expectedModifiedSimpleCodestreamPart));
-expectedModifiedCodestreamPartWithUndefinedLevels.numResolutionLevelsToCut =
+expectedModifiedCodestreamPartWithUndefinedLevels.level =
     undefined;
-expectedModifiedCodestreamPartWithUndefinedLevels.maxNumQualityLayers =
+expectedModifiedCodestreamPartWithUndefinedLevels.quality =
     undefined;
 
 testCreateImageDataContext(
-    'numResolutionLevelsToCut = undefined',
+    'level = undefined',
     codestreamPartWithUndefinedLevels,
     /*useCachedDataOnly=*/false,
     expectedModifiedCodestreamPartWithUndefinedLevels,
@@ -342,7 +342,7 @@ testCreateImageDataContext(
 var codestreamPartStrings = {
     minX: '120', maxXExclusive: '141',
     minY: '101', maxYExclusive: '189',
-    numResolutionLevelsToCut: '3'
+    level: '3'
     };
 
 testCreateImageDataContext(
@@ -390,66 +390,66 @@ testStatusCallback(
 //testSynchronousOperations(
 //    /*tileX=*/2,
 //    /*tileY=*/0,
-//    /*numResolutionLevelsToCut=*/2);
+//    /*level=*/2);
 //
 //testSynchronousOperations(
 //    /*tileX=*/'2',
 //    /*tileY=*/'0',
-//    /*numResolutionLevelsToCut=*/'2',
+//    /*level=*/'2',
 //    ' (string parameters)');
 //
 //testSynchronousOperations(
 //    /*tileX=*/'2',
 //    /*tileY=*/'0',
-//    /*numResolutionLevelsToCut=*/undefined,
-//    ' (string parameters and undefined numResolutionLevelsToCut)');
+//    /*level=*/undefined,
+//    ' (string parameters and undefined level)');
 
 testNaNParams({
     minX: 2, maxXExclusive: 4,
     minY: 5, maxYExclusive: 6,
-    numResolutionLevelsToCut: NaN
+    level: NaN
     });
 
 testNaNParams({
     minX: NaN, maxXExclusive: 4,
     minY: 10, maxYExclusive: 20,
-    numResolutionLevelsToCut: 1
+    level: 1
     });
 
 testNaNParams({
     minX: 2, maxXExclusive: 4,
     minY: NaN, maxYExclusive: 20,
-    numResolutionLevelsToCut: 1
+    level: 1
     });
 
 testNaNParams({
     minX: 2, maxXExclusive: 4,
     minY: 5, maxYExclusive: 20,
-    numResolutionLevelsToCut: 'dummy'
+    level: 'dummy'
     });
 
 testNaNParams({
     minX: 'dummy', maxXExclusive: 4,
     minY: 5, maxYExclusive: 20,
-    numResolutionLevelsToCut: 0
+    level: 0
     });
 
 testNaNParams({
     minX: 2, maxXExclusive: 4,
     minY: 'dummy', maxYExclusive: 20,
-    numResolutionLevelsToCut: 1
+    level: 1
     });
 
 testNaNParams({
     minX: undefined, maxXExclusive: 4,
     minY: 5, maxYExclusive: 20,
-    numResolutionLevelsToCut: 2
+    level: 2
     });
 
 testNaNParams({
     minX: 2, maxXExclusive: 4,
     minY: undefined, maxYExclusive: 20,
-    numResolutionLevelsToCut: 3
+    level: 3
     });
 
 QUnit.test('Objects creation arguments', function(assert) {
@@ -635,8 +635,8 @@ QUnit.test('getSizesParams after reconnectableRequester ready', function(assert)
 //    
 //    var tileX = 2;
 //    var tileY = 0;
-//    var maxNumQualityLayers = undefined;
-//    var numResolutionLevelsToCut = 7;
+//    var quality = undefined;
+//    var level = 7;
 //    
 //    var asynchronousResultActual;
 //    var callbackMock = function callbackMock(createdCodestream) {
@@ -645,7 +645,7 @@ QUnit.test('getSizesParams after reconnectableRequester ready', function(assert)
 //    
 //    var synchronousResultExpected = undefined;
 //    var synchronousResultActual = client.getCodestreamForTile(
-//        tileX, tileY, numResolutionLevelsToCut, maxNumQualityLayers, callbackMock);
+//        tileX, tileY, level, quality, callbackMock);
 //
 //    assert.strictEqual(
 //        synchronousResultActual,
@@ -663,7 +663,7 @@ QUnit.test('getSizesParams after reconnectableRequester ready', function(assert)
 //    factory.requester.callRequestTileCallbackForTest();
 //
 //    testGetCodestreamForTile(
-//        assert, asynchronousResultActual, tileX, tileY, numResolutionLevelsToCut);
+//        assert, asynchronousResultActual, tileX, tileY, level);
 //
 //    clearForCodestreamClientTest();
 //    });
@@ -676,7 +676,7 @@ QUnit.test('getSizesParams after reconnectableRequester ready', function(assert)
 //    
 //    var tileX = 2;
 //    var tileY = 0;
-//    var numResolutionLevelsToCut = 7;
+//    var level = 7;
 //    
 //    var asynchronousResultActual;
 //    var callbackMock = function callbackMock(createdCodestream) {
@@ -687,7 +687,7 @@ QUnit.test('getSizesParams after reconnectableRequester ready', function(assert)
 //        {
 //            minTileX: tileX,
 //            minTileY: tileY,
-//            numResolutionLevelsToCut: numResolutionLevelsToCut
+//            level: level
 //        },
 //        callbackMock);
 //    var synchronousResultExpected = undefined;
@@ -711,7 +711,7 @@ QUnit.test('getSizesParams after reconnectableRequester ready', function(assert)
 //        asynchronousResultActual,
 //        tileX,
 //        tileY,
-//        numResolutionLevelsToCut,
+//        level,
 //        /*requesterNotCalled=*/false,
 //        /*reconstructorNotCalled=*/true);
 //

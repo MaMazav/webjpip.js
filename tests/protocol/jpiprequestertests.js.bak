@@ -154,7 +154,7 @@ function simulateAjaxResponseAndCheckImageReady(
 }
 
 function actAndAssertRequestTile(
-    assert, url, sessionCreated, numResolutionLevelsToCut, scale, options) {
+    assert, url, sessionCreated, level, scale, options) {
     
     if (options === undefined) {
         options = {};
@@ -226,7 +226,7 @@ function actAndAssertRequestTile(
             minY: tileYOffset,
             maxXExclusive: tileXOffset + tileWidth,
             maxYExclusive: tileYOffset + tileHeight,
-            numResolutionLevelsToCut: numResolutionLevelsToCut
+            level: level
         },
         tileCreatedCallback,
         failureCallback,
@@ -384,7 +384,7 @@ function actAndAssertRequestTile(
 }
 
 function testRequestTileFlow(
-    testName, numResolutionLevelsToCut, scale, options) {
+    testName, level, scale, options) {
     
     QUnit.test('requestTile flow (' + testName + ')', function(assert) {
         clearForSessionTest();
@@ -397,7 +397,7 @@ function testRequestTileFlow(
         optionsWithQid.qid = 2;
         
         actAndAssertRequestTile(
-            assert, options.url, sessionCreated, numResolutionLevelsToCut, scale, optionsWithQid);
+            assert, options.url, sessionCreated, level, scale, optionsWithQid);
         
         clearForSessionTest();
         });
@@ -445,7 +445,7 @@ function testFailureOnTileResponseProcessing(
                 minTileY: 0,
                 maxTileXExclusive: 20,
                 maxTileYExclusive: 40,
-                numResolutionLevelsToCut: 0
+                level: 0
             },
             tileRequestCallback,
             tileRequestFailureCallback,
@@ -594,51 +594,51 @@ testFailureOnTileResponseProcessing(
 
 testRequestTileFlow(
     'Jpip Tile-part (jpt) stream',
-    /*numResolutionLevelsToCut=*/3,
+    /*level=*/3,
     /*scale=*/8,
     { isJptStream: true });
 
 testRequestTileFlow(
     'Jpip Precinct (jpp) stream',
-    /*numResolutionLevelsToCut=*/2,
+    /*level=*/2,
     /*scale=*/4,
     { isJptStream: false });
 
 testRequestTileFlow(
     'No resolution levels to cut',
-    /*numResolutionLevelsToCut=*/undefined,
+    /*level=*/undefined,
     /*scale=*/1);
 
 testRequestTileFlow(
     'No targetId provided by server',
-    /*numResolutionLevelsToCut=*/2,
+    /*level=*/2,
     /*scale=*/4,
     { isDisableTargetId: true });
 
 testRequestTileFlow(
     'Stateful request per tile refused with cnewHeader = \'\'',
-    /*numResolutionLevelsToCut=*/2,
+    /*level=*/2,
     /*scale=*/4,
     {    isRefuseStatefulRequestForTile: true,
         cnewHttpHeader: '' });
 
 testRequestTileFlow(
     'Stateful request per tile refused with cnewHeader = null',
-    /*numResolutionLevelsToCut=*/2,
+    /*level=*/2,
     /*scale=*/4,
     {    isRefuseStatefulRequestForTile: true,
         cnewHttpHeader: null });
 
 testRequestTileFlow(
     'Stateful request per tile refused but cnew http header exist',
-    /*numResolutionLevelsToCut=*/2,
+    /*level=*/2,
     /*scale=*/4,
     {    isRefuseStatefulRequestForTile: true,
         cnewHttpHeader: 'DummyKey1=DummyValue1,DummyKey2=DummyValue2' });
 
 testRequestTileFlow(
     'HTTP response ends with EOR (End Of Response) byte',
-    /*numResolutionLevelsToCut=*/2,
+    /*level=*/2,
     /*scale=*/4,
     { addEndOfResponseByte: true });
 
@@ -855,7 +855,7 @@ QUnit.test(
         
         var secondTileX = 3;
         var secondTileY = 5;
-        var numResolutionLevelsToCut = 0;
+        var level = 0;
         var channelFreed = null;
         
         function requestEndedCallback(channel) {
@@ -889,7 +889,7 @@ QUnit.test(
                 minY: firstOffsetY,
                 maxXExclusive: firstOffsetX + tileWidth,
                 maxYExclusive: firstOffsetY + tileHeight,
-                numResolutionLevelsToCut: numResolutionLevelsToCut
+                level: level
             },
             firstCallbackMock,
             firstFailureCallbackMock);
@@ -926,7 +926,7 @@ QUnit.test(
                 minY: secondOffsetY,
                 maxXExclusive: secondOffsetX + tileWidth,
                 maxYExclusive: secondOffsetY + tileHeight,
-                numResolutionLevelsToCut: numResolutionLevelsToCut
+                level: level
             },
             secondCallbackMock,
             secondFailureCallbackMock);

@@ -13,7 +13,7 @@ function testCodingPassesNumberParser(
         transactionHelperStub.clearForTest();
         
         var bitstreamReaderStub = new JpipBitstreamReaderStub(bitstreamContent);
-        var resultActual = jpipExports.JpipCodingPassesNumberParser.parse(
+        var resultActual = jpipExports.jpipCodingPassesNumberParser.parse(
             bitstreamReaderStub);
             
         assert.deepEqual(

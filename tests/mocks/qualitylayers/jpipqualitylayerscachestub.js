@@ -3,13 +3,13 @@
 function JpipQualityLayersCacheStub(codestreamStructureStub, databinsSaver) {
     
     this.waitForQualityLayer = function waitForQualityLayer(
-        callback, tileIndex, numResolutionLevelsToCut, numQualityLayers) {
+        callback, tileIndex, level, numQualityLayers) {
         
         throw 'waitForQualityLayer stub is not implemented. Fix test';
     };
     
     this.getQualityLayerOffset = function getQualityLayerOffset(
-        precinctDatabin, maxNumQualityLayers, precinctPosition) {
+        precinctDatabin, quality, precinctPosition) {
         
         var tileStructure = codestreamStructureStub.getTileStructure(
             precinctPosition.tileIndex);
@@ -22,7 +22,7 @@ function JpipQualityLayersCacheStub(codestreamStructureStub, databinsSaver) {
             precinctPosition);
         
         var result = packetLengthCalculator.calculateEndOffsetOfLastFullPacket(
-            maxNumQualityLayers);
+            quality);
         
         return result;
     };
