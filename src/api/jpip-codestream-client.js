@@ -66,8 +66,10 @@ module.exports.JpipCodestreamClient = function JpipCodestreamClient(options) {
         requester.open(baseUrl);
     };
     
-    this.close = function close(closedCallback) {
-        requester.close(closedCallback);
+    this.close = function close() {
+        return new Promise(function(resolve, reject) {
+            requester.close(resolve);
+        });
     };
     
     this.getSizesParams = function getSizesParams() {
