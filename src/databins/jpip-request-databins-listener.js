@@ -117,6 +117,7 @@ module.exports.JpipRequestDatabinsListener = function JpipRequestDatabinsListene
     }
     
     function precinctDataArrived(precinctDatabin) {
+        var local = unregistered;
         var accumulatedData = accumulatedDataPerDatabin.getObject(
             precinctDatabin);
 

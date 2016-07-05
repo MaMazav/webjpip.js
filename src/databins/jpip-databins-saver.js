@@ -110,7 +110,8 @@ module.exports.JpipDatabinsSaver = function JpipDatabinsSaver(isJpipTilePartStre
         
         databinsArray.listeners[inClassId].push({
             listener: listener,
-            listenerThis: listenerThis
+            listenerThis: listenerThis,
+            isRegistered: true
             });
         
         databinsArray.databinsWithListeners[inClassId] = databin;
@@ -138,6 +139,7 @@ module.exports.JpipDatabinsSaver = function JpipDatabinsSaver(isJpipTilePartStre
         
         for (var i = 0; i < listeners.length; ++i) {
             if (listeners[i].listener === listener) {
+                listeners[i].isRegistered = true;
                 listeners[i] = listeners[listeners.length - 1];
                 listeners.length -= 1;
                 
@@ -215,7 +217,9 @@ module.exports.JpipDatabinsSaver = function JpipDatabinsSaver(isJpipTilePartStre
                     
                     for (var i = 0; i < localListeners.length; ++i) {
                         var listener = localListeners[i];
-                        listener.listener.call(listener.listenerThis, databin);
+                        if (listener.isRegistered) {
+                            listener.listener.call(listener.listenerThis, databin);
+                        }
                     }
                 }
                 

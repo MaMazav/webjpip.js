@@ -178,7 +178,7 @@ module.exports.JpipTileStructure = function JpipTileStructure(
                 
         var precinctX = 0;
         var precinctY = 0;
-        if (isIteratePrecinctsNotInCodestreamPart &&
+        if (!isIteratePrecinctsNotInCodestreamPart &&
             precinctsInCodestreamPartPerLevelPerComponent !== null) {
             
             var firstPrecinctsRange =
@@ -190,7 +190,6 @@ module.exports.JpipTileStructure = function JpipTileStructure(
         // A.6.1 in part 1: Core Coding System
         
         var setableIterator = {
-            precinctIndexInComponentResolution: 0,
             component: 0,
             precinctX: precinctX,
             precinctY: precinctY,
@@ -200,14 +199,20 @@ module.exports.JpipTileStructure = function JpipTileStructure(
 
         var iterator = {
             get tileIndex() { return tileIndex; },
-                get component() { return setableIterator.component; },
+            get component() { return setableIterator.component; },
             get precinctIndexInComponentResolution() {
+                var componentStructure = componentStructures[setableIterator.component];
+                var precinctsX = componentStructure.getNumPrecinctsX(
+                    setableIterator.resolutionLevel);
+                setableIterator.precinctIndexInComponentResolution =
+                    setableIterator.precinctX + setableIterator.precinctY * precinctsX;
+        
                 return setableIterator.precinctIndexInComponentResolution;
             },
                 
-                get precinctX() { return setableIterator.precinctX; },
-                get precinctY() { return setableIterator.precinctY; },
-                get resolutionLevel() { return setableIterator.resolutionLevel; },
+            get precinctX() { return setableIterator.precinctX; },
+            get precinctY() { return setableIterator.precinctY; },
+            get resolutionLevel() { return setableIterator.resolutionLevel; },
             get isInCodestreamPart() { return setableIterator.isInCodestreamPart; }
             };
         
@@ -470,12 +475,6 @@ module.exports.JpipTileStructure = function JpipTileStructure(
             return false;
         }
         
-        var componentStructure = componentStructures[setableIterator.component];
-        var precinctsX = componentStructure.getNumPrecinctsX(
-            setableIterator.resolutionLevel);
-        setableIterator.precinctIndexInComponentResolution =
-            setableIterator.precinctX + setableIterator.precinctY * precinctsX;
-        
         if (precinctsInCodestreamPartPerLevelPerComponent === null) {
             setableIterator.isInCodestreamPart = true;
             return true;
@@ -488,8 +487,6 @@ module.exports.JpipTileStructure = function JpipTileStructure(
         if (needResetPrecinctToMinimalInCodestreamPart) {
             setableIterator.precinctX = precinctsRange.minPrecinctX;
                 setableIterator.precinctY = precinctsRange.minPrecinctY;
-            setableIterator.precinctIndexInComponentResolution =
-                setableIterator.precinctX + setableIterator.precinctY * precinctsX;
         }
         
         setableIterator.isInCodestreamPart =

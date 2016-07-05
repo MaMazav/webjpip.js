@@ -22,8 +22,6 @@ function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness
         this._codestreamStructure,
         this._databinsSaver,
         this._qualityLayersCache);
-    
-    this._tryAdvanceProgressiveStage();
 }
 
 JpipImageDataContext.prototype.hasData = function hasData() {

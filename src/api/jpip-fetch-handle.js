@@ -11,8 +11,15 @@ function JpipFetchHandle(requester, imageDataContext, dedicatedChannelHandle) {
     this._dedicatedChannelHandle = dedicatedChannelHandle;
     this._isFailure = false;
     this._isMoved = false;
-    this._requesterCallbackOnAllDataRecievedBound = this._requesterCallbackOnAllDataRecieved.bind(this);
+    this._requestedQualityLayer = 0;
+    this._reachedQualityLayer = 0;
     this._requesterCallbackOnFailureBound = this._requesterCallbackOnFailure.bind(this);
+    
+    if (imageDataContext.isDisposed()) {
+        throw new jGlobals.jpipExceptions.IllegalOperationException(
+            'Cannot initialize JpipFetchHandle with disposed ImageDataContext');
+    }
+    imageDataContext.on('data', this._onData.bind(this));
 }
 
 JpipFetchHandle.prototype.resume = function resume() {
@@ -32,18 +39,7 @@ JpipFetchHandle.prototype.resume = function resume() {
             ' start a new fetch with same dedicatedChannelHandle instead');
     }
     
-    if (this._imageDataContext.isDone()) {
-        return;
-    }
-    
-    var numQualityLayersToWait = this._imageDataContext.getNextQualityLayer();
-        
-    this._serverRequest = this._requester.requestData(
-        this._imageDataContext.getCodestreamPartParams(),
-        this._requesterCallbackOnAllDataRecievedBound,
-        this._requesterCallbackOnFailureBound,
-        numQualityLayersToWait,
-        this._dedicatedChannelHandle);
+    this._requestData();
 };
 
 JpipFetchHandle.prototype.stopAsync = function stopAsync() {
@@ -72,16 +68,12 @@ JpipFetchHandle.prototype.stopAsync = function stopAsync() {
 };
 
 JpipFetchHandle.prototype._requesterCallbackOnAllDataRecieved =
-    function requesterCallbackOnAllDataRecieved(request, isResponseDone) {
-    
-    if (this._isMoved) {
-        throw new jGlobals.jpipExceptions.InternalErrorException(
-            'Data callback to an old fetch which has been already moved');
-    }
+    function (request, isResponseDone, requestedQualityLayer) {
     
     if (isResponseDone &&
+        !this._isMoved &&
         !this._imageDataContext.isDisposed() &&
-        !this._imageDataContext.isDone()) {
+        requestedQualityLayer > this._reachedQualityLayer) {
             
         throw new jGlobals.jpipExceptions.IllegalDataException(
             'JPIP server not returned all data', 'D.3');
@@ -104,4 +96,40 @@ JpipFetchHandle.prototype._requesterCallbackOnFailure =
         throw new jGlobals.jpipExceptions.InternalErrorException(
             'Failure callback to an old fetch which has been already moved');
     }
+};
+
+JpipFetchHandle.prototype._onData = function onData(imageDataContext) {
+    this._reachedQualityLayer = this._requestedQualityLayer;
+    
+    if (imageDataContext !== this._imageDataContext) {
+        throw new jGlobals.jpipExceptions.InternalErrorException(
+            'Unexpected ImageDataContext in FetchHandle event');
+    }
+    
+    if (!this._isMoved &&
+        !this._imageDataContext.isDisposed() &&
+        this._serverRequest !== null) {
+        
+        this._requestData();
+    }
+};
+
+JpipFetchHandle.prototype._requestData = function requestData() {
+    if (this._imageDataContext.isDone()) {
+        return;
+    }
+    
+    var self = this;
+    var numQualityLayersToWait = this._imageDataContext.getNextQualityLayer();
+    this._requestedQualityLayer = numQualityLayersToWait;
+        
+    this._serverRequest = this._requester.requestData(
+        this._imageDataContext.getCodestreamPartParams(),
+        function allDataRecieved(request, isResponseDone) {
+            self._requesterCallbackOnAllDataRecieved(
+                request, isResponseDone, numQualityLayersToWait);
+        },
+        this._requesterCallbackOnFailureBound,
+        numQualityLayersToWait,
+        this._dedicatedChannelHandle);
 };
