@@ -61,7 +61,7 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
             // codestreamClient to here
             
             if (!isMovable) {
-                throw new jGlobals.jpipExceptions.InvalidOperationException(
+                throw new jGlobals.jpipExceptions.IllegalOperationException(
                     'createMovedRequest() is supported only for movable ' +
                     'requests. Create the request with options.isMovable = true');
             }
@@ -141,7 +141,7 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
         
         this.endAsync = function endAsync() {
             if (isMovable) {
-                throw new jGlobals.jpipExceptions.InvalidOperationException(
+                throw new jGlobals.jpipExceptions.IllegalOperationException(
                     'endAsync() is not supported for movable requests');
             }
 
@@ -343,7 +343,7 @@ module.exports.JpipRequestContext = (function JpipRequestContext() {
         //    ensureNotEnded(status, /*allowZombie=*/true);
         //    
         //    if (codestreamPartParams === null) {
-        //        throw new jGlobals.jpipExceptions.InvalidOperationException('Cannot ' +
+        //        throw new jGlobals.jpipExceptions.IllegalOperationException('Cannot ' +
         //            'get data of zombie request with no codestreamPartParams');
         //    }
         //    

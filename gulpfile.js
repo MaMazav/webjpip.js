@@ -56,17 +56,15 @@ var sources = [
 ];
 
 var vendorsProd = [
-    './vendor/imagedecoderframework.js',
+    // image-decoder-framework is not embedded in webjpip.js
     './vendor/pdf.js/arithmetic_decoder.js',
-    './vendor/pdf.js/async-jpx-image.js',
     './vendor/pdf.js/jpx.js',
     './vendor/pdf.js/util.js'
 ];
 
 var vendorsDebug = [
-    //'./vendor/imagedecoderframework-debug.js',
+    // image-decoder-framework is not embedded in webjpip.js
     './vendor/pdf.js/arithmetic_decoder.js',
-    //'./vendor/pdf.js/async-jpx-image.js',
     './vendor/pdf.js/jpx.js',
     './vendor/pdf.js/util.js'
 ];
@@ -101,7 +99,7 @@ function build(isDebug) {
     
     var browserifyStream = browserified
         .bundle()
-        .pipe(source('webjpip-src.js'))
+        .pipe(source('webjpip.src.js'))
         .pipe(buffer());
     
     if (!isDebug) {
@@ -116,10 +114,10 @@ function build(isDebug) {
         browserifyStream = browserifyStream.pipe(addsrc(vendors[i]));
     }
     
-    var outFile = isDebug ? 'webjpip-debug' : 'webjpip';
+    var outFile = isDebug ? 'webjpip.dev.debug' : 'webjpip.dev';
     
     browserifyStream = browserifyStream
-        .pipe(concat('webjpip-src.js'))
+        .pipe(concat('webjpip.src.js'))
         .pipe(rename(outFile + '.js'))
         .pipe(sourcemaps.write(outFile))
         .pipe(gulp.dest('./'));

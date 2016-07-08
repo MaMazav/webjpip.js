@@ -150,7 +150,7 @@ module.exports.JpipReconnectableRequester = function JpipReconnectableRequester(
             if (statusCallback !== null) {
                 statusCallback({
                     isReady: true,
-                    exception: //jpipExceptions.InvalidOperationException(
+                    exception: //jpipExceptions.IllegalOperationException(
                         'Previous session that should be closed still alive.' +
                         'Maybe old requestContexts have not beed closed. ' +
                         'Reconnect will not be done' //);
@@ -187,7 +187,7 @@ module.exports.JpipReconnectableRequester = function JpipReconnectableRequester(
             /*dedicateForMovableRequest=*/true);
         
         if (channel === null) {
-            throw new jGlobals.jpipExceptions.InvalidOperationException(
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
                 'Too many concurrent requests. Limit the use of dedicated ' +
                 '(movable) requests, enlarge maxChannelsInSession or wait ' +
                 'for requests to finish and avoid create new ones');

@@ -192,7 +192,7 @@ JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDa
     //ensureNotEnded(status, /*allowZombie=*/true);
     
     //if (codestreamPartParams === null) {
-    //    throw new jGlobals.jpipExceptions.InvalidOperationException('Cannot ' +
+    //    throw new jGlobals.jpipExceptions.IllegalOperationException('Cannot ' +
     //        'get data of zombie request with no codestreamPartParams');
     //}
     
