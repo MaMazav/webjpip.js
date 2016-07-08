@@ -1,5 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
 /* Copyright 2012 Mozilla Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +15,21 @@
 
 'use strict';
 
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define('pdfjs/core/arithmetic_decoder', ['exports'], factory);
+  } else if (typeof exports !== 'undefined') {
+    factory(exports);
+  } else {
+    factory((root.pdfjsCoreArithmeticDecoder = {}));
+  }
+}(this, function (exports) {
+
 /* This class implements the QM Coder decoding as defined in
  *   JPEG 2000 Part I Final Committee Draft Version 1.0
- *   Annex C.3 Arithmetic decoding procedure 
+ *   Annex C.3 Arithmetic decoding procedure
  * available at http://www.jpeg.org/public/fcd15444-1.pdf
- * 
+ *
  * The arithmetic decoder is used in conjunction with context models to decode
  * JPEG2000 and JBIG2 streams.
  */
@@ -183,3 +191,6 @@ var ArithmeticDecoder = (function ArithmeticDecoderClosure() {
 
   return ArithmeticDecoder;
 })();
+
+exports.ArithmeticDecoder = ArithmeticDecoder;
+}));

@@ -1,5 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
-/* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
 /* Copyright 2012 Mozilla Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +12,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* globals ArithmeticDecoder, globalScope, log2, readUint16, readUint32,
-           info, warn */
 
 'use strict';
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define('pdfjs/core/jpx', ['exports', 'pdfjs/shared/util',
+      'pdfjs/core/arithmetic_decoder'], factory);
+  } else if (typeof exports !== 'undefined') {
+    factory(exports, require('../shared/util.js'),
+      require('./arithmetic_decoder.js'));
+  } else {
+    factory((root.pdfjsCoreJpx = {}), root.pdfjsSharedUtil,
+      root.pdfjsCoreArithmeticDecoder);
+  }
+}(this, function (exports, sharedUtil, coreArithmeticDecoder) {
+
+var info = sharedUtil.info;
+var log2 = sharedUtil.log2;
+var readUint16 = sharedUtil.readUint16;
+var readUint32 = sharedUtil.readUint32;
+var warn = sharedUtil.warn;
+var ArithmeticDecoder = coreArithmeticDecoder.ArithmeticDecoder;
 
 var JpxImage = (function JpxImageClosure() {
   // Table E.1
@@ -69,8 +85,6 @@ var JpxImage = (function JpxImageClosure() {
           case 0x636F6C72: // 'colr'
             // Colorspaces are not used, the CS from the PDF is used.
             var method = data[position];
-            var precedence = data[position + 1];
-            var approximation = data[position + 2];
             if (method === 1) {
               // enumerated colorspace
               var colorspace = readUint32(data, position + 3);
@@ -206,16 +220,6 @@ var JpxImage = (function JpxImageClosure() {
                 throw new Error('JPX Error: When regionToParse is used, ' +
                   'component size other than 1 is not supported');
               }
-              break;
-            case 0xFF55: // Tile-part lengths, main header (TLM)
-              var Ltlm = readUint16(data, position); // Marker segment length
-              // Skip tile length markers
-              position += Ltlm;
-              break;
-            case 0xFF58: // Packet lengths, tile header (PLT): MAMAZAV
-              var Lplt = readUint16(data, position); // Marker segment length
-              // Skip tile length markers
-              position += Lplt;
               break;
             case 0xFF5C: // Quantization default (QCD)
               length = readUint16(data, position);
@@ -409,6 +413,9 @@ var JpxImage = (function JpxImageClosure() {
               }
               
               break;
+            case 0xFF55: // Tile-part lengths, main header (TLM)
+            case 0xFF57: // Packet length, main header (PLM)
+            case 0xFF58: // Packet length, tile-part header (PLT)
             case 0xFF64: // Comment (COM)
               length = readUint16(data, position);
               // skipping content
@@ -806,7 +813,7 @@ var JpxImage = (function JpxImageClosure() {
     r = 0;
     c = 0;
     p = 0;
-    
+
     this.nextPacket = function JpxImage_nextPacket() {
       // Section B.12.1.3 Resolution-position-component-layer
       for (; r <= maxDecompositionLevelsCount; r++) {
@@ -890,7 +897,7 @@ var JpxImage = (function JpxImageClosure() {
     var componentsCount = siz.Csiz;
     var precinctsSizes = getPrecinctSizesInImageScale(tile);
     var l = 0, r = 0, c = 0, px = 0, py = 0;
-    
+
     this.nextPacket = function JpxImage_nextPacket() {
       // Section B.12.1.5 Component-position-resolution-layer
       for (; c < componentsCount; ++c) {
@@ -1357,7 +1364,7 @@ var JpxImage = (function JpxImageClosure() {
       for (j = 0; j < codingpasses; j++) {
         switch (currentCodingpassType) {
           case 0:
-            bitModel.runSignificancePropogationPass();
+            bitModel.runSignificancePropagationPass();
             break;
           case 1:
             bitModel.runMagnitudeRefinementPass();
@@ -1953,8 +1960,8 @@ var JpxImage = (function JpxImageClosure() {
         }
         neighborsSignificance[index] |= 0x80;
       },
-      runSignificancePropogationPass:
-        function BitModel_runSignificancePropogationPass() {
+      runSignificancePropagationPass:
+        function BitModel_runSignificancePropagationPass() {
         var decoder = this.decoder;
         var width = this.width, height = this.height;
         var coefficentsMagnitude = this.coefficentsMagnitude;
@@ -2458,3 +2465,6 @@ var JpxImage = (function JpxImageClosure() {
 
   return JpxImage;
 })();
+
+exports.JpxImage = JpxImage;
+}));

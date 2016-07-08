@@ -57,16 +57,16 @@ var sources = [
 
 var vendorsProd = [
     // image-decoder-framework is not embedded in webjpip.js
+    './vendor/pdf.js/util.js',
     './vendor/pdf.js/arithmetic_decoder.js',
-    './vendor/pdf.js/jpx.js',
-    './vendor/pdf.js/util.js'
+    './vendor/pdf.js/jpx.js'
 ];
 
 var vendorsDebug = [
     // image-decoder-framework is not embedded in webjpip.js
+    './vendor/pdf.js/util.js',
     './vendor/pdf.js/arithmetic_decoder.js',
-    './vendor/pdf.js/jpx.js',
-    './vendor/pdf.js/util.js'
+    './vendor/pdf.js/jpx.js'
 ];
 
 var scriptsDebug = vendorsDebug.concat(sources);

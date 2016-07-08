@@ -5,7 +5,7 @@ module.exports.PdfjsJpxDecoder = PdfjsJpxDecoder;
 var jGlobals = require('j2k-jpip-globals.js');
 
 function PdfjsJpxDecoder() {
-    this._image = new JpxImage();
+    this._image = new pdfjsCoreJpx.JpxImage();
 }
 
 PdfjsJpxDecoder.prototype.decode = function decode(data) {

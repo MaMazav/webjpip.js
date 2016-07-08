@@ -1,5 +1,7 @@
 'use strict';
 
+var JpxImage = require('jpx.js');
+
 function AsyncJpxImage() {
 }
 
