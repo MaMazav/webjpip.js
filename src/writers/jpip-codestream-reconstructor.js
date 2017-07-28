@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipCodestreamReconstructor = function JpipCodestreamReconstructor(
+module.exports = function JpipCodestreamReconstructor(
     codestreamStructure,
     databinsSaver,
     headerModifier,

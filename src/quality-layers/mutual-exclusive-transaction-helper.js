@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.mutualExclusiveTransactionHelper = {
+module.exports = {
     createTransaction: function createTransaction() {
         // This code is executed a LOT. For optimization, state is represented
         // directly as numbers (I couldn't think about more readable way which

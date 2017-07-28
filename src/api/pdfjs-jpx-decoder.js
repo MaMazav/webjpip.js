@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports.PdfjsJpxDecoder = PdfjsJpxDecoder;
+module.exports = PdfjsJpxDecoder;
 
 var jGlobals = require('j2k-jpip-globals.js');
 

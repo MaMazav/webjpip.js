@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipRequestContext = (function JpipRequestContext() {
+module.exports = (function JpipRequestContext() {
     var STATUS_ACTIVE = 1;
     var STATUS_WAITING_FOR_USER_INPUT = 2;
     var STATUS_PAUSED = 3;

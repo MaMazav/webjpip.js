@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipHeaderModifier = function JpipHeaderModifier(
+module.exports = function JpipHeaderModifier(
     codestreamStructure, offsetsCalculator, progressionOrder) {
 
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);

@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipComponentStructure = function JpipComponentStructure(
+module.exports = function JpipComponentStructure(
     params, tileStructure) {
     
     var tileWidthLevel0;

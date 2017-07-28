@@ -154,4 +154,4 @@ var jpipMessageHeaderParser = {
     }
 };
 
-module.exports.jpipMessageHeaderParser = jpipMessageHeaderParser;
+module.exports = jpipMessageHeaderParser;

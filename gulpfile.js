@@ -15,11 +15,10 @@ var filter = require('gulp-filter');
 var mergeStream = require('merge-stream');
 
 var sources = [
-    './src/api/jpip-codestream-client.js',
-    './src/api/jpip-codestream-sizes-calculator.js',
-    './src/api/jpip-fetch-handle.js',
+    './src/api/jpip-fetcher.js',
+    './src/api/jpip-image.js',
     './src/api/jpip-image-data-context.js',
-    './src/api/jpip-image-implementation.js',
+    './src/api/jpip-level-calculator.js',
     './src/api/pdfjs-jpx-decoder.js',
     './src/databins/composite-array.js',
     './src/databins/jpip-databin-parts.js',
@@ -28,6 +27,7 @@ var sources = [
     './src/databins/jpip-request-databins-listener.js',
     './src/image-structures/jpip-codestream-structure.js',
     './src/image-structures/jpip-component-structure.js',
+	'./src/image-structures/jpip-request-params-modifier.js',
     './src/image-structures/jpip-tile-structure.js',
     './src/parsers/jpip-markers-parser.js',
     './src/parsers/jpip-offsets-calculator.js',

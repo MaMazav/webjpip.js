@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipCodeblockLengthParser = (function JpipCodeblockLengthParserClosure() {
+module.exports = (function JpipCodeblockLengthParserClosure() {
     // B.10.7.
     
     var exactLog2Table = createExactLog2Table();

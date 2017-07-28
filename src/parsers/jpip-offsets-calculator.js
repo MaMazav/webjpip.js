@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipOffsetsCalculator = function JpipOffsetsCalculator(
+module.exports = function JpipOffsetsCalculator(
     mainHeaderDatabin, markersParser) {
     
     var supportedMarkers = [

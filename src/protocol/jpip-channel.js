@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipChannel = function JpipChannel(
+module.exports = function JpipChannel(
     maxRequestsWaitingForResponseInChannel, sessionHelper, jpipFactory) {
     
     var self = this;

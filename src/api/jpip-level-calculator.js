@@ -3,7 +3,7 @@
 var jGlobals = require('j2k-jpip-globals.js');
 var LOG2 = Math.log(2);
 
-module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalculator(
+module.exports = function JpipLevelCalculator(
     params) {
     
     var EDGE_TYPE_NO_EDGE = 0;
@@ -49,7 +49,7 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
     };
     
     this.getLevel = function getLevel(regionImageLevel) {
-        if (params.defaultNumResolutionLevels === undefined) {
+        if (params.numResolutionLevelsForLimittedViewer === undefined) {
             throw 'This method is available only when jpipSizesCalculator ' +
                 'is created from params returned by jpipCodestreamClient. ' +
                 'It shall be used for JPIP API purposes only';
@@ -58,20 +58,20 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
 		var levelX = Math.log((regionImageLevel.maxXExclusive - regionImageLevel.minX) / regionImageLevel.screenWidth ) / LOG2;
 		var levelY = Math.log((regionImageLevel.maxYExclusive - regionImageLevel.minY) / regionImageLevel.screenHeight) / LOG2;
 		var level = Math.ceil(Math.max(levelX, levelY));
-		level = Math.max(0, Math.min(params.defaultNumResolutionLevels - 1, level));
+		level = Math.max(0, Math.min(params.numResolutionLevelsForLimittedViewer - 1, level));
 		return level;
     };
     
     this.getNumResolutionLevelsForLimittedViewer =
         function getNumResolutionLevelsForLimittedViewer() {
         
-        if (params.defaultNumResolutionLevels === undefined) {
+        if (params.numResolutionLevelsForLimittedViewer === undefined) {
             throw 'This method is available only when jpipSizesCalculator ' +
                 'is created from params returned by jpipCodestreamClient. ' +
                 'It shall be used for JPIP API purposes only';
         }
         
-        return params.defaultNumResolutionLevels;
+        return params.numResolutionLevelsForLimittedViewer;
     };
     
     this.getLowestQuality = function getLowestQuality() {
@@ -79,13 +79,13 @@ module.exports.JpipCodestreamSizesCalculator = function JpipCodestreamSizesCalcu
     };
     
     this.getHighestQuality = function getHighestQuality() {
-        if (params.defaultNumQualityLayers === undefined) {
+        if (params.highestQuality === undefined) {
             throw 'This method is available only when jpipSizesCalculator ' +
                 'is created from params returned by jpipCodestreamClient. ' +
                 'It shall be used for JPIP API purposes only';
         }
         
-        return params.defaultNumQualityLayers;
+        return params.highestQuality;
     };
     
     // Private methods

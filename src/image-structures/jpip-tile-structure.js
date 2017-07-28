@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipTileStructure = function JpipTileStructure(
+module.exports = function JpipTileStructure(
     sizeParams,
     codestreamStructure,
     jpipFactory,
