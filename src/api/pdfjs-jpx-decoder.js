@@ -8,7 +8,7 @@ function PdfjsJpxDecoder() {
     this._image = new JpxImage();
 }
 
-PdfjsJpxDecoder.prototype.decode = function decode(data) {
+PdfjsJpxDecoder.prototype.start = function start(data) {
     var self = this;
     return new Promise(function(resolve, reject) {
         var regionToParse = {

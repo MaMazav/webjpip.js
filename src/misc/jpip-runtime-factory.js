@@ -13,6 +13,7 @@ var JpipComponentStructure                    = require('jpip-component-structur
 var CompositeArray                            = require('composite-array.js'                                );
 var JpipDatabinParts                          = require('jpip-databin-parts.js'                             );
 var JpipDatabinsSaver                         = require('jpip-databins-saver.js'                            );
+var JpipFetch                                 = require('jpip-fetch.js'                                     );
 var JpipHeaderModifier                        = require('jpip-header-modifier.js'                           );
 var JpipImageDataContext                      = require('jpip-image-data-context.js'                        );
 var JpipLevelCalculator                       = require('jpip-level-calculator.js'                          );
@@ -89,6 +90,10 @@ var jpipRuntimeFactory = {
 		}
         return new JpipFetcher(databinsSaver, options);
     },
+	
+	createFetch: function(fetchContext, requester, progressiveness) {
+		return new JpipFetch(fetchContext, requester, progressiveness);
+	},
     
     createHeaderModifier: function(
         codestreamStructure, offsetsCalculator, progressionOrder) {

@@ -100,7 +100,7 @@ module.exports = function JpipReconnectableRequester(
             };
         
         var channel;
-        var moveDedicatedChannel = dedicatedChannelHandleToMove !== undefined;
+        var moveDedicatedChannel = !!dedicatedChannelHandleToMove;
         
         if (moveDedicatedChannel) {
             channel = dedicatedChannelHandleToMove.internalDedicatedChannel;

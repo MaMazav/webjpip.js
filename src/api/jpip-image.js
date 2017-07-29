@@ -73,7 +73,7 @@ function JpipImage(options) {
 
 	this.getWorkerTypeOptions = function getWorkerTypeOptions(taskType) {
 		return {
-			ctorName: 'PdfjsJpxDecoder',
+			ctorName: 'webjpip.PdfjsJpxDecoder',
 			ctorArgs: [],
 			scriptsToImport: [getScriptName(new Error())]
 		};

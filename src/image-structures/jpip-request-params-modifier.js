@@ -6,7 +6,7 @@ module.exports = JpipRequestParamsModifier;
 
 function JpipRequestParamsModifier(codestreamStructure) {
 	this.modify = function modify(codestreamPartParams, options) {
-		var codestreamPartParamsModified = castCodestreamPartParams();
+		var codestreamPartParamsModified = castCodestreamPartParams(codestreamPartParams);
 
 		options = options || {};
 		var useCachedDataOnly = options.useCachedDataOnly;
@@ -28,7 +28,7 @@ function JpipRequestParamsModifier(codestreamStructure) {
 		} else  if (useCachedDataOnly) {
 			progressivenessModified = [ { minNumQualityLayers: 0 } ];
 		} else if (disableProgressiveness) {
-			var quality = codestreamPartParams.quality;
+			var quality = codestreamPartParamsModified.quality;
 			var minNumQualityLayers =
 				quality === undefined ? 'max' : quality;
 			

@@ -113,7 +113,7 @@ function JpipFetch(fetchContext, requester, progressiveness) {
 				codestreamPartParams,
 				requesterCallbackOnAllDataRecieved,
 				requesterCallbackOnFailure,
-				progressiveness[requestedProgressiveStage],
+				progressiveness[requestedProgressiveStage].minNumQualityLayers,
 				dedicatedChannelHandle);
 		});
 	}
