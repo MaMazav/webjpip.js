@@ -84,7 +84,7 @@ function JpipFetch(fetchContext, requester, progressiveness) {
 			throw new jGlobals.jpipExceptions.IllegalOperationException(
 				'Unexpected requestData() after fetch done');
 		}
-		if (serverRequest !== null) {
+		if (serverRequest !== null && dedicatedChannelHandle === null) {
 			throw new jGlobals.jpipExceptions.IllegalOperationException(
 				'Cannot resume already-active-fetch');
 		}
