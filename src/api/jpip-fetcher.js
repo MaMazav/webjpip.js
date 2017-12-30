@@ -8,9 +8,9 @@ module.exports = JpipFetcher;
 function JpipFetcher(databinsSaver, options) {
     options = options || {};
 
-	var isOpenCalled = false;
-	var resolveOpen = null;
-	var rejectOpen = null;
+    var isOpenCalled = false;
+    var resolveOpen = null;
+    var rejectOpen = null;
     var progressionOrder = 'RPCL';
 
     var maxChannelsInSession = options.maxChannelsInSession || 1;
@@ -28,26 +28,26 @@ function JpipFetcher(databinsSaver, options) {
     var codestreamStructure = jpipFactory.createCodestreamStructure(
         structureParser, progressionOrder);
 
-	var requester = jpipFactory.createReconnectableRequester(
+    var requester = jpipFactory.createReconnectableRequester(
         maxChannelsInSession,
         maxRequestsWaitingForResponseInChannel,
         codestreamStructure,
         databinsSaver);
 
-	var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
+    var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
 
-	requester.setStatusCallback(requesterStatusCallback);
+    requester.setStatusCallback(requesterStatusCallback);
     
     this.open = function open(baseUrl) {
-		if (isOpenCalled) {
-			throw 'webJpip error: Cannot call JpipFetcher.open() twice';
-		}
-		
-		return new Promise(function(resolve, reject) {
-			resolveOpen = resolve;
-			rejectOpen = reject;
-			requester.open(baseUrl);
-		});
+        if (isOpenCalled) {
+            throw 'webJpip error: Cannot call JpipFetcher.open() twice';
+        }
+        
+        return new Promise(function(resolve, reject) {
+            resolveOpen = resolve;
+            rejectOpen = reject;
+            requester.open(baseUrl);
+        });
     };
     
     this.close = function close() {
@@ -56,27 +56,27 @@ function JpipFetcher(databinsSaver, options) {
         });
     };
     
-	this.on = function on() {
-		// TODO When JpipFetcher is fully aligned to imageDecoderFramework new API
-	};
+    this.on = function on() {
+        // TODO When JpipFetcher is fully aligned to imageDecoderFramework new API
+    };
 
-	this.startFetch = function startFetch(fetchContext, codestreamPartParams) {
-		var params = paramsModifier.modify(codestreamPartParams);
-		var fetch = createFetch(fetchContext, params.progressiveness);
-		
-		fetch.move(params.codestreamPartParams);
-	};
+    this.startFetch = function startFetch(fetchContext, codestreamPartParams) {
+        var params = paramsModifier.modify(codestreamPartParams);
+        var fetch = createFetch(fetchContext, params.progressiveness);
+        
+        fetch.move(params.codestreamPartParams);
+    };
 
-	this.startMovableFetch = function startMovableFetch(fetchContext, codestreamPartParams) {
-		var params = paramsModifier.modify(codestreamPartParams);
-		var fetch = createFetch(fetchContext, params.progressiveness);
+    this.startMovableFetch = function startMovableFetch(fetchContext, codestreamPartParams) {
+        var params = paramsModifier.modify(codestreamPartParams);
+        var fetch = createFetch(fetchContext, params.progressiveness);
 
         var dedicatedChannelHandle = requester.dedicateChannelForMovableRequest();
-		fetch.setDedicatedChannelHandle(dedicatedChannelHandle);
-		fetchContext.on('move', fetch.move);
+        fetch.setDedicatedChannelHandle(dedicatedChannelHandle);
+        fetchContext.on('move', fetch.move);
 
-		fetch.move(params.codestreamPartParams);
-	};
+        fetch.move(params.codestreamPartParams);
+    };
     
     function createFetch(fetchContext, progressiveness) {
         //var imageDataContext = jpipFactory.createImageDataContext(
@@ -89,15 +89,15 @@ function JpipFetcher(databinsSaver, options) {
         //    //    userContextVars: userContextVars,
         //    //    failureCallback: options.failureCallback
         //    //});
-		
-		var fetch = jpipFactory.createFetch(fetchContext, requester, progressiveness);
+        
+        var fetch = jpipFactory.createFetch(fetchContext, requester, progressiveness);
 
-		fetchContext.on('isProgressiveChanged', fetch.isProgressiveChanged);
-		fetchContext.on('terminate', fetch.terminate);
-		fetchContext.on('stop', fetch.stop);
-		fetchContext.on('resume', fetch.resum);
-		
-		return fetch;
+        fetchContext.on('isProgressiveChanged', fetch.isProgressiveChanged);
+        fetchContext.on('terminate', fetch.terminate);
+        fetchContext.on('stop', fetch.stop);
+        fetchContext.on('resume', fetch.resum);
+        
+        return fetch;
     }
     
     //this.startMovableFetch = function startMovableFetch(imageDataContext, movableFetchState) {
@@ -130,33 +130,33 @@ function JpipFetcher(databinsSaver, options) {
             exception: serializableException
             };
         
-		if (!resolveOpen || (!status.isReady && !status.exception)) {
-			return;
-		}
-		
-		var localResolve = resolveOpen;
-		var localReject = rejectOpen;
-		resolveOpen = null;
-		rejectOpen = null;
+        if (!resolveOpen || (!status.isReady && !status.exception)) {
+            return;
+        }
+        
+        var localResolve = resolveOpen;
+        var localReject = rejectOpen;
+        resolveOpen = null;
+        rejectOpen = null;
 
-		if (!status.isReady) {
-			localReject(status.exception);
-			return;
-		}
-		
+        if (!status.isReady) {
+            localReject(status.exception);
+            return;
+        }
+        
         var params = codestreamStructure.getSizesParams();
         var clonedParams = JSON.parse(JSON.stringify(params));
         
         var tile = codestreamStructure.getDefaultTileStructure();
         var component = tile.getDefaultComponentStructure();
 
-		clonedParams.imageLevel = 0;
-		clonedParams.lowestQuality = 1;
+        clonedParams.imageLevel = 0;
+        clonedParams.lowestQuality = 1;
         clonedParams.highestQuality = tile.getNumQualityLayers();
         clonedParams.numResolutionLevelsForLimittedViewer =
             component.getNumResolutionLevels();
         
-		localResolve(clonedParams);
+        localResolve(clonedParams);
     }
     
     return this;

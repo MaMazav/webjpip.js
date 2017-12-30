@@ -6,7 +6,7 @@ function clearForCodestreamClientTest() {
 }
 
 function createCodestreamForTest(options) {
-    var client = new jpipExports.JpipCodestreamClient(options);
+    var client = new jpipExports.JpipImage(options);
     return client;
 }
 
