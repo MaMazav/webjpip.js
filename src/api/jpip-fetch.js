@@ -5,150 +5,150 @@ module.exports = JpipFetch;
 var jGlobals = require('j2k-jpip-globals.js');
 
 function JpipFetch(fetchContext, requester, progressiveness) {
-	var codestreamPartParams = null;
-	var dedicatedChannelHandle = null;
-	var serverRequest = null;
+    var codestreamPartParams = null;
+    var dedicatedChannelHandle = null;
+    var serverRequest = null;
     var isFailure = false;
-	var isTerminated = false;
-	var isProgressive = false;
-	//var isDone = false;
+    var isTerminated = false;
+    var isProgressive = false;
+    //var isDone = false;
     var requestedProgressiveStage = 0;
     //var reachedQualityLayer = 0;
-	var nextProgressiveStage = 0;
-	
-	this.setDedicatedChannelHandle = function setDedicatedChannelHandle(
-		dedicatedChannelHandle_) {
-		
-		dedicatedChannelHandle = dedicatedChannelHandle_;
-	};
-	
-	this.move = function move(codestreamPartParams_) {
-		if (dedicatedChannelHandle === null && codestreamPartParams !== null) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Cannot move non movable fetch');
-		}
-		codestreamPartParams = codestreamPartParams_;
-		requestData();
-	};
-	
-	this.resume = function resume() {
-		requestData();
-	};
-	
-	this.stop = function stop() {
-		if (serverRequest === null) {
-			if (isTerminated/* || isDone*/) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Cannot stop already terminated fetch');
-			}
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Cannot stop already stopped fetch');
-		}
-		
-		if (!dedicatedChannelHandle) {
-			requester.stopRequestAsync(serverRequest);
-			serverRequest = null;
-		}
-		
-		// NOTE: Send a stop request within JpipRequest and resolve the Promise
-		// only after server response (This is only performance issue, no
-		// functional problem: a new fetch will trigger a JPIP request with
-		// wait=no, and the old request will be actually stopped).
-		return fetchContext.stopped();
-	};
-	
-	this.terminate = function terminate() {
-		if (dedicatedChannelHandle) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Unexpected terminate event on movable fetch');
-		}
-		if (isTerminated) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Double terminate event');
-		}
-		
-		serverRequest = null;
-		isTerminated = true;
-	};
-	
-	this.isProgressiveChanged = function isProgressiveChanged(isProgressive_) {
-		isProgressive = isProgressive_;
-		if (dedicatedChannelHandle && serverRequest !== null) {
-			serverRequest = null;
-			requestData();
-		}
-	};
-	
-	function requestData() {
-		if (nextProgressiveStage >= progressiveness.length) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Unexpected requestData() after fetch done');
-		}
-		if (serverRequest !== null && dedicatedChannelHandle === null) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Cannot resume already-active-fetch');
-		}
-		
-		if (isTerminated) {
-			throw new jGlobals.jpipExceptions.IllegalOperationException(
-				'Cannot resume already-terminated-fetch');
-		}
+    var nextProgressiveStage = 0;
+    
+    this.setDedicatedChannelHandle = function setDedicatedChannelHandle(
+        dedicatedChannelHandle_) {
+        
+        dedicatedChannelHandle = dedicatedChannelHandle_;
+    };
+    
+    this.move = function move(codestreamPartParams_) {
+        if (dedicatedChannelHandle === null && codestreamPartParams !== null) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Cannot move non movable fetch');
+        }
+        codestreamPartParams = codestreamPartParams_;
+        requestData();
+    };
+    
+    this.resume = function resume() {
+        requestData();
+    };
+    
+    this.stop = function stop() {
+        if (serverRequest === null) {
+            if (isTerminated/* || isDone*/) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Cannot stop already terminated fetch');
+            }
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Cannot stop already stopped fetch');
+        }
+        
+        if (!dedicatedChannelHandle) {
+            requester.stopRequestAsync(serverRequest);
+            serverRequest = null;
+        }
+        
+        // NOTE: Send a stop request within JpipRequest and resolve the Promise
+        // only after server response (This is only performance issue, no
+        // functional problem: a new fetch will trigger a JPIP request with
+        // wait=no, and the old request will be actually stopped).
+        return fetchContext.stopped();
+    };
+    
+    this.terminate = function terminate() {
+        if (dedicatedChannelHandle) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Unexpected terminate event on movable fetch');
+        }
+        if (isTerminated) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Double terminate event');
+        }
+        
+        serverRequest = null;
+        isTerminated = true;
+    };
+    
+    this.isProgressiveChanged = function isProgressiveChanged(isProgressive_) {
+        isProgressive = isProgressive_;
+        if (dedicatedChannelHandle && serverRequest !== null) {
+            serverRequest = null;
+            requestData();
+        }
+    };
+    
+    function requestData() {
+        if (nextProgressiveStage >= progressiveness.length) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Unexpected requestData() after fetch done');
+        }
+        if (serverRequest !== null && dedicatedChannelHandle === null) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Cannot resume already-active-fetch');
+        }
+        
+        if (isTerminated) {
+            throw new jGlobals.jpipExceptions.IllegalOperationException(
+                'Cannot resume already-terminated-fetch');
+        }
 
-		setTimeout(function() {
-			if (nextProgressiveStage >= progressiveness.length ||
-				serverRequest !== null ||
-				isTerminated) {
-					
-				return;
-			}
-			
-			//if (isDone) {
-			//	return;
-			//}
-			
-			requestedProgressiveStage =
-				isProgressive ? nextProgressiveStage : progressiveness.length - 1;
-				
-			serverRequest = requester.requestData(
-				codestreamPartParams,
-				requesterCallbackOnAllDataRecieved,
-				requesterCallbackOnFailure,
-				progressiveness[requestedProgressiveStage].minNumQualityLayers,
-				dedicatedChannelHandle);
-		});
-	}
+        setTimeout(function() {
+            if (nextProgressiveStage >= progressiveness.length ||
+                serverRequest !== null ||
+                isTerminated) {
+                    
+                return;
+            }
+            
+            //if (isDone) {
+            //    return;
+            //}
+            
+            requestedProgressiveStage =
+                isProgressive ? nextProgressiveStage : progressiveness.length - 1;
+                
+            serverRequest = requester.requestData(
+                codestreamPartParams,
+                requesterCallbackOnAllDataRecieved,
+                requesterCallbackOnFailure,
+                progressiveness[requestedProgressiveStage].minNumQualityLayers,
+                dedicatedChannelHandle);
+        });
+    }
 
-	function requesterCallbackOnAllDataRecieved(request, isResponseDone) {
-		serverRequest = null;
-		if (!isResponseDone) {
-			return;
-		}
-		
-		//if (isTerminated && requestedQualityLayer > reachedQualityLayer) {
-		//	throw new jGlobals.jpipExceptions.IllegalDataException(
-		//		'JPIP server not returned all data', 'D.3');
-		//}
-		nextProgressiveStage = requestedProgressiveStage;
-		if (nextProgressiveStage >= progressiveness.length) {
-			fetchContext.done();
-		}
-	};
+    function requesterCallbackOnAllDataRecieved(request, isResponseDone) {
+        serverRequest = null;
+        if (!isResponseDone) {
+            return;
+        }
+        
+        //if (isTerminated && requestedQualityLayer > reachedQualityLayer) {
+        //    throw new jGlobals.jpipExceptions.IllegalDataException(
+        //        'JPIP server not returned all data', 'D.3');
+        //}
+        nextProgressiveStage = requestedProgressiveStage;
+        if (nextProgressiveStage >= progressiveness.length) {
+            fetchContext.done();
+        }
+    };
 
-	function requesterCallbackOnFailure() {
-		//updateStatus(STATUS_ENDED, 'endAsync()');
-		
-		//if (failureCallback !== undefined) {
-		//    failureCallback(self, userContextVars);
-		//} else {
-		//    isFailure = true;
-		//}
-		isFailure = true;
+    function requesterCallbackOnFailure() {
+        //updateStatus(STATUS_ENDED, 'endAsync()');
+        
+        //if (failureCallback !== undefined) {
+        //    failureCallback(self, userContextVars);
+        //} else {
+        //    isFailure = true;
+        //}
+        isFailure = true;
 
-		//if (isMoved) {
-		//	throw new jGlobals.jpipExceptions.InternalErrorException(
-		//		'Failure callback to an old fetch which has been already moved');
-		//}
-	};
+        //if (isMoved) {
+        //    throw new jGlobals.jpipExceptions.InternalErrorException(
+        //        'Failure callback to an old fetch which has been already moved');
+        //}
+    };
 }
 
 //function JpipFetchHandle(requester, imageDataContext, dedicatedChannelHandle) {

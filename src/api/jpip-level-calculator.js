@@ -55,11 +55,11 @@ module.exports = function JpipLevelCalculator(
                 'It shall be used for JPIP API purposes only';
         }
         
-		var levelX = Math.log((regionImageLevel.maxXExclusive - regionImageLevel.minX) / regionImageLevel.screenWidth ) / LOG2;
-		var levelY = Math.log((regionImageLevel.maxYExclusive - regionImageLevel.minY) / regionImageLevel.screenHeight) / LOG2;
-		var level = Math.ceil(Math.max(levelX, levelY));
-		level = Math.max(0, Math.min(params.numResolutionLevelsForLimittedViewer - 1, level));
-		return level;
+        var levelX = Math.log((regionImageLevel.maxXExclusive - regionImageLevel.minX) / regionImageLevel.screenWidth ) / LOG2;
+        var levelY = Math.log((regionImageLevel.maxYExclusive - regionImageLevel.minY) / regionImageLevel.screenHeight) / LOG2;
+        var level = Math.ceil(Math.max(levelX, levelY));
+        level = Math.max(0, Math.min(params.numResolutionLevelsForLimittedViewer - 1, level));
+        return level;
     };
     
     this.getNumResolutionLevelsForLimittedViewer =

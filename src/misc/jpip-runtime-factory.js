@@ -85,15 +85,15 @@ var jpipRuntimeFactory = {
     
     createFetcher: function(databinsSaver, options) {
         if (!JpipFetcher) {
-			// Avoid dependency - load only on runtime
-			JpipFetcher = require('jpip-fetcher.js');
-		}
+            // Avoid dependency - load only on runtime
+            JpipFetcher = require('jpip-fetcher.js');
+        }
         return new JpipFetcher(databinsSaver, options);
     },
-	
-	createFetch: function(fetchContext, requester, progressiveness) {
-		return new JpipFetch(fetchContext, requester, progressiveness);
-	},
+    
+    createFetch: function(fetchContext, requester, progressiveness) {
+        return new JpipFetch(fetchContext, requester, progressiveness);
+    },
     
     createHeaderModifier: function(
         codestreamStructure, offsetsCalculator, progressionOrder) {
@@ -147,12 +147,12 @@ var jpipRuntimeFactory = {
             qualityLayersCache,
             jpipRuntimeFactory);
     },
-	
-	createRequestParamsModifier: function createRequestParamsModifier(
-		codestreamStructure) {
-		
-		return new JpipRequestParamsModifier(codestreamStructure);
-	},
+    
+    createRequestParamsModifier: function createRequestParamsModifier(
+        codestreamStructure) {
+        
+        return new JpipRequestParamsModifier(codestreamStructure);
+    },
     
     createRequest: function createRequest(
         sessionHelper, channel, requestUrl, callback, failureCallback) {
