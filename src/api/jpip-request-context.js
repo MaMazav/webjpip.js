@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports = (function JpipRequestContext() {
+module.exports.JpipRequestContext = (function JpipRequestContext() {
     var STATUS_ACTIVE = 1;
     var STATUS_WAITING_FOR_USER_INPUT = 2;
     var STATUS_PAUSED = 3;
@@ -92,6 +92,31 @@ module.exports = (function JpipRequestContext() {
             isFailure = false;
         };
         
+        //this.getDataForDecode = function getDataForDecode(maxNumQualityLayers) {
+        //    var packetsData = this.getAllCodeblocksData(
+        //        maxNumQualityLayers);
+        //        
+        //    var headersCodestream = this.createCodestream(
+        //        /*isOnlyHeadersWithoutBitstream=*/true);
+        //    
+        //    // NOTE: This can be done more efficiently within reconstruction,
+        //    // if the array is lazily built from the databin parts and then
+        //    // copied to a new arrayBuffer directly
+        //    
+        //    var typedArray = new Uint8Array(headersCodestream.codestream.length);
+        //    for (var i = 0; i < headersCodestream.codestream.length; ++i) {
+        //        typedArray[i] = headersCodestream.codestream[i];
+        //    }
+        //    
+        //    headersCodestream.codestream = typedArray;
+        //    
+        //    return {
+        //        packetsData: packetsData,
+        //        headersCodestream: headersCodestream,
+        //        allRelevantBytesLoaded: headersCodestream.allRelevantBytesLoaded
+        //        };
+        //};
+        
         //this.createCodestream = function createCodestream(
         //    isOnlyHeadersWithoutBitstream, quality) {
         //    
@@ -112,7 +137,7 @@ module.exports = (function JpipRequestContext() {
         //    
         //    return codestream;
         //};
-        
+
         this.getNewCodeblocksData = function getNewCodeblocksData(
             quality) {
             
