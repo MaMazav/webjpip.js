@@ -72,10 +72,14 @@ function JpipImage(options) {
     };
 
     this.getWorkerTypeOptions = function getWorkerTypeOptions(taskType) {
+        var codestreamTransferable = [0, 'headersCodestream', 'codestream', 'buffer'];
+        var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
         return {
             ctorName: 'webjpip.PdfjsJpxDecoder',
             ctorArgs: [],
-            scriptsToImport: [getScriptName(new Error())]
+            scriptsToImport: [getScriptName(new Error())],
+            transferables: [codestreamTransferable, codeblockTransferable],
+            pathToTransferablesInPromiseResult: [[]]
         };
     };
 
