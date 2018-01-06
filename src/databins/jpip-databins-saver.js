@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipDatabinsSaver = function JpipDatabinsSaver(isJpipTilePartStream, jpipFactory) {
+module.exports = function JpipDatabinsSaver(isJpipTilePartStream, jpipFactory) {
     var PRECINCT_NO_AUX_CLASS = 0;
     var PRECINCT_WITH_AUX_CLASS = 1;
     var TILE_HEADER_CLASS = 2;

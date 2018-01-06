@@ -2,7 +2,7 @@
 
 var mockFactoryForCodestreamStructureTest = Object.create(jpipMockFactory);
 
-mockFactoryForCodestreamStructureTest.createCodestreamSizesCalculator =
+mockFactoryForCodestreamStructureTest.createLevelCalculator =
     function(params) {
         // NOTE: Now the sizesCalculator and codestreamStructure are
         // considered one unit in testing. They should be tested
@@ -10,7 +10,7 @@ mockFactoryForCodestreamStructureTest.createCodestreamSizesCalculator =
         // directly to the sizesCalculator and it doesn't need the
         // codestreamStructure at all.
         
-        return new jpipExports.JpipCodestreamSizesCalculator(params);
+        return new jpipExports.JpipLevelCalculator(params);
     };
 
 mockFactoryForCodestreamStructureTest.createTileStructure =

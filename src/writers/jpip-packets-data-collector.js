@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipPacketsDataCollector = function JpipPacketsDataCollector(
+module.exports = function JpipPacketsDataCollector(
     codestreamStructure,
     databinsSaver,
     qualityLayersCache,

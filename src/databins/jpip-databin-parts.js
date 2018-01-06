@@ -2,7 +2,7 @@
 
 // A.2.1.
 
-module.exports.JpipDatabinParts = function JpipDatabinParts(
+module.exports = function JpipDatabinParts(
     classId, inClassId, jpipFactory) {
 
     var self = this;

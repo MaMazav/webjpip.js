@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipReconnectableRequester = function JpipReconnectableRequester(
+module.exports = function JpipReconnectableRequester(
     maxChannelsInSession,
     maxRequestsWaitingForResponseInChannel, 
     codestreamStructure,
@@ -100,7 +100,7 @@ module.exports.JpipReconnectableRequester = function JpipReconnectableRequester(
             };
         
         var channel;
-        var moveDedicatedChannel = dedicatedChannelHandleToMove !== undefined;
+        var moveDedicatedChannel = !!dedicatedChannelHandleToMove;
         
         if (moveDedicatedChannel) {
             channel = dedicatedChannelHandleToMove.internalDedicatedChannel;

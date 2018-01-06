@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipSessionHelper = function JpipSessionHelper(
+module.exports = function JpipSessionHelper(
     dataRequestUrl,
     knownTargetId,
     codestreamStructure,

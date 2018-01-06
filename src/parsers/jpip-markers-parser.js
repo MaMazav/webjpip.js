@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipMarkersParser = function JpipMarkersParser(
+module.exports = function JpipMarkersParser(
     mainHeaderDatabin, messageHeaderParser, jpipFactory) {
     
     var CACHE_KEY = 'markers';

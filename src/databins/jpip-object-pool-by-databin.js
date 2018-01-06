@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipObjectPoolByDatabin = function JpipObjectPoolByDatabin() {
+module.exports = function JpipObjectPoolByDatabin() {
     var databinIdToObject = [];
     
     this.getObject = function getObject(databin) {

@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
+module.exports = function JpipCodestreamStructure(
     jpipStructureParser,
     jpipFactory,
     progressionOrder) {
@@ -320,8 +320,7 @@ module.exports.JpipCodestreamStructure = function JpipCodestreamStructure(
     function validateParams(self) {
         if (!params) {
             params = jpipStructureParser.parseCodestreamStructure();
-            sizesCalculator = jpipFactory.createCodestreamSizesCalculator(
-                params);
+            sizesCalculator = jpipFactory.createLevelCalculator(params);
         }
     }
     

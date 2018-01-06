@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports.PdfjsJpxDecoder = PdfjsJpxDecoder;
+module.exports = PdfjsJpxDecoder;
 
 var jGlobals = require('j2k-jpip-globals.js');
 
@@ -8,7 +8,7 @@ function PdfjsJpxDecoder() {
     this._image = new pdfjsCoreJpx.JpxImage();
 }
 
-PdfjsJpxDecoder.prototype.decode = function decode(data) {
+PdfjsJpxDecoder.prototype.start = function start(data) {
     var self = this;
     return new Promise(function(resolve, reject) {
         var regionToParse = {

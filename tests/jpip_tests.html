@@ -13,7 +13,7 @@
         <script>
         var module = module || {};
         module.exports = module.exports || {};
-        var jpipExports = module.exports;
+        var jpipExports = {};
         </script>
         
 		<script src="../src/misc/j2k-jpip-globals.js"></script>
@@ -59,11 +59,11 @@
 		<script src="mocks/misc/mockfactoryforreconstructortest.js"></script>
         <script src="mocks/misc/requirestub.js"></script>
 		
-		<script src="../src/databins/composite-array.js"></script>
-		<script src="../src/databins/jpip-databin-parts.js"></script>
-		<script src="../src/databins/jpip-databins-saver.js"></script>
-		<script src="../src/databins/jpip-object-pool-by-databin.js"></script>
-		<script src="../src/databins/jpip-request-databins-listener.js"></script>
+		<script src="../src/databins/composite-array.js"></script> <script>jpipExports.CompositeArray = module.exports</script>
+		<script src="../src/databins/jpip-databin-parts.js"></script> <script>jpipExports.JpipDatabinParts = module.exports</script>
+		<script src="../src/databins/jpip-databins-saver.js"></script> <script>jpipExports.JpipDatabinsSaver = module.exports</script>
+		<script src="../src/databins/jpip-object-pool-by-databin.js"></script> <script>jpipExports.JpipObjectPoolByDatabin = module.exports</script>
+		<script src="../src/databins/jpip-request-databins-listener.js"></script> <script>jpipExports.JpipRequestDatabinsListener = module.exports</script>
 		<script src="databins/performdatabinpartstest.js"></script>
 		<script src="databins/compositearraytests.js"></script>
 		<script src="databins/jpipdatabinpartstests.js"></script>
@@ -71,21 +71,21 @@
 		<script src="databins/jpipobjectpoolbydatabintests.js"></script>
 		<script src="databins/jpiprequestdatabinslistenertests.js"></script>
 		
-		<script src="../src/parsers/jpip-markers-parser.js"></script>
-		<script src="../src/parsers/jpip-structure-parser.js"></script>
-		<script src="../src/parsers/jpip-offsets-calculator.js"></script>
+		<script src="../src/parsers/jpip-markers-parser.js"></script> <script>jpipExports.JpipMarkersParser = module.exports</script>
+		<script src="../src/parsers/jpip-structure-parser.js"></script> <script>jpipExports.JpipStructureParser = module.exports</script>
+		<script src="../src/parsers/jpip-offsets-calculator.js"></script> <script>jpipExports.JpipOffsetsCalculator = module.exports</script>
 		<script src="parsers/jpipmarkersparsertests.js"></script>
 		<script src="parsers/jpipstructureparsertests.js"></script>
 		<script src="parsers/jpipoffsetscalculatortests.js"></script>
 		
-		<script src="../src/quality-layers/mutual-exclusive-transaction-helper.js"></script>
-		<script src="../src/quality-layers/jpip-bitstream-reader.js"></script>
-		<script src="../src/quality-layers/jpip-coding-passes-number-parser.js"></script>
-		<script src="../src/quality-layers/jpip-codeblock-length-parser.js"></script>
-		<script src="../src/quality-layers/jpip-packet-length-calculator.js"></script>
-		<script src="../src/quality-layers/jpip-quality-layers-cache.js"></script>
-		<script src="../src/quality-layers/jpip-subband-length-in-packet-header-calculator.js"></script>
-		<script src="../src/quality-layers/jpip-tag-tree.js"></script>
+		<script src="../src/quality-layers/mutual-exclusive-transaction-helper.js"></script> <script>jpipExports.mutualExclusiveTransactionHelper = module.exports</script>
+		<script src="../src/quality-layers/jpip-bitstream-reader.js"></script> <script>jpipExports.JpipBitstreamReader = module.exports</script>
+		<script src="../src/quality-layers/jpip-coding-passes-number-parser.js"></script> <script>jpipExports.jpipCodingPassesNumberParser = module.exports</script>
+		<script src="../src/quality-layers/jpip-codeblock-length-parser.js"></script> <script>jpipExports.JpipCodeblockLengthParser = module.exports</script>
+		<script src="../src/quality-layers/jpip-packet-length-calculator.js"></script> <script>jpipExports.JpipPacketLengthCalculator = module.exports</script>
+		<script src="../src/quality-layers/jpip-quality-layers-cache.js"></script> <script>jpipExports.JpipQualityLayersCache = module.exports</script>
+		<script src="../src/quality-layers/jpip-subband-length-in-packet-header-calculator.js"></script> <script>jpipExports.JpipSubbandLengthInPacketHeaderCalculator = module.exports</script>
+		<script src="../src/quality-layers/jpip-tag-tree.js"></script> <script>jpipExports.JpipTagTree = module.exports</script>
 		<script src="qualitylayers/qualitylayerscachetesthelper.js"></script>
 		<script src="qualitylayers/qualitylayerstesthelper.js"></script>
 		<script src="qualitylayers/mutualexclusivetransactionhelpertests.js"></script>
@@ -97,28 +97,29 @@
 		<script src="qualitylayers/jpipsubbandlengthinpacketheadercalculatortests.js"></script>
 		<script src="qualitylayers/jpiptagtreetests.js"></script>
 
-		<script src="../src/image-structures/jpip-codestream-structure.js"></script>
-		<script src="../src/image-structures/jpip-tile-structure.js"></script>
-		<script src="../src/image-structures/jpip-component-structure.js"></script>
+		<script src="../src/image-structures/jpip-codestream-structure.js"></script> <script>jpipExports.JpipCodestreamStructure = module.exports</script>
+		<script src="../src/image-structures/jpip-component-structure.js"></script> <script>jpipExports.JpipComponentStructure = module.exports</script>
+		<script src="../src/image-structures/jpip-tile-structure.js"></script> <script>jpipExports.JpipTileStructure = module.exports</script>
+		<script src="../src/image-structures/jpip-request-params-modifier.js"></script> <script>jpipExports.JpipRequestParamsModifier = module.exports</script>
 		<script src="imagestructures/jpipstructuretesthelper.js"></script>
 		<script src="imagestructures/jpipcodestreamstructuretests.js"></script>
-		<script src="imagestructures/jpiptilestructuretests.js"></script>
 		<script src="imagestructures/jpipcomponentstructuretests.js"></script>
+		<script src="imagestructures/jpiptilestructuretests.js"></script>
 		
-		<script src="../src/writers/jpip-header-modifier.js"></script>
-		<script src="../src/writers/jpip-codestream-reconstructor.js"></script>
-		<script src="../src/writers/jpip-packets-data-collector.js"></script>
+		<script src="../src/writers/jpip-header-modifier.js"></script> <script>jpipExports.JpipHeaderModifier = module.exports</script>
+		<script src="../src/writers/jpip-codestream-reconstructor.js"></script> <script>jpipExports.JpipCodestreamReconstructor = module.exports</script>
+		<script src="../src/writers/jpip-packets-data-collector.js"></script> <script>jpipExports.JpipPacketsDataCollector = module.exports</script>
 		<script src="writers/jpipreconstructiontesthelper.js"></script>
 		<script src="writers/jpipheadermodifiertests.js"></script>
 		<script src="writers/jpipcodestreamreconstructortests.js"></script>
 		<script src="writers/jpippacketsdatacollectortests.js"></script>
 
-		<script src="../src/protocol/jpip-channel.js"></script>
-		<script src="../src/protocol/jpip-message-header-parser.js"></script>
-		<script src="../src/protocol/jpip-reconnectable-requester.js"></script>
-		<script src="../src/protocol/jpip-request.js"></script>
-		<script src="../src/protocol/jpip-session-helper.js"></script>
-		<script src="../src/protocol/jpip-session.js"></script>
+		<script src="../src/protocol/jpip-channel.js"></script> <script>jpipExports.JpipChannel = module.exports</script>
+		<script src="../src/protocol/jpip-message-header-parser.js"></script> <script>jpipExports.JpipMessageHeaderParser = module.exports</script>
+		<script src="../src/protocol/jpip-reconnectable-requester.js"></script> <script>jpipExports.JpipReconnectableRequester = module.exports</script>
+		<script src="../src/protocol/jpip-request.js"></script> <script>jpipExports.JpipRequest = module.exports</script>
+		<script src="../src/protocol/jpip-session-helper.js"></script> <script>jpipExports.JpipSessionHelper = module.exports</script>
+		<script src="../src/protocol/jpip-session.js"></script> <script>jpipExports.JpipSession = module.exports</script>
 		<script src="protocol/jpipchanneltests.js"></script>
 		<script src="protocol/jpipmessageheaderparsertests.js"></script>
 		<script src="protocol/jpipreconnectablerequestertests.js"></script>
@@ -126,11 +127,12 @@
 		<script src="protocol/jpipsessionhelpertests.js"></script>
 		<script src="protocol/jpipsessiontests.js"></script>
 		
-		<script src="../src/api/jpip-codestream-client.js"></script>
-		<script src="../src/api/jpip-codestream-sizes-calculator.js"></script>
-        <script src="../src/api/jpip-fetch-handle.js"></script>
-        <script src="../src/api/jpip-image-data-context.js"></script>
-		<script src="api/jpipcodestreamclienttests.js"></script>
+        <script src="../src/api/jpip-fetch.js"></script> <script>jpipExports.JpipFetch = module.exports</script>
+        <script src="../src/api/jpip-fetcher.js"></script> <script>jpipExports.JpipFetcher = module.exports</script>
+		<script src="../src/api/jpip-image.js"></script> <script>jpipExports.JpipImage = module.exports</script>
+        <script src="../src/api/jpip-image-data-context.js"></script> <script>jpipExports.JpipImageDataContext = module.exports</script>
+		<script src="../src/api/jpip-level-calculator.js"></script> <script>jpipExports.JpipLevelCalculator = module.exports</script>
+		<!--<script src="api/jpipcodestreamclienttests.js"></script>-->
 		<script src="api/jpipcodestreamsizescalculatortests.js"></script>
         <script src="api/jpipfetchhandle.js"></script>
         <script src="api/jpipimagedatacontexttests.js"></script>

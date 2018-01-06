@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipHeaderModifier = function JpipHeaderModifier(
+module.exports = function JpipHeaderModifier(
     codestreamStructure, offsetsCalculator, progressionOrder) {
 
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);
@@ -10,7 +10,9 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
     this.modifyMainOrTileHeader = function modifyMainOrTileHeader(
         result, originalDatabin, databinOffsetInResult, level) {
         
-        modifyProgressionOrder(result, originalDatabin, databinOffsetInResult);
+        if (!result.dummyBufferForLengthCalculation) {
+            modifyProgressionOrder(result, originalDatabin, databinOffsetInResult);
+        }
         
         if (level === undefined) {
             return 0;
@@ -20,7 +22,7 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
             offsetsCalculator.getRangesOfBestResolutionLevelsData(
                 originalDatabin, level);
         
-        if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null) {
+        if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null && !result.dummyBufferForLengthCalculation) {
             var offset =
                 databinOffsetInResult +
                 bestResolutionLevelsRanges.numDecompositionLevelsOffset;
@@ -36,6 +38,10 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
     };
     
     this.modifyImageSize = function modifyImageSize(result, codestreamPartParams) {
+        if (result.dummyBufferForLengthCalculation) {
+            return;
+        }
+        
         var newTileWidth = codestreamStructure.getTileWidth(
             codestreamPartParams.level);
         var newTileHeight = codestreamStructure.getTileHeight(
@@ -84,19 +90,21 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
             return 0; // zero bytes removed
         }
         
-        for (var i = 0; i < rangesToRemove.length; ++i) {
-            var offset =
-                addOffset +
-                rangesToRemove[i].markerSegmentLengthOffset;
+        if (!result.dummyBufferForLengthCalculation) {
+            for (var i = 0; i < rangesToRemove.length; ++i) {
+                var offset =
+                    addOffset +
+                    rangesToRemove[i].markerSegmentLengthOffset;
+                    
+                var originalMarkerSegmentLength =
+                    (result[offset] << 8) + result[offset + 1];
                 
-            var originalMarkerSegmentLength =
-                (result[offset] << 8) + result[offset + 1];
-            
-            var newMarkerSegmentLength =
-                originalMarkerSegmentLength - rangesToRemove[i].length;
-            
-            result[offset] = newMarkerSegmentLength >>> 8;
-            result[offset + 1] = newMarkerSegmentLength & 0xFF;
+                var newMarkerSegmentLength =
+                    originalMarkerSegmentLength - rangesToRemove[i].length;
+                
+                result[offset] = newMarkerSegmentLength >>> 8;
+                result[offset + 1] = newMarkerSegmentLength & 0xFF;
+            }
         }
         
         var offsetTarget = addOffset + rangesToRemove[0].start;
@@ -121,6 +129,10 @@ module.exports.JpipHeaderModifier = function JpipHeaderModifier(
     }
 
     function modifyInt32(bytes, offset, newValue) {
+        if (bytes.dummyBufferForLengthCalculation) {
+            return;
+        }
+        
         bytes[offset++] = newValue >>> 24;
         bytes[offset++] = (newValue >>> 16) & 0xFF;
         bytes[offset++] = (newValue >>> 8) & 0xFF;

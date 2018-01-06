@@ -2,6 +2,7 @@
 
 var dummyObjectsForCodestreamTest = {
     codestreamReconstructor: 'codestreamReconstructor',
+    fetcher: 'fetcher',
     headerModifier: 'headerModifier',
     mainHeaderDatabin: { name: 'mainHeaderDatabin', clearCacheForTest: function() {} },
     markersParser: 'markersParser',
@@ -84,6 +85,15 @@ mockFactoryForCodestreamClientTest.createDatabinsSaver = function(isJpipTilepart
     return mockFactoryForCodestreamClientTest.databinsSaver;
 };
 
+mockFactoryForCodestreamClientTest.createFetcher = function(databinsSaver, options) {
+    mockFactoryForCodestreamClientTest.fetcherArgs = {
+        databinsSaver: databinsSaver,
+        options: options
+        };
+    
+    return mockFactoryForCodestreamClientTest.fetcher;
+};
+
 mockFactoryForCodestreamClientTest.createHeaderModifier =
     function(codestreamStructure, offsetsCalculator, progressionOrder) {
     
@@ -144,6 +154,13 @@ mockFactoryForCodestreamClientTest.createImageDataContext = function createImage
         };
         
     return mockFactoryForCodestreamClientTest.imageDataContext;
+};
+
+mockFactoryForCodestreamClientTest.createRequestParamsModifier = function createRequestParamsModifier(
+        codestreamStructure) {
+    
+    // NOTE: Currently JpipImage and JpipRequestParamsModifier are tested together. Should be separated
+    return new jpipExports.JpipRequestParamsModifier(codestreamStructure);
 };
 
 mockFactoryForCodestreamClientTest.createStructureParser = function(databinsSaver, markersParser, offsetsCalculator) {

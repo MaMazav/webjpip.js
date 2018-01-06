@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.CompositeArray = function CompositeArray(offset) {
+module.exports = function CompositeArray(offset) {
     var length = 0;
     var internalParts = [];
     
