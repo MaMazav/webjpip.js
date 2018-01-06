@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.simpleAjaxHelper = {
+module.exports = {
     request: function request(
         url,
         callbackForAsynchronousRequest,

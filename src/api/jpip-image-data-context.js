@@ -1,6 +1,8 @@
+'use strict';
+
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipImageDataContext = JpipImageDataContext;
+module.exports = JpipImageDataContext;
 
 function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness) {
     this._codestreamPartParams = codestreamPartParams;
@@ -229,6 +231,6 @@ JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDa
 
 JpipImageDataContext.prototype._ensureNotDisposed = function ensureNotDisposed() {
     if (this.isDisposed()) {
-        throw new jpipExceptions.IllegalOperationException('Cannot use ImageDataContext after disposed');
+        throw new jGlobals.jpipExceptions.IllegalOperationException('Cannot use ImageDataContext after disposed');
     }
 };

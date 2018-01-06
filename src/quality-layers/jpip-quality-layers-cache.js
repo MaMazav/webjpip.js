@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipQualityLayersCache = function JpipQualityLayersCache(
+module.exports = function JpipQualityLayersCache(
     codestreamStructure, jpipFactory) {
     
     var CACHE_KEY = 'packetLengthCalculator';

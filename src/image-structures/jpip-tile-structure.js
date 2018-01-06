@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipTileStructure = function JpipTileStructure(
+module.exports = function JpipTileStructure(
     sizeParams,
     codestreamStructure,
     jpipFactory,
@@ -347,15 +347,16 @@ module.exports.JpipTileStructure = function JpipTileStructure(
         
         var precinctSize = getPrecinctSizeFunction(resolutionLevel);
         var levelSize = getLevelSizeFunction(resolutionLevel);
+        var tileSize = getTileSizeFunction(resolutionLevel);
         
-        if (precinctSize > levelSize) {
-            // Precinct is larger than image thus anyway tile has a single
-            // precinct
+        if (precinctSize >= levelSize || tileSize >= levelSize) {
+            // precinctSize >= levelSize ==> Precinct is larger than image thus
+            // anyway tile has a single precinct
+            // tileSize >= levelSize ==> Level has only single tile thus no
+            // chances for tile top-left to not match first precinct top-left
             
             return true;
         }
-        
-        var tileSize = getTileSizeFunction(resolutionLevel);
         
         var isPrecinctPartitionFitsToTilePartition =
             precinctSize % tileSize === 0 ||

@@ -13,8 +13,8 @@ var jpipMockFactory = {
         throw 'Unexpected call to createCodestreamReconstructor. Fix test';
     },
     
-    createCodestreamSizesCalculator: function(params) {
-        throw 'Unexpected call to createCodestreamSizesCalculator. Fix test';
+    createLevelCalculator: function(params) {
+        throw 'Unexpected call to createLevelCalculator. Fix test';
     },
     
     createCodestreamStructure: function(structureParser, progressionOrder) {
@@ -37,10 +37,10 @@ var jpipMockFactory = {
         throw 'Unexpected call to createDatabinsSaver. Fix test';
     },
     
-    createFetchHandle: function(
+    createFetcher: function(
         requester, imageDataContext, dedicatedChannelHandle) {
             
-        throw 'Unexpected call to createFetchHandle. Fix test';
+        throw 'Unexpected call to createFetcher. Fix test';
     },
     
     createHeaderModifier: function(
@@ -73,6 +73,22 @@ var jpipMockFactory = {
         throw 'Unexpected call to createPacketsDataCollector. Fix test';
     },
     
+    createRequestDatabinsListener: function createRequestDatabinsListener(
+        codestreamPartParams,
+        qualityLayerReachedCallback,
+        codestreamStructure,
+        databinsSaver,
+        qualityLayersCache) {
+        
+        throw 'Unexpected call to createRequestDatabinsListener. Fix test';
+    },
+    
+    createRequestParamsModifier: function createRequestParamsModifier(
+        codestreamStructure) {
+        
+        throw 'Unexpected call to createRequestParamsModifier. Fix test';
+    },
+    
     createRequest: function createRequest(
         sessionHelper, channel, requestUrl, callback, failureCallback) {
         
@@ -102,26 +118,6 @@ var jpipMockFactory = {
         databinsSaver) {
         
         throw 'Unexpected call to createReconnectableRequester. Fix test';
-    },
-    
-    createRequestContext: function(
-        jpipObjects,
-        codestreamPartParams,
-        callback,
-        progressiveness,
-        options) {
-        
-        throw 'Unexpected call to old function createRequestContext (replaced with createImageDataContext and createFetchHandle). Fix test';
-    },
-    
-    createRequestDatabinsListener: function createRequestDatabinsListener(
-        codestreamPartParams,
-        qualityLayerReachedCallback,
-        codestreamStructure,
-        databinsSaver,
-        qualityLayersCache) {
-        
-        throw 'Unexpected call to createRequestDatabinsListener. Fix test';
     },
     
     createStructureParser: function(databinsSaver, markersParser, offsetsCalculator) {

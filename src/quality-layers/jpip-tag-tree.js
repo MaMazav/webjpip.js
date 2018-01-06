@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipTagTree = function JpipTagTree(
+module.exports = function JpipTagTree(
     bitstreamReader, width, height, transactionHelper) {
     
     var isAlreadyReadBitsTransactionalObject =

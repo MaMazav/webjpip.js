@@ -1,2376 +1,5 @@
-/* Copyright 2012 Mozilla Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/* globals MozBlobBuilder, URL, global */
-
-'use strict';
-
-(function (root, factory) {
-  if (typeof define === 'function' && define.amd) {
-    define('pdfjs/shared/util', ['exports'], factory);
-  } else if (typeof exports !== 'undefined') {
-    factory(exports);
-  } else {
-    factory((root.pdfjsSharedUtil = {}));
-  }
-}(this, function (exports) {
-
-var globalScope = (typeof window !== 'undefined') ? window :
-                  (typeof global !== 'undefined') ? global :
-                  (typeof self !== 'undefined') ? self : this;
-
-var FONT_IDENTITY_MATRIX = [0.001, 0, 0, 0.001, 0, 0];
-
-var TextRenderingMode = {
-  FILL: 0,
-  STROKE: 1,
-  FILL_STROKE: 2,
-  INVISIBLE: 3,
-  FILL_ADD_TO_PATH: 4,
-  STROKE_ADD_TO_PATH: 5,
-  FILL_STROKE_ADD_TO_PATH: 6,
-  ADD_TO_PATH: 7,
-  FILL_STROKE_MASK: 3,
-  ADD_TO_PATH_FLAG: 4
-};
-
-var ImageKind = {
-  GRAYSCALE_1BPP: 1,
-  RGB_24BPP: 2,
-  RGBA_32BPP: 3
-};
-
-var AnnotationType = {
-  TEXT: 1,
-  LINK: 2,
-  FREETEXT: 3,
-  LINE: 4,
-  SQUARE: 5,
-  CIRCLE: 6,
-  POLYGON: 7,
-  POLYLINE: 8,
-  HIGHLIGHT: 9,
-  UNDERLINE: 10,
-  SQUIGGLY: 11,
-  STRIKEOUT: 12,
-  STAMP: 13,
-  CARET: 14,
-  INK: 15,
-  POPUP: 16,
-  FILEATTACHMENT: 17,
-  SOUND: 18,
-  MOVIE: 19,
-  WIDGET: 20,
-  SCREEN: 21,
-  PRINTERMARK: 22,
-  TRAPNET: 23,
-  WATERMARK: 24,
-  THREED: 25,
-  REDACT: 26
-};
-
-var AnnotationFlag = {
-  INVISIBLE: 0x01,
-  HIDDEN: 0x02,
-  PRINT: 0x04,
-  NOZOOM: 0x08,
-  NOROTATE: 0x10,
-  NOVIEW: 0x20,
-  READONLY: 0x40,
-  LOCKED: 0x80,
-  TOGGLENOVIEW: 0x100,
-  LOCKEDCONTENTS: 0x200
-};
-
-var AnnotationBorderStyleType = {
-  SOLID: 1,
-  DASHED: 2,
-  BEVELED: 3,
-  INSET: 4,
-  UNDERLINE: 5
-};
-
-var StreamType = {
-  UNKNOWN: 0,
-  FLATE: 1,
-  LZW: 2,
-  DCT: 3,
-  JPX: 4,
-  JBIG: 5,
-  A85: 6,
-  AHX: 7,
-  CCF: 8,
-  RL: 9
-};
-
-var FontType = {
-  UNKNOWN: 0,
-  TYPE1: 1,
-  TYPE1C: 2,
-  CIDFONTTYPE0: 3,
-  CIDFONTTYPE0C: 4,
-  TRUETYPE: 5,
-  CIDFONTTYPE2: 6,
-  TYPE3: 7,
-  OPENTYPE: 8,
-  TYPE0: 9,
-  MMTYPE1: 10
-};
-
-var VERBOSITY_LEVELS = {
-  errors: 0,
-  warnings: 1,
-  infos: 5
-};
-
-// All the possible operations for an operator list.
-var OPS = {
-  // Intentionally start from 1 so it is easy to spot bad operators that will be
-  // 0's.
-  dependency: 1,
-  setLineWidth: 2,
-  setLineCap: 3,
-  setLineJoin: 4,
-  setMiterLimit: 5,
-  setDash: 6,
-  setRenderingIntent: 7,
-  setFlatness: 8,
-  setGState: 9,
-  save: 10,
-  restore: 11,
-  transform: 12,
-  moveTo: 13,
-  lineTo: 14,
-  curveTo: 15,
-  curveTo2: 16,
-  curveTo3: 17,
-  closePath: 18,
-  rectangle: 19,
-  stroke: 20,
-  closeStroke: 21,
-  fill: 22,
-  eoFill: 23,
-  fillStroke: 24,
-  eoFillStroke: 25,
-  closeFillStroke: 26,
-  closeEOFillStroke: 27,
-  endPath: 28,
-  clip: 29,
-  eoClip: 30,
-  beginText: 31,
-  endText: 32,
-  setCharSpacing: 33,
-  setWordSpacing: 34,
-  setHScale: 35,
-  setLeading: 36,
-  setFont: 37,
-  setTextRenderingMode: 38,
-  setTextRise: 39,
-  moveText: 40,
-  setLeadingMoveText: 41,
-  setTextMatrix: 42,
-  nextLine: 43,
-  showText: 44,
-  showSpacedText: 45,
-  nextLineShowText: 46,
-  nextLineSetSpacingShowText: 47,
-  setCharWidth: 48,
-  setCharWidthAndBounds: 49,
-  setStrokeColorSpace: 50,
-  setFillColorSpace: 51,
-  setStrokeColor: 52,
-  setStrokeColorN: 53,
-  setFillColor: 54,
-  setFillColorN: 55,
-  setStrokeGray: 56,
-  setFillGray: 57,
-  setStrokeRGBColor: 58,
-  setFillRGBColor: 59,
-  setStrokeCMYKColor: 60,
-  setFillCMYKColor: 61,
-  shadingFill: 62,
-  beginInlineImage: 63,
-  beginImageData: 64,
-  endInlineImage: 65,
-  paintXObject: 66,
-  markPoint: 67,
-  markPointProps: 68,
-  beginMarkedContent: 69,
-  beginMarkedContentProps: 70,
-  endMarkedContent: 71,
-  beginCompat: 72,
-  endCompat: 73,
-  paintFormXObjectBegin: 74,
-  paintFormXObjectEnd: 75,
-  beginGroup: 76,
-  endGroup: 77,
-  beginAnnotations: 78,
-  endAnnotations: 79,
-  beginAnnotation: 80,
-  endAnnotation: 81,
-  paintJpegXObject: 82,
-  paintImageMaskXObject: 83,
-  paintImageMaskXObjectGroup: 84,
-  paintImageXObject: 85,
-  paintInlineImageXObject: 86,
-  paintInlineImageXObjectGroup: 87,
-  paintImageXObjectRepeat: 88,
-  paintImageMaskXObjectRepeat: 89,
-  paintSolidColorImageMask: 90,
-  constructPath: 91
-};
-
-var verbosity = VERBOSITY_LEVELS.warnings;
-
-function setVerbosityLevel(level) {
-  verbosity = level;
-}
-
-function getVerbosityLevel() {
-  return verbosity;
-}
-
-// A notice for devs. These are good for things that are helpful to devs, such
-// as warning that Workers were disabled, which is important to devs but not
-// end users.
-function info(msg) {
-  if (verbosity >= VERBOSITY_LEVELS.infos) {
-    console.log('Info: ' + msg);
-  }
-}
-
-// Non-fatal warnings.
-function warn(msg) {
-  if (verbosity >= VERBOSITY_LEVELS.warnings) {
-    console.log('Warning: ' + msg);
-  }
-}
-
-// Deprecated API function -- display regardless of the PDFJS.verbosity setting.
-function deprecated(details) {
-  console.log('Deprecated API usage: ' + details);
-}
-
-// Fatal errors that should trigger the fallback UI and halt execution by
-// throwing an exception.
-function error(msg) {
-  if (verbosity >= VERBOSITY_LEVELS.errors) {
-    console.log('Error: ' + msg);
-    console.log(backtrace());
-  }
-  throw new Error(msg);
-}
-
-function backtrace() {
-  try {
-    throw new Error();
-  } catch (e) {
-    return e.stack ? e.stack.split('\n').slice(2).join('\n') : '';
-  }
-}
-
-function assert(cond, msg) {
-  if (!cond) {
-    error(msg);
-  }
-}
-
-var UNSUPPORTED_FEATURES = {
-  unknown: 'unknown',
-  forms: 'forms',
-  javaScript: 'javaScript',
-  smask: 'smask',
-  shadingPattern: 'shadingPattern',
-  font: 'font'
-};
-
-// Checks if URLs have the same origin. For non-HTTP based URLs, returns false.
-function isSameOrigin(baseUrl, otherUrl) {
-  try {
-    var base = new URL(baseUrl);
-    if (!base.origin || base.origin === 'null') {
-      return false; // non-HTTP url
-    }
-  } catch (e) {
-    return false;
-  }
-
-  var other = new URL(otherUrl, base);
-  return base.origin === other.origin;
-}
-
-// Validates if URL is safe and allowed, e.g. to avoid XSS.
-function isValidUrl(url, allowRelative) {
-  if (!url || typeof url !== 'string') {
-    return false;
-  }
-  // RFC 3986 (http://tools.ietf.org/html/rfc3986#section-3.1)
-  // scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
-  var protocol = /^[a-z][a-z0-9+\-.]*(?=:)/i.exec(url);
-  if (!protocol) {
-    return allowRelative;
-  }
-  protocol = protocol[0].toLowerCase();
-  switch (protocol) {
-    case 'http':
-    case 'https':
-    case 'ftp':
-    case 'mailto':
-    case 'tel':
-      return true;
-    default:
-      return false;
-  }
-}
-
-function shadow(obj, prop, value) {
-  Object.defineProperty(obj, prop, { value: value,
-                                     enumerable: true,
-                                     configurable: true,
-                                     writable: false });
-  return value;
-}
-
-function getLookupTableFactory(initializer) {
-  var lookup;
-  return function () {
-    if (initializer) {
-      lookup = Object.create(null);
-      initializer(lookup);
-      initializer = null;
-    }
-    return lookup;
-  };
-}
-
-var PasswordResponses = {
-  NEED_PASSWORD: 1,
-  INCORRECT_PASSWORD: 2
-};
-
-var PasswordException = (function PasswordExceptionClosure() {
-  function PasswordException(msg, code) {
-    this.name = 'PasswordException';
-    this.message = msg;
-    this.code = code;
-  }
-
-  PasswordException.prototype = new Error();
-  PasswordException.constructor = PasswordException;
-
-  return PasswordException;
-})();
-
-var UnknownErrorException = (function UnknownErrorExceptionClosure() {
-  function UnknownErrorException(msg, details) {
-    this.name = 'UnknownErrorException';
-    this.message = msg;
-    this.details = details;
-  }
-
-  UnknownErrorException.prototype = new Error();
-  UnknownErrorException.constructor = UnknownErrorException;
-
-  return UnknownErrorException;
-})();
-
-var InvalidPDFException = (function InvalidPDFExceptionClosure() {
-  function InvalidPDFException(msg) {
-    this.name = 'InvalidPDFException';
-    this.message = msg;
-  }
-
-  InvalidPDFException.prototype = new Error();
-  InvalidPDFException.constructor = InvalidPDFException;
-
-  return InvalidPDFException;
-})();
-
-var MissingPDFException = (function MissingPDFExceptionClosure() {
-  function MissingPDFException(msg) {
-    this.name = 'MissingPDFException';
-    this.message = msg;
-  }
-
-  MissingPDFException.prototype = new Error();
-  MissingPDFException.constructor = MissingPDFException;
-
-  return MissingPDFException;
-})();
-
-var UnexpectedResponseException =
-    (function UnexpectedResponseExceptionClosure() {
-  function UnexpectedResponseException(msg, status) {
-    this.name = 'UnexpectedResponseException';
-    this.message = msg;
-    this.status = status;
-  }
-
-  UnexpectedResponseException.prototype = new Error();
-  UnexpectedResponseException.constructor = UnexpectedResponseException;
-
-  return UnexpectedResponseException;
-})();
-
-var NotImplementedException = (function NotImplementedExceptionClosure() {
-  function NotImplementedException(msg) {
-    this.message = msg;
-  }
-
-  NotImplementedException.prototype = new Error();
-  NotImplementedException.prototype.name = 'NotImplementedException';
-  NotImplementedException.constructor = NotImplementedException;
-
-  return NotImplementedException;
-})();
-
-var MissingDataException = (function MissingDataExceptionClosure() {
-  function MissingDataException(begin, end) {
-    this.begin = begin;
-    this.end = end;
-    this.message = 'Missing data [' + begin + ', ' + end + ')';
-  }
-
-  MissingDataException.prototype = new Error();
-  MissingDataException.prototype.name = 'MissingDataException';
-  MissingDataException.constructor = MissingDataException;
-
-  return MissingDataException;
-})();
-
-var XRefParseException = (function XRefParseExceptionClosure() {
-  function XRefParseException(msg) {
-    this.message = msg;
-  }
-
-  XRefParseException.prototype = new Error();
-  XRefParseException.prototype.name = 'XRefParseException';
-  XRefParseException.constructor = XRefParseException;
-
-  return XRefParseException;
-})();
-
-var NullCharactersRegExp = /\x00/g;
-
-function removeNullCharacters(str) {
-  if (typeof str !== 'string') {
-    warn('The argument for removeNullCharacters must be a string.');
-    return str;
-  }
-  return str.replace(NullCharactersRegExp, '');
-}
-
-function bytesToString(bytes) {
-  assert(bytes !== null && typeof bytes === 'object' &&
-         bytes.length !== undefined, 'Invalid argument for bytesToString');
-  var length = bytes.length;
-  var MAX_ARGUMENT_COUNT = 8192;
-  if (length < MAX_ARGUMENT_COUNT) {
-    return String.fromCharCode.apply(null, bytes);
-  }
-  var strBuf = [];
-  for (var i = 0; i < length; i += MAX_ARGUMENT_COUNT) {
-    var chunkEnd = Math.min(i + MAX_ARGUMENT_COUNT, length);
-    var chunk = bytes.subarray(i, chunkEnd);
-    strBuf.push(String.fromCharCode.apply(null, chunk));
-  }
-  return strBuf.join('');
-}
-
-function stringToBytes(str) {
-  assert(typeof str === 'string', 'Invalid argument for stringToBytes');
-  var length = str.length;
-  var bytes = new Uint8Array(length);
-  for (var i = 0; i < length; ++i) {
-    bytes[i] = str.charCodeAt(i) & 0xFF;
-  }
-  return bytes;
-}
-
-/**
- * Gets length of the array (Array, Uint8Array, or string) in bytes.
- * @param {Array|Uint8Array|string} arr
- * @returns {number}
- */
-function arrayByteLength(arr) {
-  if (arr.length !== undefined) {
-    return arr.length;
-  }
-  assert(arr.byteLength !== undefined);
-  return arr.byteLength;
-}
-
-/**
- * Combines array items (arrays) into single Uint8Array object.
- * @param {Array} arr - the array of the arrays (Array, Uint8Array, or string).
- * @returns {Uint8Array}
- */
-function arraysToBytes(arr) {
-  // Shortcut: if first and only item is Uint8Array, return it.
-  if (arr.length === 1 && (arr[0] instanceof Uint8Array)) {
-    return arr[0];
-  }
-  var resultLength = 0;
-  var i, ii = arr.length;
-  var item, itemLength ;
-  for (i = 0; i < ii; i++) {
-    item = arr[i];
-    itemLength = arrayByteLength(item);
-    resultLength += itemLength;
-  }
-  var pos = 0;
-  var data = new Uint8Array(resultLength);
-  for (i = 0; i < ii; i++) {
-    item = arr[i];
-    if (!(item instanceof Uint8Array)) {
-      if (typeof item === 'string') {
-        item = stringToBytes(item);
-      } else {
-        item = new Uint8Array(item);
-      }
-    }
-    itemLength = item.byteLength;
-    data.set(item, pos);
-    pos += itemLength;
-  }
-  return data;
-}
-
-function string32(value) {
-  return String.fromCharCode((value >> 24) & 0xff, (value >> 16) & 0xff,
-                             (value >> 8) & 0xff, value & 0xff);
-}
-
-function log2(x) {
-  var n = 1, i = 0;
-  while (x > n) {
-    n <<= 1;
-    i++;
-  }
-  return i;
-}
-
-function readInt8(data, start) {
-  return (data[start] << 24) >> 24;
-}
-
-function readUint16(data, offset) {
-  return (data[offset] << 8) | data[offset + 1];
-}
-
-function readUint32(data, offset) {
-  return ((data[offset] << 24) | (data[offset + 1] << 16) |
-         (data[offset + 2] << 8) | data[offset + 3]) >>> 0;
-}
-
-// Lazy test the endianness of the platform
-// NOTE: This will be 'true' for simulated TypedArrays
-function isLittleEndian() {
-  var buffer8 = new Uint8Array(2);
-  buffer8[0] = 1;
-  var buffer16 = new Uint16Array(buffer8.buffer);
-  return (buffer16[0] === 1);
-}
-
-// Checks if it's possible to eval JS expressions.
-function isEvalSupported() {
-  try {
-    /* jshint evil: true */
-    new Function('');
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-//#if !(FIREFOX || MOZCENTRAL || CHROME)
-var Uint32ArrayView = (function Uint32ArrayViewClosure() {
-
-  function Uint32ArrayView(buffer, length) {
-    this.buffer = buffer;
-    this.byteLength = buffer.length;
-    this.length = length === undefined ? (this.byteLength >> 2) : length;
-    ensureUint32ArrayViewProps(this.length);
-  }
-  Uint32ArrayView.prototype = Object.create(null);
-
-  var uint32ArrayViewSetters = 0;
-  function createUint32ArrayProp(index) {
-    return {
-      get: function () {
-        var buffer = this.buffer, offset = index << 2;
-        return (buffer[offset] | (buffer[offset + 1] << 8) |
-          (buffer[offset + 2] << 16) | (buffer[offset + 3] << 24)) >>> 0;
-      },
-      set: function (value) {
-        var buffer = this.buffer, offset = index << 2;
-        buffer[offset] = value & 255;
-        buffer[offset + 1] = (value >> 8) & 255;
-        buffer[offset + 2] = (value >> 16) & 255;
-        buffer[offset + 3] = (value >>> 24) & 255;
-      }
-    };
-  }
-
-  function ensureUint32ArrayViewProps(length) {
-    while (uint32ArrayViewSetters < length) {
-      Object.defineProperty(Uint32ArrayView.prototype,
-        uint32ArrayViewSetters,
-        createUint32ArrayProp(uint32ArrayViewSetters));
-      uint32ArrayViewSetters++;
-    }
-  }
-
-  return Uint32ArrayView;
-})();
-
-exports.Uint32ArrayView = Uint32ArrayView;
-//#endif
-
-var IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
-
-var Util = (function UtilClosure() {
-  function Util() {}
-
-  var rgbBuf = ['rgb(', 0, ',', 0, ',', 0, ')'];
-
-  // makeCssRgb() can be called thousands of times. Using |rgbBuf| avoids
-  // creating many intermediate strings.
-  Util.makeCssRgb = function Util_makeCssRgb(r, g, b) {
-    rgbBuf[1] = r;
-    rgbBuf[3] = g;
-    rgbBuf[5] = b;
-    return rgbBuf.join('');
-  };
-
-  // Concatenates two transformation matrices together and returns the result.
-  Util.transform = function Util_transform(m1, m2) {
-    return [
-      m1[0] * m2[0] + m1[2] * m2[1],
-      m1[1] * m2[0] + m1[3] * m2[1],
-      m1[0] * m2[2] + m1[2] * m2[3],
-      m1[1] * m2[2] + m1[3] * m2[3],
-      m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
-      m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
-    ];
-  };
-
-  // For 2d affine transforms
-  Util.applyTransform = function Util_applyTransform(p, m) {
-    var xt = p[0] * m[0] + p[1] * m[2] + m[4];
-    var yt = p[0] * m[1] + p[1] * m[3] + m[5];
-    return [xt, yt];
-  };
-
-  Util.applyInverseTransform = function Util_applyInverseTransform(p, m) {
-    var d = m[0] * m[3] - m[1] * m[2];
-    var xt = (p[0] * m[3] - p[1] * m[2] + m[2] * m[5] - m[4] * m[3]) / d;
-    var yt = (-p[0] * m[1] + p[1] * m[0] + m[4] * m[1] - m[5] * m[0]) / d;
-    return [xt, yt];
-  };
-
-  // Applies the transform to the rectangle and finds the minimum axially
-  // aligned bounding box.
-  Util.getAxialAlignedBoundingBox =
-    function Util_getAxialAlignedBoundingBox(r, m) {
-
-    var p1 = Util.applyTransform(r, m);
-    var p2 = Util.applyTransform(r.slice(2, 4), m);
-    var p3 = Util.applyTransform([r[0], r[3]], m);
-    var p4 = Util.applyTransform([r[2], r[1]], m);
-    return [
-      Math.min(p1[0], p2[0], p3[0], p4[0]),
-      Math.min(p1[1], p2[1], p3[1], p4[1]),
-      Math.max(p1[0], p2[0], p3[0], p4[0]),
-      Math.max(p1[1], p2[1], p3[1], p4[1])
-    ];
-  };
-
-  Util.inverseTransform = function Util_inverseTransform(m) {
-    var d = m[0] * m[3] - m[1] * m[2];
-    return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d,
-      (m[2] * m[5] - m[4] * m[3]) / d, (m[4] * m[1] - m[5] * m[0]) / d];
-  };
-
-  // Apply a generic 3d matrix M on a 3-vector v:
-  //   | a b c |   | X |
-  //   | d e f | x | Y |
-  //   | g h i |   | Z |
-  // M is assumed to be serialized as [a,b,c,d,e,f,g,h,i],
-  // with v as [X,Y,Z]
-  Util.apply3dTransform = function Util_apply3dTransform(m, v) {
-    return [
-      m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
-      m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
-      m[6] * v[0] + m[7] * v[1] + m[8] * v[2]
-    ];
-  };
-
-  // This calculation uses Singular Value Decomposition.
-  // The SVD can be represented with formula A = USV. We are interested in the
-  // matrix S here because it represents the scale values.
-  Util.singularValueDecompose2dScale =
-    function Util_singularValueDecompose2dScale(m) {
-
-    var transpose = [m[0], m[2], m[1], m[3]];
-
-    // Multiply matrix m with its transpose.
-    var a = m[0] * transpose[0] + m[1] * transpose[2];
-    var b = m[0] * transpose[1] + m[1] * transpose[3];
-    var c = m[2] * transpose[0] + m[3] * transpose[2];
-    var d = m[2] * transpose[1] + m[3] * transpose[3];
-
-    // Solve the second degree polynomial to get roots.
-    var first = (a + d) / 2;
-    var second = Math.sqrt((a + d) * (a + d) - 4 * (a * d - c * b)) / 2;
-    var sx = first + second || 1;
-    var sy = first - second || 1;
-
-    // Scale values are the square roots of the eigenvalues.
-    return [Math.sqrt(sx), Math.sqrt(sy)];
-  };
-
-  // Normalize rectangle rect=[x1, y1, x2, y2] so that (x1,y1) < (x2,y2)
-  // For coordinate systems whose origin lies in the bottom-left, this
-  // means normalization to (BL,TR) ordering. For systems with origin in the
-  // top-left, this means (TL,BR) ordering.
-  Util.normalizeRect = function Util_normalizeRect(rect) {
-    var r = rect.slice(0); // clone rect
-    if (rect[0] > rect[2]) {
-      r[0] = rect[2];
-      r[2] = rect[0];
-    }
-    if (rect[1] > rect[3]) {
-      r[1] = rect[3];
-      r[3] = rect[1];
-    }
-    return r;
-  };
-
-  // Returns a rectangle [x1, y1, x2, y2] corresponding to the
-  // intersection of rect1 and rect2. If no intersection, returns 'false'
-  // The rectangle coordinates of rect1, rect2 should be [x1, y1, x2, y2]
-  Util.intersect = function Util_intersect(rect1, rect2) {
-    function compare(a, b) {
-      return a - b;
-    }
-
-    // Order points along the axes
-    var orderedX = [rect1[0], rect1[2], rect2[0], rect2[2]].sort(compare),
-        orderedY = [rect1[1], rect1[3], rect2[1], rect2[3]].sort(compare),
-        result = [];
-
-    rect1 = Util.normalizeRect(rect1);
-    rect2 = Util.normalizeRect(rect2);
-
-    // X: first and second points belong to different rectangles?
-    if ((orderedX[0] === rect1[0] && orderedX[1] === rect2[0]) ||
-        (orderedX[0] === rect2[0] && orderedX[1] === rect1[0])) {
-      // Intersection must be between second and third points
-      result[0] = orderedX[1];
-      result[2] = orderedX[2];
-    } else {
-      return false;
-    }
-
-    // Y: first and second points belong to different rectangles?
-    if ((orderedY[0] === rect1[1] && orderedY[1] === rect2[1]) ||
-        (orderedY[0] === rect2[1] && orderedY[1] === rect1[1])) {
-      // Intersection must be between second and third points
-      result[1] = orderedY[1];
-      result[3] = orderedY[2];
-    } else {
-      return false;
-    }
-
-    return result;
-  };
-
-  Util.sign = function Util_sign(num) {
-    return num < 0 ? -1 : 1;
-  };
-
-  var ROMAN_NUMBER_MAP = [
-    '', 'C', 'CC', 'CCC', 'CD', 'D', 'DC', 'DCC', 'DCCC', 'CM',
-    '', 'X', 'XX', 'XXX', 'XL', 'L', 'LX', 'LXX', 'LXXX', 'XC',
-    '', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'
-  ];
-  /**
-   * Converts positive integers to (upper case) Roman numerals.
-   * @param {integer} number - The number that should be converted.
-   * @param {boolean} lowerCase - Indicates if the result should be converted
-   *   to lower case letters. The default is false.
-   * @return {string} The resulting Roman number.
-   */
-  Util.toRoman = function Util_toRoman(number, lowerCase) {
-    assert(isInt(number) && number > 0,
-           'The number should be a positive integer.');
-    var pos, romanBuf = [];
-    // Thousands
-    while (number >= 1000) {
-      number -= 1000;
-      romanBuf.push('M');
-    }
-    // Hundreds
-    pos = (number / 100) | 0;
-    number %= 100;
-    romanBuf.push(ROMAN_NUMBER_MAP[pos]);
-    // Tens
-    pos = (number / 10) | 0;
-    number %= 10;
-    romanBuf.push(ROMAN_NUMBER_MAP[10 + pos]);
-    // Ones
-    romanBuf.push(ROMAN_NUMBER_MAP[20 + number]);
-
-    var romanStr = romanBuf.join('');
-    return (lowerCase ? romanStr.toLowerCase() : romanStr);
-  };
-
-  Util.appendToArray = function Util_appendToArray(arr1, arr2) {
-    Array.prototype.push.apply(arr1, arr2);
-  };
-
-  Util.prependToArray = function Util_prependToArray(arr1, arr2) {
-    Array.prototype.unshift.apply(arr1, arr2);
-  };
-
-  Util.extendObj = function extendObj(obj1, obj2) {
-    for (var key in obj2) {
-      obj1[key] = obj2[key];
-    }
-  };
-
-  Util.getInheritableProperty = function Util_getInheritableProperty(dict,
-                                                                     name) {
-    while (dict && !dict.has(name)) {
-      dict = dict.get('Parent');
-    }
-    if (!dict) {
-      return null;
-    }
-    return dict.get(name);
-  };
-
-  Util.inherit = function Util_inherit(sub, base, prototype) {
-    sub.prototype = Object.create(base.prototype);
-    sub.prototype.constructor = sub;
-    for (var prop in prototype) {
-      sub.prototype[prop] = prototype[prop];
-    }
-  };
-
-  Util.loadScript = function Util_loadScript(src, callback) {
-    var script = document.createElement('script');
-    var loaded = false;
-    script.setAttribute('src', src);
-    if (callback) {
-      script.onload = function() {
-        if (!loaded) {
-          callback();
-        }
-        loaded = true;
-      };
-    }
-    document.getElementsByTagName('head')[0].appendChild(script);
-  };
-
-  return Util;
-})();
-
-/**
- * PDF page viewport created based on scale, rotation and offset.
- * @class
- * @alias PageViewport
- */
-var PageViewport = (function PageViewportClosure() {
-  /**
-   * @constructor
-   * @private
-   * @param viewBox {Array} xMin, yMin, xMax and yMax coordinates.
-   * @param scale {number} scale of the viewport.
-   * @param rotation {number} rotations of the viewport in degrees.
-   * @param offsetX {number} offset X
-   * @param offsetY {number} offset Y
-   * @param dontFlip {boolean} if true, axis Y will not be flipped.
-   */
-  function PageViewport(viewBox, scale, rotation, offsetX, offsetY, dontFlip) {
-    this.viewBox = viewBox;
-    this.scale = scale;
-    this.rotation = rotation;
-    this.offsetX = offsetX;
-    this.offsetY = offsetY;
-
-    // creating transform to convert pdf coordinate system to the normal
-    // canvas like coordinates taking in account scale and rotation
-    var centerX = (viewBox[2] + viewBox[0]) / 2;
-    var centerY = (viewBox[3] + viewBox[1]) / 2;
-    var rotateA, rotateB, rotateC, rotateD;
-    rotation = rotation % 360;
-    rotation = rotation < 0 ? rotation + 360 : rotation;
-    switch (rotation) {
-      case 180:
-        rotateA = -1; rotateB = 0; rotateC = 0; rotateD = 1;
-        break;
-      case 90:
-        rotateA = 0; rotateB = 1; rotateC = 1; rotateD = 0;
-        break;
-      case 270:
-        rotateA = 0; rotateB = -1; rotateC = -1; rotateD = 0;
-        break;
-      //case 0:
-      default:
-        rotateA = 1; rotateB = 0; rotateC = 0; rotateD = -1;
-        break;
-    }
-
-    if (dontFlip) {
-      rotateC = -rotateC; rotateD = -rotateD;
-    }
-
-    var offsetCanvasX, offsetCanvasY;
-    var width, height;
-    if (rotateA === 0) {
-      offsetCanvasX = Math.abs(centerY - viewBox[1]) * scale + offsetX;
-      offsetCanvasY = Math.abs(centerX - viewBox[0]) * scale + offsetY;
-      width = Math.abs(viewBox[3] - viewBox[1]) * scale;
-      height = Math.abs(viewBox[2] - viewBox[0]) * scale;
-    } else {
-      offsetCanvasX = Math.abs(centerX - viewBox[0]) * scale + offsetX;
-      offsetCanvasY = Math.abs(centerY - viewBox[1]) * scale + offsetY;
-      width = Math.abs(viewBox[2] - viewBox[0]) * scale;
-      height = Math.abs(viewBox[3] - viewBox[1]) * scale;
-    }
-    // creating transform for the following operations:
-    // translate(-centerX, -centerY), rotate and flip vertically,
-    // scale, and translate(offsetCanvasX, offsetCanvasY)
-    this.transform = [
-      rotateA * scale,
-      rotateB * scale,
-      rotateC * scale,
-      rotateD * scale,
-      offsetCanvasX - rotateA * scale * centerX - rotateC * scale * centerY,
-      offsetCanvasY - rotateB * scale * centerX - rotateD * scale * centerY
-    ];
-
-    this.width = width;
-    this.height = height;
-    this.fontScale = scale;
-  }
-  PageViewport.prototype = /** @lends PageViewport.prototype */ {
-    /**
-     * Clones viewport with additional properties.
-     * @param args {Object} (optional) If specified, may contain the 'scale' or
-     * 'rotation' properties to override the corresponding properties in
-     * the cloned viewport.
-     * @returns {PageViewport} Cloned viewport.
-     */
-    clone: function PageViewPort_clone(args) {
-      args = args || {};
-      var scale = 'scale' in args ? args.scale : this.scale;
-      var rotation = 'rotation' in args ? args.rotation : this.rotation;
-      return new PageViewport(this.viewBox.slice(), scale, rotation,
-                              this.offsetX, this.offsetY, args.dontFlip);
-    },
-    /**
-     * Converts PDF point to the viewport coordinates. For examples, useful for
-     * converting PDF location into canvas pixel coordinates.
-     * @param x {number} X coordinate.
-     * @param y {number} Y coordinate.
-     * @returns {Object} Object that contains 'x' and 'y' properties of the
-     * point in the viewport coordinate space.
-     * @see {@link convertToPdfPoint}
-     * @see {@link convertToViewportRectangle}
-     */
-    convertToViewportPoint: function PageViewport_convertToViewportPoint(x, y) {
-      return Util.applyTransform([x, y], this.transform);
-    },
-    /**
-     * Converts PDF rectangle to the viewport coordinates.
-     * @param rect {Array} xMin, yMin, xMax and yMax coordinates.
-     * @returns {Array} Contains corresponding coordinates of the rectangle
-     * in the viewport coordinate space.
-     * @see {@link convertToViewportPoint}
-     */
-    convertToViewportRectangle:
-      function PageViewport_convertToViewportRectangle(rect) {
-      var tl = Util.applyTransform([rect[0], rect[1]], this.transform);
-      var br = Util.applyTransform([rect[2], rect[3]], this.transform);
-      return [tl[0], tl[1], br[0], br[1]];
-    },
-    /**
-     * Converts viewport coordinates to the PDF location. For examples, useful
-     * for converting canvas pixel location into PDF one.
-     * @param x {number} X coordinate.
-     * @param y {number} Y coordinate.
-     * @returns {Object} Object that contains 'x' and 'y' properties of the
-     * point in the PDF coordinate space.
-     * @see {@link convertToViewportPoint}
-     */
-    convertToPdfPoint: function PageViewport_convertToPdfPoint(x, y) {
-      return Util.applyInverseTransform([x, y], this.transform);
-    }
-  };
-  return PageViewport;
-})();
-
-var PDFStringTranslateTable = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0x2D8, 0x2C7, 0x2C6, 0x2D9, 0x2DD, 0x2DB, 0x2DA, 0x2DC, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2022, 0x2020, 0x2021, 0x2026, 0x2014,
-  0x2013, 0x192, 0x2044, 0x2039, 0x203A, 0x2212, 0x2030, 0x201E, 0x201C,
-  0x201D, 0x2018, 0x2019, 0x201A, 0x2122, 0xFB01, 0xFB02, 0x141, 0x152, 0x160,
-  0x178, 0x17D, 0x131, 0x142, 0x153, 0x161, 0x17E, 0, 0x20AC
-];
-
-function stringToPDFString(str) {
-  var i, n = str.length, strBuf = [];
-  if (str[0] === '\xFE' && str[1] === '\xFF') {
-    // UTF16BE BOM
-    for (i = 2; i < n; i += 2) {
-      strBuf.push(String.fromCharCode(
-        (str.charCodeAt(i) << 8) | str.charCodeAt(i + 1)));
-    }
-  } else {
-    for (i = 0; i < n; ++i) {
-      var code = PDFStringTranslateTable[str.charCodeAt(i)];
-      strBuf.push(code ? String.fromCharCode(code) : str.charAt(i));
-    }
-  }
-  return strBuf.join('');
-}
-
-function stringToUTF8String(str) {
-  return decodeURIComponent(escape(str));
-}
-
-function utf8StringToString(str) {
-  return unescape(encodeURIComponent(str));
-}
-
-function isEmptyObj(obj) {
-  for (var key in obj) {
-    return false;
-  }
-  return true;
-}
-
-function isBool(v) {
-  return typeof v === 'boolean';
-}
-
-function isInt(v) {
-  return typeof v === 'number' && ((v | 0) === v);
-}
-
-function isNum(v) {
-  return typeof v === 'number';
-}
-
-function isString(v) {
-  return typeof v === 'string';
-}
-
-function isArray(v) {
-  return v instanceof Array;
-}
-
-function isArrayBuffer(v) {
-  return typeof v === 'object' && v !== null && v.byteLength !== undefined;
-}
-
-// Checks if ch is one of the following characters: SPACE, TAB, CR or LF.
-function isSpace(ch) {
-  return (ch === 0x20 || ch === 0x09 || ch === 0x0D || ch === 0x0A);
-}
-
-/**
- * Promise Capability object.
- *
- * @typedef {Object} PromiseCapability
- * @property {Promise} promise - A promise object.
- * @property {function} resolve - Fullfills the promise.
- * @property {function} reject - Rejects the promise.
- */
-
-/**
- * Creates a promise capability object.
- * @alias createPromiseCapability
- *
- * @return {PromiseCapability} A capability object contains:
- * - a Promise, resolve and reject methods.
- */
-function createPromiseCapability() {
-  var capability = {};
-  capability.promise = new Promise(function (resolve, reject) {
-    capability.resolve = resolve;
-    capability.reject = reject;
-  });
-  return capability;
-}
-
-/**
- * Polyfill for Promises:
- * The following promise implementation tries to generally implement the
- * Promise/A+ spec. Some notable differences from other promise libaries are:
- * - There currently isn't a seperate deferred and promise object.
- * - Unhandled rejections eventually show an error if they aren't handled.
- *
- * Based off of the work in:
- * https://bugzilla.mozilla.org/show_bug.cgi?id=810490
- */
-(function PromiseClosure() {
-  if (globalScope.Promise) {
-    // Promises existing in the DOM/Worker, checking presence of all/resolve
-    if (typeof globalScope.Promise.all !== 'function') {
-      globalScope.Promise.all = function (iterable) {
-        var count = 0, results = [], resolve, reject;
-        var promise = new globalScope.Promise(function (resolve_, reject_) {
-          resolve = resolve_;
-          reject = reject_;
-        });
-        iterable.forEach(function (p, i) {
-          count++;
-          p.then(function (result) {
-            results[i] = result;
-            count--;
-            if (count === 0) {
-              resolve(results);
-            }
-          }, reject);
-        });
-        if (count === 0) {
-          resolve(results);
-        }
-        return promise;
-      };
-    }
-    if (typeof globalScope.Promise.resolve !== 'function') {
-      globalScope.Promise.resolve = function (value) {
-        return new globalScope.Promise(function (resolve) { resolve(value); });
-      };
-    }
-    if (typeof globalScope.Promise.reject !== 'function') {
-      globalScope.Promise.reject = function (reason) {
-        return new globalScope.Promise(function (resolve, reject) {
-          reject(reason);
-        });
-      };
-    }
-    if (typeof globalScope.Promise.prototype.catch !== 'function') {
-      globalScope.Promise.prototype.catch = function (onReject) {
-        return globalScope.Promise.prototype.then(undefined, onReject);
-      };
-    }
-    return;
-  }
-//#if !MOZCENTRAL
-  var STATUS_PENDING = 0;
-  var STATUS_RESOLVED = 1;
-  var STATUS_REJECTED = 2;
-
-  // In an attempt to avoid silent exceptions, unhandled rejections are
-  // tracked and if they aren't handled in a certain amount of time an
-  // error is logged.
-  var REJECTION_TIMEOUT = 500;
-
-  var HandlerManager = {
-    handlers: [],
-    running: false,
-    unhandledRejections: [],
-    pendingRejectionCheck: false,
-
-    scheduleHandlers: function scheduleHandlers(promise) {
-      if (promise._status === STATUS_PENDING) {
-        return;
-      }
-
-      this.handlers = this.handlers.concat(promise._handlers);
-      promise._handlers = [];
-
-      if (this.running) {
-        return;
-      }
-      this.running = true;
-
-      setTimeout(this.runHandlers.bind(this), 0);
-    },
-
-    runHandlers: function runHandlers() {
-      var RUN_TIMEOUT = 1; // ms
-      var timeoutAt = Date.now() + RUN_TIMEOUT;
-      while (this.handlers.length > 0) {
-        var handler = this.handlers.shift();
-
-        var nextStatus = handler.thisPromise._status;
-        var nextValue = handler.thisPromise._value;
-
-        try {
-          if (nextStatus === STATUS_RESOLVED) {
-            if (typeof handler.onResolve === 'function') {
-              nextValue = handler.onResolve(nextValue);
-            }
-          } else if (typeof handler.onReject === 'function') {
-              nextValue = handler.onReject(nextValue);
-              nextStatus = STATUS_RESOLVED;
-
-              if (handler.thisPromise._unhandledRejection) {
-                this.removeUnhandeledRejection(handler.thisPromise);
-              }
-          }
-        } catch (ex) {
-          nextStatus = STATUS_REJECTED;
-          nextValue = ex;
-        }
-
-        handler.nextPromise._updateStatus(nextStatus, nextValue);
-        if (Date.now() >= timeoutAt) {
-          break;
-        }
-      }
-
-      if (this.handlers.length > 0) {
-        setTimeout(this.runHandlers.bind(this), 0);
-        return;
-      }
-
-      this.running = false;
-    },
-
-    addUnhandledRejection: function addUnhandledRejection(promise) {
-      this.unhandledRejections.push({
-        promise: promise,
-        time: Date.now()
-      });
-      this.scheduleRejectionCheck();
-    },
-
-    removeUnhandeledRejection: function removeUnhandeledRejection(promise) {
-      promise._unhandledRejection = false;
-      for (var i = 0; i < this.unhandledRejections.length; i++) {
-        if (this.unhandledRejections[i].promise === promise) {
-          this.unhandledRejections.splice(i);
-          i--;
-        }
-      }
-    },
-
-    scheduleRejectionCheck: function scheduleRejectionCheck() {
-      if (this.pendingRejectionCheck) {
-        return;
-      }
-      this.pendingRejectionCheck = true;
-      setTimeout(function rejectionCheck() {
-        this.pendingRejectionCheck = false;
-        var now = Date.now();
-        for (var i = 0; i < this.unhandledRejections.length; i++) {
-          if (now - this.unhandledRejections[i].time > REJECTION_TIMEOUT) {
-            var unhandled = this.unhandledRejections[i].promise._value;
-            var msg = 'Unhandled rejection: ' + unhandled;
-            if (unhandled.stack) {
-              msg += '\n' + unhandled.stack;
-            }
-            warn(msg);
-            this.unhandledRejections.splice(i);
-            i--;
-          }
-        }
-        if (this.unhandledRejections.length) {
-          this.scheduleRejectionCheck();
-        }
-      }.bind(this), REJECTION_TIMEOUT);
-    }
-  };
-
-  function Promise(resolver) {
-    this._status = STATUS_PENDING;
-    this._handlers = [];
-    try {
-      resolver.call(this, this._resolve.bind(this), this._reject.bind(this));
-    } catch (e) {
-      this._reject(e);
-    }
-  }
-  /**
-   * Builds a promise that is resolved when all the passed in promises are
-   * resolved.
-   * @param {array} promises array of data and/or promises to wait for.
-   * @return {Promise} New dependant promise.
-   */
-  Promise.all = function Promise_all(promises) {
-    var resolveAll, rejectAll;
-    var deferred = new Promise(function (resolve, reject) {
-      resolveAll = resolve;
-      rejectAll = reject;
-    });
-    var unresolved = promises.length;
-    var results = [];
-    if (unresolved === 0) {
-      resolveAll(results);
-      return deferred;
-    }
-    function reject(reason) {
-      if (deferred._status === STATUS_REJECTED) {
-        return;
-      }
-      results = [];
-      rejectAll(reason);
-    }
-    for (var i = 0, ii = promises.length; i < ii; ++i) {
-      var promise = promises[i];
-      var resolve = (function(i) {
-        return function(value) {
-          if (deferred._status === STATUS_REJECTED) {
-            return;
-          }
-          results[i] = value;
-          unresolved--;
-          if (unresolved === 0) {
-            resolveAll(results);
-          }
-        };
-      })(i);
-      if (Promise.isPromise(promise)) {
-        promise.then(resolve, reject);
-      } else {
-        resolve(promise);
-      }
-    }
-    return deferred;
-  };
-
-  /**
-   * Checks if the value is likely a promise (has a 'then' function).
-   * @return {boolean} true if value is thenable
-   */
-  Promise.isPromise = function Promise_isPromise(value) {
-    return value && typeof value.then === 'function';
-  };
-
-  /**
-   * Creates resolved promise
-   * @param value resolve value
-   * @returns {Promise}
-   */
-  Promise.resolve = function Promise_resolve(value) {
-    return new Promise(function (resolve) { resolve(value); });
-  };
-
-  /**
-   * Creates rejected promise
-   * @param reason rejection value
-   * @returns {Promise}
-   */
-  Promise.reject = function Promise_reject(reason) {
-    return new Promise(function (resolve, reject) { reject(reason); });
-  };
-
-  Promise.prototype = {
-    _status: null,
-    _value: null,
-    _handlers: null,
-    _unhandledRejection: null,
-
-    _updateStatus: function Promise__updateStatus(status, value) {
-      if (this._status === STATUS_RESOLVED ||
-          this._status === STATUS_REJECTED) {
-        return;
-      }
-
-      if (status === STATUS_RESOLVED &&
-          Promise.isPromise(value)) {
-        value.then(this._updateStatus.bind(this, STATUS_RESOLVED),
-                   this._updateStatus.bind(this, STATUS_REJECTED));
-        return;
-      }
-
-      this._status = status;
-      this._value = value;
-
-      if (status === STATUS_REJECTED && this._handlers.length === 0) {
-        this._unhandledRejection = true;
-        HandlerManager.addUnhandledRejection(this);
-      }
-
-      HandlerManager.scheduleHandlers(this);
-    },
-
-    _resolve: function Promise_resolve(value) {
-      this._updateStatus(STATUS_RESOLVED, value);
-    },
-
-    _reject: function Promise_reject(reason) {
-      this._updateStatus(STATUS_REJECTED, reason);
-    },
-
-    then: function Promise_then(onResolve, onReject) {
-      var nextPromise = new Promise(function (resolve, reject) {
-        this.resolve = resolve;
-        this.reject = reject;
-      });
-      this._handlers.push({
-        thisPromise: this,
-        onResolve: onResolve,
-        onReject: onReject,
-        nextPromise: nextPromise
-      });
-      HandlerManager.scheduleHandlers(this);
-      return nextPromise;
-    },
-
-    catch: function Promise_catch(onReject) {
-      return this.then(undefined, onReject);
-    }
-  };
-
-  globalScope.Promise = Promise;
-//#else
-//throw new Error('DOM Promise is not present');
-//#endif
-})();
-
-var StatTimer = (function StatTimerClosure() {
-  function rpad(str, pad, length) {
-    while (str.length < length) {
-      str += pad;
-    }
-    return str;
-  }
-  function StatTimer() {
-    this.started = Object.create(null);
-    this.times = [];
-    this.enabled = true;
-  }
-  StatTimer.prototype = {
-    time: function StatTimer_time(name) {
-      if (!this.enabled) {
-        return;
-      }
-      if (name in this.started) {
-        warn('Timer is already running for ' + name);
-      }
-      this.started[name] = Date.now();
-    },
-    timeEnd: function StatTimer_timeEnd(name) {
-      if (!this.enabled) {
-        return;
-      }
-      if (!(name in this.started)) {
-        warn('Timer has not been started for ' + name);
-      }
-      this.times.push({
-        'name': name,
-        'start': this.started[name],
-        'end': Date.now()
-      });
-      // Remove timer from started so it can be called again.
-      delete this.started[name];
-    },
-    toString: function StatTimer_toString() {
-      var i, ii;
-      var times = this.times;
-      var out = '';
-      // Find the longest name for padding purposes.
-      var longest = 0;
-      for (i = 0, ii = times.length; i < ii; ++i) {
-        var name = times[i]['name'];
-        if (name.length > longest) {
-          longest = name.length;
-        }
-      }
-      for (i = 0, ii = times.length; i < ii; ++i) {
-        var span = times[i];
-        var duration = span.end - span.start;
-        out += rpad(span['name'], ' ', longest) + ' ' + duration + 'ms\n';
-      }
-      return out;
-    }
-  };
-  return StatTimer;
-})();
-
-var createBlob = function createBlob(data, contentType) {
-  if (typeof Blob !== 'undefined') {
-    return new Blob([data], { type: contentType });
-  }
-  // Blob builder is deprecated in FF14 and removed in FF18.
-  var bb = new MozBlobBuilder();
-  bb.append(data);
-  return bb.getBlob(contentType);
-};
-
-var createObjectURL = (function createObjectURLClosure() {
-  // Blob/createObjectURL is not available, falling back to data schema.
-  var digits =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-
-  return function createObjectURL(data, contentType, forceDataSchema) {
-    if (!forceDataSchema &&
-        typeof URL !== 'undefined' && URL.createObjectURL) {
-      var blob = createBlob(data, contentType);
-      return URL.createObjectURL(blob);
-    }
-
-    var buffer = 'data:' + contentType + ';base64,';
-    for (var i = 0, ii = data.length; i < ii; i += 3) {
-      var b1 = data[i] & 0xFF;
-      var b2 = data[i + 1] & 0xFF;
-      var b3 = data[i + 2] & 0xFF;
-      var d1 = b1 >> 2, d2 = ((b1 & 3) << 4) | (b2 >> 4);
-      var d3 = i + 1 < ii ? ((b2 & 0xF) << 2) | (b3 >> 6) : 64;
-      var d4 = i + 2 < ii ? (b3 & 0x3F) : 64;
-      buffer += digits[d1] + digits[d2] + digits[d3] + digits[d4];
-    }
-    return buffer;
-  };
-})();
-
-function MessageHandler(sourceName, targetName, comObj) {
-  this.sourceName = sourceName;
-  this.targetName = targetName;
-  this.comObj = comObj;
-  this.callbackIndex = 1;
-  this.postMessageTransfers = true;
-  var callbacksCapabilities = this.callbacksCapabilities = Object.create(null);
-  var ah = this.actionHandler = Object.create(null);
-
-  this._onComObjOnMessage = function messageHandlerComObjOnMessage(event) {
-    var data = event.data;
-    if (data.targetName !== this.sourceName) {
-      return;
-    }
-    if (data.isReply) {
-      var callbackId = data.callbackId;
-      if (data.callbackId in callbacksCapabilities) {
-        var callback = callbacksCapabilities[callbackId];
-        delete callbacksCapabilities[callbackId];
-        if ('error' in data) {
-          callback.reject(data.error);
-        } else {
-          callback.resolve(data.data);
-        }
-      } else {
-        error('Cannot resolve callback ' + callbackId);
-      }
-    } else if (data.action in ah) {
-      var action = ah[data.action];
-      if (data.callbackId) {
-        var sourceName = this.sourceName;
-        var targetName = data.sourceName;
-        Promise.resolve().then(function () {
-          return action[0].call(action[1], data.data);
-        }).then(function (result) {
-          comObj.postMessage({
-            sourceName: sourceName,
-            targetName: targetName,
-            isReply: true,
-            callbackId: data.callbackId,
-            data: result
-          });
-        }, function (reason) {
-          if (reason instanceof Error) {
-            // Serialize error to avoid "DataCloneError"
-            reason = reason + '';
-          }
-          comObj.postMessage({
-            sourceName: sourceName,
-            targetName: targetName,
-            isReply: true,
-            callbackId: data.callbackId,
-            error: reason
-          });
-        });
-      } else {
-        action[0].call(action[1], data.data);
-      }
-    } else {
-      error('Unknown action from worker: ' + data.action);
-    }
-  }.bind(this);
-  comObj.addEventListener('message', this._onComObjOnMessage);
-}
-
-MessageHandler.prototype = {
-  on: function messageHandlerOn(actionName, handler, scope) {
-    var ah = this.actionHandler;
-    if (ah[actionName]) {
-      error('There is already an actionName called "' + actionName + '"');
-    }
-    ah[actionName] = [handler, scope];
-  },
-  /**
-   * Sends a message to the comObj to invoke the action with the supplied data.
-   * @param {String} actionName Action to call.
-   * @param {JSON} data JSON data to send.
-   * @param {Array} [transfers] Optional list of transfers/ArrayBuffers
-   */
-  send: function messageHandlerSend(actionName, data, transfers) {
-    var message = {
-      sourceName: this.sourceName,
-      targetName: this.targetName,
-      action: actionName,
-      data: data
-    };
-    this.postMessage(message, transfers);
-  },
-  /**
-   * Sends a message to the comObj to invoke the action with the supplied data.
-   * Expects that other side will callback with the response.
-   * @param {String} actionName Action to call.
-   * @param {JSON} data JSON data to send.
-   * @param {Array} [transfers] Optional list of transfers/ArrayBuffers.
-   * @returns {Promise} Promise to be resolved with response data.
-   */
-  sendWithPromise:
-    function messageHandlerSendWithPromise(actionName, data, transfers) {
-    var callbackId = this.callbackIndex++;
-    var message = {
-      sourceName: this.sourceName,
-      targetName: this.targetName,
-      action: actionName,
-      data: data,
-      callbackId: callbackId
-    };
-    var capability = createPromiseCapability();
-    this.callbacksCapabilities[callbackId] = capability;
-    try {
-      this.postMessage(message, transfers);
-    } catch (e) {
-      capability.reject(e);
-    }
-    return capability.promise;
-  },
-  /**
-   * Sends raw message to the comObj.
-   * @private
-   * @param message {Object} Raw message.
-   * @param transfers List of transfers/ArrayBuffers, or undefined.
-   */
-  postMessage: function (message, transfers) {
-    if (transfers && this.postMessageTransfers) {
-      this.comObj.postMessage(message, transfers);
-    } else {
-      this.comObj.postMessage(message);
-    }
-  },
-
-  destroy: function () {
-    this.comObj.removeEventListener('message', this._onComObjOnMessage);
-  }
-};
-
-function loadJpegStream(id, imageUrl, objs) {
-  var img = new Image();
-  img.onload = (function loadJpegStream_onloadClosure() {
-    objs.resolve(id, img);
-  });
-  img.onerror = (function loadJpegStream_onerrorClosure() {
-    objs.resolve(id, null);
-    warn('Error during JPEG image loading');
-  });
-  img.src = imageUrl;
-}
-
-//#if !(MOZCENTRAL)
-//// Polyfill from https://github.com/Polymer/URL
-/* Any copyright is dedicated to the Public Domain.
- * http://creativecommons.org/publicdomain/zero/1.0/ */
-(function checkURLConstructor(scope) {
-  /* jshint ignore:start */
-
-  // feature detect for URL constructor
-  var hasWorkingUrl = false;
-  try {
-    if (typeof URL === 'function' &&
-        typeof URL.prototype === 'object' &&
-        ('origin' in URL.prototype)) {
-      var u = new URL('b', 'http://a');
-      u.pathname = 'c%20d';
-      hasWorkingUrl = u.href === 'http://a/c%20d';
-    }
-  } catch(e) { }
-
-  if (hasWorkingUrl)
-    return;
-
-  var relative = Object.create(null);
-  relative['ftp'] = 21;
-  relative['file'] = 0;
-  relative['gopher'] = 70;
-  relative['http'] = 80;
-  relative['https'] = 443;
-  relative['ws'] = 80;
-  relative['wss'] = 443;
-
-  var relativePathDotMapping = Object.create(null);
-  relativePathDotMapping['%2e'] = '.';
-  relativePathDotMapping['.%2e'] = '..';
-  relativePathDotMapping['%2e.'] = '..';
-  relativePathDotMapping['%2e%2e'] = '..';
-
-  function isRelativeScheme(scheme) {
-    return relative[scheme] !== undefined;
-  }
-
-  function invalid() {
-    clear.call(this);
-    this._isInvalid = true;
-  }
-
-  function IDNAToASCII(h) {
-    if ('' == h) {
-      invalid.call(this)
-    }
-    // XXX
-    return h.toLowerCase()
-  }
-
-  function percentEscape(c) {
-    var unicode = c.charCodeAt(0);
-    if (unicode > 0x20 &&
-       unicode < 0x7F &&
-       // " # < > ? `
-       [0x22, 0x23, 0x3C, 0x3E, 0x3F, 0x60].indexOf(unicode) == -1
-      ) {
-      return c;
-    }
-    return encodeURIComponent(c);
-  }
-
-  function percentEscapeQuery(c) {
-    // XXX This actually needs to encode c using encoding and then
-    // convert the bytes one-by-one.
-
-    var unicode = c.charCodeAt(0);
-    if (unicode > 0x20 &&
-       unicode < 0x7F &&
-       // " # < > ` (do not escape '?')
-       [0x22, 0x23, 0x3C, 0x3E, 0x60].indexOf(unicode) == -1
-      ) {
-      return c;
-    }
-    return encodeURIComponent(c);
-  }
-
-  var EOF = undefined,
-      ALPHA = /[a-zA-Z]/,
-      ALPHANUMERIC = /[a-zA-Z0-9\+\-\.]/;
-
-  function parse(input, stateOverride, base) {
-    function err(message) {
-      errors.push(message)
-    }
-
-    var state = stateOverride || 'scheme start',
-        cursor = 0,
-        buffer = '',
-        seenAt = false,
-        seenBracket = false,
-        errors = [];
-
-    loop: while ((input[cursor - 1] != EOF || cursor == 0) && !this._isInvalid) {
-      var c = input[cursor];
-      switch (state) {
-        case 'scheme start':
-          if (c && ALPHA.test(c)) {
-            buffer += c.toLowerCase(); // ASCII-safe
-            state = 'scheme';
-          } else if (!stateOverride) {
-            buffer = '';
-            state = 'no scheme';
-            continue;
-          } else {
-            err('Invalid scheme.');
-            break loop;
-          }
-          break;
-
-        case 'scheme':
-          if (c && ALPHANUMERIC.test(c)) {
-            buffer += c.toLowerCase(); // ASCII-safe
-          } else if (':' == c) {
-            this._scheme = buffer;
-            buffer = '';
-            if (stateOverride) {
-              break loop;
-            }
-            if (isRelativeScheme(this._scheme)) {
-              this._isRelative = true;
-            }
-            if ('file' == this._scheme) {
-              state = 'relative';
-            } else if (this._isRelative && base && base._scheme == this._scheme) {
-              state = 'relative or authority';
-            } else if (this._isRelative) {
-              state = 'authority first slash';
-            } else {
-              state = 'scheme data';
-            }
-          } else if (!stateOverride) {
-            buffer = '';
-            cursor = 0;
-            state = 'no scheme';
-            continue;
-          } else if (EOF == c) {
-            break loop;
-          } else {
-            err('Code point not allowed in scheme: ' + c)
-            break loop;
-          }
-          break;
-
-        case 'scheme data':
-          if ('?' == c) {
-            this._query = '?';
-            state = 'query';
-          } else if ('#' == c) {
-            this._fragment = '#';
-            state = 'fragment';
-          } else {
-            // XXX error handling
-            if (EOF != c && '\t' != c && '\n' != c && '\r' != c) {
-              this._schemeData += percentEscape(c);
-            }
-          }
-          break;
-
-        case 'no scheme':
-          if (!base || !(isRelativeScheme(base._scheme))) {
-            err('Missing scheme.');
-            invalid.call(this);
-          } else {
-            state = 'relative';
-            continue;
-          }
-          break;
-
-        case 'relative or authority':
-          if ('/' == c && '/' == input[cursor+1]) {
-            state = 'authority ignore slashes';
-          } else {
-            err('Expected /, got: ' + c);
-            state = 'relative';
-            continue
-          }
-          break;
-
-        case 'relative':
-          this._isRelative = true;
-          if ('file' != this._scheme)
-            this._scheme = base._scheme;
-          if (EOF == c) {
-            this._host = base._host;
-            this._port = base._port;
-            this._path = base._path.slice();
-            this._query = base._query;
-            this._username = base._username;
-            this._password = base._password;
-            break loop;
-          } else if ('/' == c || '\\' == c) {
-            if ('\\' == c)
-              err('\\ is an invalid code point.');
-            state = 'relative slash';
-          } else if ('?' == c) {
-            this._host = base._host;
-            this._port = base._port;
-            this._path = base._path.slice();
-            this._query = '?';
-            this._username = base._username;
-            this._password = base._password;
-            state = 'query';
-          } else if ('#' == c) {
-            this._host = base._host;
-            this._port = base._port;
-            this._path = base._path.slice();
-            this._query = base._query;
-            this._fragment = '#';
-            this._username = base._username;
-            this._password = base._password;
-            state = 'fragment';
-          } else {
-            var nextC = input[cursor+1]
-            var nextNextC = input[cursor+2]
-            if (
-              'file' != this._scheme || !ALPHA.test(c) ||
-              (nextC != ':' && nextC != '|') ||
-              (EOF != nextNextC && '/' != nextNextC && '\\' != nextNextC && '?' != nextNextC && '#' != nextNextC)) {
-              this._host = base._host;
-              this._port = base._port;
-              this._username = base._username;
-              this._password = base._password;
-              this._path = base._path.slice();
-              this._path.pop();
-            }
-            state = 'relative path';
-            continue;
-          }
-          break;
-
-        case 'relative slash':
-          if ('/' == c || '\\' == c) {
-            if ('\\' == c) {
-              err('\\ is an invalid code point.');
-            }
-            if ('file' == this._scheme) {
-              state = 'file host';
-            } else {
-              state = 'authority ignore slashes';
-            }
-          } else {
-            if ('file' != this._scheme) {
-              this._host = base._host;
-              this._port = base._port;
-              this._username = base._username;
-              this._password = base._password;
-            }
-            state = 'relative path';
-            continue;
-          }
-          break;
-
-        case 'authority first slash':
-          if ('/' == c) {
-            state = 'authority second slash';
-          } else {
-            err("Expected '/', got: " + c);
-            state = 'authority ignore slashes';
-            continue;
-          }
-          break;
-
-        case 'authority second slash':
-          state = 'authority ignore slashes';
-          if ('/' != c) {
-            err("Expected '/', got: " + c);
-            continue;
-          }
-          break;
-
-        case 'authority ignore slashes':
-          if ('/' != c && '\\' != c) {
-            state = 'authority';
-            continue;
-          } else {
-            err('Expected authority, got: ' + c);
-          }
-          break;
-
-        case 'authority':
-          if ('@' == c) {
-            if (seenAt) {
-              err('@ already seen.');
-              buffer += '%40';
-            }
-            seenAt = true;
-            for (var i = 0; i < buffer.length; i++) {
-              var cp = buffer[i];
-              if ('\t' == cp || '\n' == cp || '\r' == cp) {
-                err('Invalid whitespace in authority.');
-                continue;
-              }
-              // XXX check URL code points
-              if (':' == cp && null === this._password) {
-                this._password = '';
-                continue;
-              }
-              var tempC = percentEscape(cp);
-              (null !== this._password) ? this._password += tempC : this._username += tempC;
-            }
-            buffer = '';
-          } else if (EOF == c || '/' == c || '\\' == c || '?' == c || '#' == c) {
-            cursor -= buffer.length;
-            buffer = '';
-            state = 'host';
-            continue;
-          } else {
-            buffer += c;
-          }
-          break;
-
-        case 'file host':
-          if (EOF == c || '/' == c || '\\' == c || '?' == c || '#' == c) {
-            if (buffer.length == 2 && ALPHA.test(buffer[0]) && (buffer[1] == ':' || buffer[1] == '|')) {
-              state = 'relative path';
-            } else if (buffer.length == 0) {
-              state = 'relative path start';
-            } else {
-              this._host = IDNAToASCII.call(this, buffer);
-              buffer = '';
-              state = 'relative path start';
-            }
-            continue;
-          } else if ('\t' == c || '\n' == c || '\r' == c) {
-            err('Invalid whitespace in file host.');
-          } else {
-            buffer += c;
-          }
-          break;
-
-        case 'host':
-        case 'hostname':
-          if (':' == c && !seenBracket) {
-            // XXX host parsing
-            this._host = IDNAToASCII.call(this, buffer);
-            buffer = '';
-            state = 'port';
-            if ('hostname' == stateOverride) {
-              break loop;
-            }
-          } else if (EOF == c || '/' == c || '\\' == c || '?' == c || '#' == c) {
-            this._host = IDNAToASCII.call(this, buffer);
-            buffer = '';
-            state = 'relative path start';
-            if (stateOverride) {
-              break loop;
-            }
-            continue;
-          } else if ('\t' != c && '\n' != c && '\r' != c) {
-            if ('[' == c) {
-              seenBracket = true;
-            } else if (']' == c) {
-              seenBracket = false;
-            }
-            buffer += c;
-          } else {
-            err('Invalid code point in host/hostname: ' + c);
-          }
-          break;
-
-        case 'port':
-          if (/[0-9]/.test(c)) {
-            buffer += c;
-          } else if (EOF == c || '/' == c || '\\' == c || '?' == c || '#' == c || stateOverride) {
-            if ('' != buffer) {
-              var temp = parseInt(buffer, 10);
-              if (temp != relative[this._scheme]) {
-                this._port = temp + '';
-              }
-              buffer = '';
-            }
-            if (stateOverride) {
-              break loop;
-            }
-            state = 'relative path start';
-            continue;
-          } else if ('\t' == c || '\n' == c || '\r' == c) {
-            err('Invalid code point in port: ' + c);
-          } else {
-            invalid.call(this);
-          }
-          break;
-
-        case 'relative path start':
-          if ('\\' == c)
-            err("'\\' not allowed in path.");
-          state = 'relative path';
-          if ('/' != c && '\\' != c) {
-            continue;
-          }
-          break;
-
-        case 'relative path':
-          if (EOF == c || '/' == c || '\\' == c || (!stateOverride && ('?' == c || '#' == c))) {
-            if ('\\' == c) {
-              err('\\ not allowed in relative path.');
-            }
-            var tmp;
-            if (tmp = relativePathDotMapping[buffer.toLowerCase()]) {
-              buffer = tmp;
-            }
-            if ('..' == buffer) {
-              this._path.pop();
-              if ('/' != c && '\\' != c) {
-                this._path.push('');
-              }
-            } else if ('.' == buffer && '/' != c && '\\' != c) {
-              this._path.push('');
-            } else if ('.' != buffer) {
-              if ('file' == this._scheme && this._path.length == 0 && buffer.length == 2 && ALPHA.test(buffer[0]) && buffer[1] == '|') {
-                buffer = buffer[0] + ':';
-              }
-              this._path.push(buffer);
-            }
-            buffer = '';
-            if ('?' == c) {
-              this._query = '?';
-              state = 'query';
-            } else if ('#' == c) {
-              this._fragment = '#';
-              state = 'fragment';
-            }
-          } else if ('\t' != c && '\n' != c && '\r' != c) {
-            buffer += percentEscape(c);
-          }
-          break;
-
-        case 'query':
-          if (!stateOverride && '#' == c) {
-            this._fragment = '#';
-            state = 'fragment';
-          } else if (EOF != c && '\t' != c && '\n' != c && '\r' != c) {
-            this._query += percentEscapeQuery(c);
-          }
-          break;
-
-        case 'fragment':
-          if (EOF != c && '\t' != c && '\n' != c && '\r' != c) {
-            this._fragment += c;
-          }
-          break;
-      }
-
-      cursor++;
-    }
-  }
-
-  function clear() {
-    this._scheme = '';
-    this._schemeData = '';
-    this._username = '';
-    this._password = null;
-    this._host = '';
-    this._port = '';
-    this._path = [];
-    this._query = '';
-    this._fragment = '';
-    this._isInvalid = false;
-    this._isRelative = false;
-  }
-
-  // Does not process domain names or IP addresses.
-  // Does not handle encoding for the query parameter.
-  function jURL(url, base /* , encoding */) {
-    if (base !== undefined && !(base instanceof jURL))
-      base = new jURL(String(base));
-
-    this._url = url;
-    clear.call(this);
-
-    var input = url.replace(/^[ \t\r\n\f]+|[ \t\r\n\f]+$/g, '');
-    // encoding = encoding || 'utf-8'
-
-    parse.call(this, input, null, base);
-  }
-
-  jURL.prototype = {
-    toString: function() {
-      return this.href;
-    },
-    get href() {
-      if (this._isInvalid)
-        return this._url;
-
-      var authority = '';
-      if ('' != this._username || null != this._password) {
-        authority = this._username +
-            (null != this._password ? ':' + this._password : '') + '@';
-      }
-
-      return this.protocol +
-          (this._isRelative ? '//' + authority + this.host : '') +
-          this.pathname + this._query + this._fragment;
-    },
-    set href(href) {
-      clear.call(this);
-      parse.call(this, href);
-    },
-
-    get protocol() {
-      return this._scheme + ':';
-    },
-    set protocol(protocol) {
-      if (this._isInvalid)
-        return;
-      parse.call(this, protocol + ':', 'scheme start');
-    },
-
-    get host() {
-      return this._isInvalid ? '' : this._port ?
-          this._host + ':' + this._port : this._host;
-    },
-    set host(host) {
-      if (this._isInvalid || !this._isRelative)
-        return;
-      parse.call(this, host, 'host');
-    },
-
-    get hostname() {
-      return this._host;
-    },
-    set hostname(hostname) {
-      if (this._isInvalid || !this._isRelative)
-        return;
-      parse.call(this, hostname, 'hostname');
-    },
-
-    get port() {
-      return this._port;
-    },
-    set port(port) {
-      if (this._isInvalid || !this._isRelative)
-        return;
-      parse.call(this, port, 'port');
-    },
-
-    get pathname() {
-      return this._isInvalid ? '' : this._isRelative ?
-          '/' + this._path.join('/') : this._schemeData;
-    },
-    set pathname(pathname) {
-      if (this._isInvalid || !this._isRelative)
-        return;
-      this._path = [];
-      parse.call(this, pathname, 'relative path start');
-    },
-
-    get search() {
-      return this._isInvalid || !this._query || '?' == this._query ?
-          '' : this._query;
-    },
-    set search(search) {
-      if (this._isInvalid || !this._isRelative)
-        return;
-      this._query = '?';
-      if ('?' == search[0])
-        search = search.slice(1);
-      parse.call(this, search, 'query');
-    },
-
-    get hash() {
-      return this._isInvalid || !this._fragment || '#' == this._fragment ?
-          '' : this._fragment;
-    },
-    set hash(hash) {
-      if (this._isInvalid)
-        return;
-      this._fragment = '#';
-      if ('#' == hash[0])
-        hash = hash.slice(1);
-      parse.call(this, hash, 'fragment');
-    },
-
-    get origin() {
-      var host;
-      if (this._isInvalid || !this._scheme) {
-        return '';
-      }
-      // javascript: Gecko returns String(""), WebKit/Blink String("null")
-      // Gecko throws error for "data://"
-      // data: Gecko returns "", Blink returns "data://", WebKit returns "null"
-      // Gecko returns String("") for file: mailto:
-      // WebKit/Blink returns String("SCHEME://") for file: mailto:
-      switch (this._scheme) {
-        case 'data':
-        case 'file':
-        case 'javascript':
-        case 'mailto':
-          return 'null';
-      }
-      host = this.host;
-      if (!host) {
-        return '';
-      }
-      return this._scheme + '://' + host;
-    }
-  };
-
-  // Copy over the static methods
-  var OriginalURL = scope.URL;
-  if (OriginalURL) {
-    jURL.createObjectURL = function(blob) {
-      // IE extension allows a second optional options argument.
-      // http://msdn.microsoft.com/en-us/library/ie/hh772302(v=vs.85).aspx
-      return OriginalURL.createObjectURL.apply(OriginalURL, arguments);
-    };
-    jURL.revokeObjectURL = function(url) {
-      OriginalURL.revokeObjectURL(url);
-    };
-  }
-
-  scope.URL = jURL;
-  /* jshint ignore:end */
-})(globalScope);
-//#endif
-
-exports.FONT_IDENTITY_MATRIX = FONT_IDENTITY_MATRIX;
-exports.IDENTITY_MATRIX = IDENTITY_MATRIX;
-exports.OPS = OPS;
-exports.VERBOSITY_LEVELS = VERBOSITY_LEVELS;
-exports.UNSUPPORTED_FEATURES = UNSUPPORTED_FEATURES;
-exports.AnnotationBorderStyleType = AnnotationBorderStyleType;
-exports.AnnotationFlag = AnnotationFlag;
-exports.AnnotationType = AnnotationType;
-exports.FontType = FontType;
-exports.ImageKind = ImageKind;
-exports.InvalidPDFException = InvalidPDFException;
-exports.MessageHandler = MessageHandler;
-exports.MissingDataException = MissingDataException;
-exports.MissingPDFException = MissingPDFException;
-exports.NotImplementedException = NotImplementedException;
-exports.PageViewport = PageViewport;
-exports.PasswordException = PasswordException;
-exports.PasswordResponses = PasswordResponses;
-exports.StatTimer = StatTimer;
-exports.StreamType = StreamType;
-exports.TextRenderingMode = TextRenderingMode;
-exports.UnexpectedResponseException = UnexpectedResponseException;
-exports.UnknownErrorException = UnknownErrorException;
-exports.Util = Util;
-exports.XRefParseException = XRefParseException;
-exports.arrayByteLength = arrayByteLength;
-exports.arraysToBytes = arraysToBytes;
-exports.assert = assert;
-exports.bytesToString = bytesToString;
-exports.createBlob = createBlob;
-exports.createPromiseCapability = createPromiseCapability;
-exports.createObjectURL = createObjectURL;
-exports.deprecated = deprecated;
-exports.error = error;
-exports.getLookupTableFactory = getLookupTableFactory;
-exports.getVerbosityLevel = getVerbosityLevel;
-exports.globalScope = globalScope;
-exports.info = info;
-exports.isArray = isArray;
-exports.isArrayBuffer = isArrayBuffer;
-exports.isBool = isBool;
-exports.isEmptyObj = isEmptyObj;
-exports.isInt = isInt;
-exports.isNum = isNum;
-exports.isString = isString;
-exports.isSpace = isSpace;
-exports.isSameOrigin = isSameOrigin;
-exports.isValidUrl = isValidUrl;
-exports.isLittleEndian = isLittleEndian;
-exports.isEvalSupported = isEvalSupported;
-exports.loadJpegStream = loadJpegStream;
-exports.log2 = log2;
-exports.readInt8 = readInt8;
-exports.readUint16 = readUint16;
-exports.readUint32 = readUint32;
-exports.removeNullCharacters = removeNullCharacters;
-exports.setVerbosityLevel = setVerbosityLevel;
-exports.shadow = shadow;
-exports.string32 = string32;
-exports.stringToBytes = stringToBytes;
-exports.stringToPDFString = stringToPDFString;
-exports.stringToUTF8String = stringToUTF8String;
-exports.utf8StringToString = utf8StringToString;
-exports.warn = warn;
-}));
-
+/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
 /* Copyright 2012 Mozilla Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -2387,22 +16,12 @@ exports.warn = warn;
  */
 
 'use strict';
-
-(function (root, factory) {
-  if (typeof define === 'function' && define.amd) {
-    define('pdfjs/core/arithmetic_decoder', ['exports'], factory);
-  } else if (typeof exports !== 'undefined') {
-    factory(exports);
-  } else {
-    factory((root.pdfjsCoreArithmeticDecoder = {}));
-  }
-}(this, function (exports) {
 
 /* This class implements the QM Coder decoding as defined in
  *   JPEG 2000 Part I Final Committee Draft Version 1.0
- *   Annex C.3 Arithmetic decoding procedure
+ *   Annex C.3 Arithmetic decoding procedure 
  * available at http://www.jpeg.org/public/fcd15444-1.pdf
- *
+ * 
  * The arithmetic decoder is used in conjunction with context models to decode
  * JPEG2000 and JBIG2 streams.
  */
@@ -2565,9 +184,8 @@ var ArithmeticDecoder = (function ArithmeticDecoderClosure() {
   return ArithmeticDecoder;
 })();
 
-exports.ArithmeticDecoder = ArithmeticDecoder;
-}));
-
+/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
 /* Copyright 2012 Mozilla Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -2582,28 +200,10 @@ exports.ArithmeticDecoder = ArithmeticDecoder;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* globals ArithmeticDecoder, globalScope, log2, readUint16, readUint32,
+           info, warn */
 
 'use strict';
-
-(function (root, factory) {
-  if (typeof define === 'function' && define.amd) {
-    define('pdfjs/core/jpx', ['exports', 'pdfjs/shared/util',
-      'pdfjs/core/arithmetic_decoder'], factory);
-  } else if (typeof exports !== 'undefined') {
-    factory(exports, require('../shared/util.js'),
-      require('./arithmetic_decoder.js'));
-  } else {
-    factory((root.pdfjsCoreJpx = {}), root.pdfjsSharedUtil,
-      root.pdfjsCoreArithmeticDecoder);
-  }
-}(this, function (exports, sharedUtil, coreArithmeticDecoder) {
-
-var info = sharedUtil.info;
-var log2 = sharedUtil.log2;
-var readUint16 = sharedUtil.readUint16;
-var readUint32 = sharedUtil.readUint32;
-var warn = sharedUtil.warn;
-var ArithmeticDecoder = coreArithmeticDecoder.ArithmeticDecoder;
 
 var JpxImage = (function JpxImageClosure() {
   // Table E.1
@@ -2655,6 +255,8 @@ var JpxImage = (function JpxImageClosure() {
           case 0x636F6C72: // 'colr'
             // Colorspaces are not used, the CS from the PDF is used.
             var method = data[position];
+            var precedence = data[position + 1];
+            var approximation = data[position + 2];
             if (method === 1) {
               // enumerated colorspace
               var colorspace = readUint32(data, position + 3);
@@ -2790,6 +392,16 @@ var JpxImage = (function JpxImageClosure() {
                 throw new Error('JPX Error: When regionToParse is used, ' +
                   'component size other than 1 is not supported');
               }
+              break;
+            case 0xFF55: // Tile-part lengths, main header (TLM)
+              var Ltlm = readUint16(data, position); // Marker segment length
+              // Skip tile length markers
+              position += Ltlm;
+              break;
+            case 0xFF58: // Packet lengths, tile header (PLT): MAMAZAV
+              var Lplt = readUint16(data, position); // Marker segment length
+              // Skip tile length markers
+              position += Lplt;
               break;
             case 0xFF5C: // Quantization default (QCD)
               length = readUint16(data, position);
@@ -2983,9 +595,6 @@ var JpxImage = (function JpxImageClosure() {
               }
               
               break;
-            case 0xFF55: // Tile-part lengths, main header (TLM)
-            case 0xFF57: // Packet length, main header (PLM)
-            case 0xFF58: // Packet length, tile-part header (PLT)
             case 0xFF64: // Comment (COM)
               length = readUint16(data, position);
               // skipping content
@@ -3383,7 +992,7 @@ var JpxImage = (function JpxImageClosure() {
     r = 0;
     c = 0;
     p = 0;
-
+    
     this.nextPacket = function JpxImage_nextPacket() {
       // Section B.12.1.3 Resolution-position-component-layer
       for (; r <= maxDecompositionLevelsCount; r++) {
@@ -3467,7 +1076,7 @@ var JpxImage = (function JpxImageClosure() {
     var componentsCount = siz.Csiz;
     var precinctsSizes = getPrecinctSizesInImageScale(tile);
     var l = 0, r = 0, c = 0, px = 0, py = 0;
-
+    
     this.nextPacket = function JpxImage_nextPacket() {
       // Section B.12.1.5 Component-position-resolution-layer
       for (; c < componentsCount; ++c) {
@@ -3934,7 +1543,7 @@ var JpxImage = (function JpxImageClosure() {
       for (j = 0; j < codingpasses; j++) {
         switch (currentCodingpassType) {
           case 0:
-            bitModel.runSignificancePropagationPass();
+            bitModel.runSignificancePropogationPass();
             break;
           case 1:
             bitModel.runMagnitudeRefinementPass();
@@ -4530,8 +2139,8 @@ var JpxImage = (function JpxImageClosure() {
         }
         neighborsSignificance[index] |= 0x80;
       },
-      runSignificancePropagationPass:
-        function BitModel_runSignificancePropagationPass() {
+      runSignificancePropogationPass:
+        function BitModel_runSignificancePropogationPass() {
         var decoder = this.decoder;
         var width = this.width, height = this.height;
         var coefficentsMagnitude = this.coefficentsMagnitude;
@@ -5035,10 +2644,1594 @@ var JpxImage = (function JpxImageClosure() {
 
   return JpxImage;
 })();
+/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* vim: set shiftwidth=2 tabstop=2 autoindent cindent expandtab: */
+/* Copyright 2012 Mozilla Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* globals Cmd, ColorSpace, Dict, MozBlobBuilder, Name, PDFJS, Ref, URL,
+           Promise */
 
-exports.JpxImage = JpxImage;
-}));
+'use strict';
 
-!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var t;t="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this,t.webjpip=e()}}(function(){return function e(t,n,r){function i(s,o){if(!n[s]){if(!t[s]){var l="function"==typeof require&&require;if(!o&&l)return l(s,!0);if(a)return a(s,!0);var c=new Error("Cannot find module '"+s+"'");throw c.code="MODULE_NOT_FOUND",c}var u=n[s]={exports:{}};t[s][0].call(u.exports,function(e){var n=t[s][1][e];return i(n?n:e)},u,u.exports,e,t,n,r)}return n[s].exports}for(var a="function"==typeof require&&require,s=0;s<r.length;s++)i(r[s]);return i}({1:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js"),i=e("jpip-runtime-factory.js").jpipRuntimeFactory;t.exports.JpipCodestreamClient=function(e){function t(e){var t=null;null!==e.exception&&(t=e.exception.toString());var n={isReady:e.isReady,exception:t};C(n)}function n(e,t,n){for(var i=new Array(e.length),a=0;a<e.length;++a){var s=e[a].minNumQualityLayers;if("max"!==s){if(void 0!==t&&s>t)throw new r.jpipExceptions.ArgumentException("progressiveness["+a+"].minNumQualityLayers",s,"minNumQualityLayers is bigger than fetchParams.quality");s=o(s,n,"progressiveness["+a+"].minNumQualityLayers")}i[a]={minNumQualityLayers:s}}return i}function a(e){var t=[],n=g.getDefaultTileStructure(),r=n.getNumQualityLayers(),i="max";void 0!==e&&(r=Math.min(r,e),i=r);for(var a=4>r?r-1:3,s=1;a>s;++s)t.push({minNumQualityLayers:s});var o=Math.round(r/2);return o>a&&t.push({minNumQualityLayers:o}),t.push({minNumQualityLayers:i}),t}function s(e){var t=o(e.level,"level",void 0,!0),n=o(e.quality,"quality",void 0,!0),i=o(e.minX,"minX"),a=o(e.minY,"minY"),s=o(e.maxXExclusive,"maxXExclusive"),l=o(e.maxYExclusive,"maxYExclusive"),c=g.getLevelWidth(t),u=g.getLevelHeight(t);if(0>i||s>c||0>a||l>u||i>=s||a>=l)throw new r.jpipExceptions.ArgumentException("codestreamPartParams",e);var p={minX:i,minY:a,maxXExclusive:s,maxYExclusive:l,level:t,quality:n};return p}function o(e,t,n,i){if(void 0===e&&(void 0!==n||i))return n;var a=+e;if(isNaN(a)||a!==Math.floor(a))throw new r.jpipExceptions.ArgumentException(t,e);return a}e=e||{};var l=i,c=l.createDatabinsSaver(!1),u=c.getMainHeaderDatabin(),p=l.createMarkersParser(u),f=l.createOffsetsCalculator(u,p),d=l.createStructureParser(c,p,f),h="RPCL",g=l.createCodestreamStructure(d,h),v=l.createQualityLayersCache(g),m=l.createHeaderModifier(g,f,h),x=l.createCodestreamReconstructor(g,c,m,v),y=l.createPacketsDataCollector(g,c,v),j=e.maxChannelsInSession||1,E=e.maxRequestsWaitingForResponseInChannel||1,b=l.createReconnectableRequester(j,E,g,c),I={requester:b,reconstructor:x,packetsDataCollector:y,qualityLayersCache:v,codestreamStructure:g,databinsSaver:c,jpipFactory:l},C=null;return this.setStatusCallback=function(e){C=e,null!==e?b.setStatusCallback(t):b.setStatusCallback(null)},this.open=function(e){b.open(e)},this.close=function(){return new Promise(function(e,t){b.close(e)})},this.getSizesParams=function(){if(!b.getIsReady())throw new r.jpipExceptions.IllegalOperationException("Cannot get codestream structure before image is ready");var e=g.getSizesParams(),t=JSON.parse(JSON.stringify(e)),n=g.getDefaultTileStructure(),i=n.getDefaultComponentStructure();return t.defaultNumQualityLayers=n.getNumQualityLayers(),t.defaultNumResolutionLevels=i.getNumResolutionLevels(),t},this.createImageDataContext=function(e,t){t=t||{};var i,o=t.useCachedDataOnly,c=t.disableProgressiveness,u=s(e);if(void 0!==t.progressiveness){if(o||c)throw new r.jpipExceptions.ArgumentException("options.progressiveness",t.progressiveness,"options contradiction: cannot accept both progressivenessand useCachedDataOnly/disableProgressiveness options");i=n(t.progressiveness,u.quality,"quality")}else if(o)i=[{minNumQualityLayers:0}];else if(c){var p=e.quality,f=void 0===p?"max":p;i=[{minNumQualityLayers:f}]}else i=a(u.quality);var d=l.createImageDataContext(I,u,i);return d},this.fetch=function(e){var t=l.createFetchHandle(b,e);return t.resume(),t},this.startMovableFetch=function(e,t){t.dedicatedChannelHandle=b.dedicateChannelForMovableRequest(),t.fetchHandle=l.createFetchHandle(b,e,t.dedicatedChannelHandle),t.fetchHandle.resume()},this.moveFetch=function(e,t){t.fetchHandle.stopAsync(),t.fetchHandle=l.createFetchHandle(b,e,t.dedicatedChannelHandle),t.fetchHandle.resume()},this.reconnect=function(){b.reconnect()},this}},{"j2k-jpip-globals.js":15,"jpip-runtime-factory.js":16}],2:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js"),i=Math.log(2);t.exports.JpipCodestreamSizesCalculator=function(e){function t(e){var t=e.level,r=f(t),i=d(t),s=n(e),c=s.minTileX+s.minTileY*l(),u=s.maxTileXExclusive-1+(s.maxTileYExclusive-1)*l(),p=o(c),h=o(u),g=a(p,t),v=a(h,t),m=g[0],x=g[1],y=s.maxTileXExclusive-s.minTileX,j=s.maxTileYExclusive-s.minTileY;return y>1&&(m+=v[0],m+=r*(y-2)),j>1&&(x+=v[1],x+=i*(j-2)),{width:m,height:x}}function n(e){var t=e.level,n=f(t),r=d(t),i=v(t),a=m(t),s=(e.minX-i)/n,o=(e.minY-a)/r,u=(e.maxXExclusive-i)/n,p=(e.maxYExclusive-a)/r,h=Math.max(0,1+s),g=Math.max(0,1+o),x=Math.min(l(),1+u),y=Math.min(c(),1+p),j={minTileX:Math.floor(h),minTileY:Math.floor(g),maxTileXExclusive:Math.ceil(x),maxTileYExclusive:Math.ceil(y)};return j}function a(e,t){var n=s(e.horizontalEdgeType,v,u,f),r=s(e.verticalEdgeType,m,p,d);if(void 0!==t){var i=1<<t;n=Math.ceil(n/i),r=Math.ceil(r/i)}return[n,r]}function s(e,t,n,i){var a;switch(e){case y:a=t();break;case j:var s=i(),o=n()-t();a=o%s,0===a&&(a=s);break;case x:a=i();break;default:throw new r.jpipExceptions.InternalErrorException("Unexpected edge type: "+e)}return a}function o(e){var t=l(),n=c(),i=e%t,a=Math.floor(e/t);if(a>n||0>i||0>a)throw new r.jpipExceptions.InternalErrorException("Tile index "+e+" is not in range");var s=0===i?y:i===t-1?j:x,o=0===a?y:a===n-1?j:x,u={horizontalEdgeType:s,verticalEdgeType:o};return u}function l(){var t=Math.ceil(e.imageWidth/e.tileWidth);return t}function c(){var t=Math.ceil(e.imageHeight/e.tileHeight);return t}function u(n){if(void 0===n)return e.imageWidth;var r=t({minX:0,maxXExclusive:e.imageWidth,minY:0,maxYExclusive:e.imageHeight,level:n});return r.width}function p(n){if(void 0===n)return e.imageHeight;var r=t({minX:0,maxXExclusive:e.imageWidth,minY:0,maxYExclusive:e.imageHeight,level:n});return r.height}function f(t){if(void 0===t)return e.tileWidth;var n=1<<t,r=Math.ceil(e.tileWidth/n);return r}function d(t){if(void 0===t)return e.tileHeight;var n=1<<t,r=Math.ceil(e.tileHeight/n);return r}function h(){return e.firstTileOffsetX}function g(){return e.firstTileOffsetY}function v(e){var t=f()-h(),n=u();t>n&&(t=n);var r=1<<e,i=Math.ceil(t/r);return i}function m(e){var t=d()-g(),n=p();t>n&&(t=n);var r=1<<e,i=Math.ceil(t/r);return i}var x=0,y=1,j=2;return this.EDGE_TYPE_NO_EDGE=x,this.EDGE_TYPE_FIRST=y,this.EDGE_TYPE_LAST=j,this.getSizeOfPart=t,this.getTilesFromPixels=n,this.getNumTilesX=l,this.getNumTilesY=c,this.getTileWidth=f,this.getTileHeight=d,this.getFirstTileOffsetX=h,this.getFirstTileOffsetY=g,this.getFirstTileWidth=v,this.getFirstTileHeight=m,this.isEdgeTileId=o,this.getTileSize=a,this.getLevelWidth=u,this.getLevelHeight=p,this.getImageLevel=function(){return 0},this.getLevel=function(t){if(void 0===e.defaultNumResolutionLevels)throw"This method is available only when jpipSizesCalculator is created from params returned by jpipCodestreamClient. It shall be used for JPIP API purposes only";var n=Math.log((t.maxXExclusive-t.minX)/t.screenWidth)/i,r=Math.log((t.maxYExclusive-t.minY)/t.screenHeight)/i,a=Math.ceil(Math.max(n,r));return a=Math.max(0,Math.min(e.defaultNumResolutionLevels-1,a))},this.getNumResolutionLevelsForLimittedViewer=function(){if(void 0===e.defaultNumResolutionLevels)throw"This method is available only when jpipSizesCalculator is created from params returned by jpipCodestreamClient. It shall be used for JPIP API purposes only";return e.defaultNumResolutionLevels},this.getLowestQuality=function(){return 1},this.getHighestQuality=function(){if(void 0===e.defaultNumQualityLayers)throw"This method is available only when jpipSizesCalculator is created from params returned by jpipCodestreamClient. It shall be used for JPIP API purposes only";return e.defaultNumQualityLayers},this}},{"j2k-jpip-globals.js":15}],3:[function(e,t,n){"use strict";function r(e,t,n){if(this._requester=e,this._imageDataContext=t,this._serverRequest=null,this._dedicatedChannelHandle=n,this._isFailure=!1,this._isMoved=!1,this._requestedQualityLayer=0,this._reachedQualityLayer=0,this._requesterCallbackOnFailureBound=this._requesterCallbackOnFailure.bind(this),t.isDisposed())throw new i.jpipExceptions.IllegalOperationException("Cannot initialize JpipFetchHandle with disposed ImageDataContext");t.on("data",this._onData.bind(this))}t.exports.JpipFetchHandle=r;var i=e("j2k-jpip-globals.js");r.prototype.resume=function(){if(null!==this._serverRequest)throw new i.jpipExceptions.IllegalOperationException("Cannot resume already-active-fetch");if(this._imageDataContext.isDisposed())throw new i.jpipExceptions.IllegalOperationException("Cannot fetch data with disposed imageDataContext");if(this._isMoved)throw new i.jpipExceptions.IllegalOperationException("Cannot resume movable fetch which has been already moved; Should start a new fetch with same dedicatedChannelHandle instead");this._requestData()},r.prototype.stopAsync=function(){if(null===this._serverRequest){if(this._imageDataContext.isDisposed()||this._imageDataContext.isDone())return;throw new i.jpipExceptions.IllegalOperationException("Cannot stop already stopped fetch")}return this._dedicatedChannelHandle?this._isMoved=!0:(this._requester.stopRequestAsync(this._serverRequest),this._serverRequest=null),new Promise(function(e,t){e()})},r.prototype._requesterCallbackOnAllDataRecieved=function(e,t,n){if(t&&!this._isMoved&&!this._imageDataContext.isDisposed()&&n>this._reachedQualityLayer)throw new i.jpipExceptions.IllegalDataException("JPIP server not returned all data","D.3")},r.prototype._requesterCallbackOnFailure=function(){if(this._isFailure=!0,this._isMoved)throw new i.jpipExceptions.InternalErrorException("Failure callback to an old fetch which has been already moved")},r.prototype._onData=function(e){if(this._reachedQualityLayer=this._requestedQualityLayer,e!==this._imageDataContext)throw new i.jpipExceptions.InternalErrorException("Unexpected ImageDataContext in FetchHandle event");this._isMoved||this._imageDataContext.isDisposed()||null===this._serverRequest||this._requestData()},r.prototype._requestData=function(){if(!this._imageDataContext.isDone()){var e=this,t=this._imageDataContext.getNextQualityLayer();this._requestedQualityLayer=t,this._serverRequest=this._requester.requestData(this._imageDataContext.getCodestreamPartParams(),function(n,r){e._requesterCallbackOnAllDataRecieved(n,r,t)},this._requesterCallbackOnFailureBound,t,this._dedicatedChannelHandle)}}},{"j2k-jpip-globals.js":15}],4:[function(e,t,n){function r(e,t,n){this._codestreamPartParams=t,this._progressiveness=n,this._reconstructor=e.reconstructor,this._packetsDataCollector=e.packetsDataCollector,this._qualityLayersCache=e.qualityLayersCache,this._codestreamStructure=e.codestreamStructure,this._databinsSaver=e.databinsSaver,this._jpipFactory=e.jpipFactory,this._progressiveStagesFinished=0,this._qualityLayersReached=0,this._dataListeners=[],this._listener=this._jpipFactory.createRequestDatabinsListener(t,this._qualityLayerReachedCallback.bind(this),this._codestreamStructure,this._databinsSaver,this._qualityLayersCache)}var i=e("j2k-jpip-globals.js");t.exports.JpipImageDataContext=r,r.prototype.hasData=function(){return this._ensureNotDisposed(),this._progressiveStagesFinished>0},r.prototype.getFetchedData=function(e){if(this._ensureNotDisposed(),!this.hasData())throw"JpipImageDataContext error: cannot call getFetchedData before hasData = true";var t=this._getParamsForDataWriter(e),n=this._packetsDataCollector.getAllCodeblocksData(t.codestreamPartParams,t.minNumQualityLayers),r=this._reconstructor.createCodestreamForRegion(t.codestreamPartParams,t.minNumQualityLayers,!0);if(null===n.codeblocksData)throw new i.jpipExceptions.InternalErrorException("Could not collect codeblocks although progressiveness stage has been reached");if(null===r)throw new i.jpipExceptions.InternalErrorException("Could not reconstruct codestream although progressiveness stage has been reached");return{headersCodestream:r,codeblocksData:n.codeblocksData,codestreamPartParams:this._codestreamPartParams}},r.prototype.getFetchedDataAsCodestream=function(e){this._ensureNotDisposed();var t=this._getParamsForDataWriter(e),n=this._reconstructor.createCodestreamForRegion(t.codestreamPartParams,t.minNumQualityLayers);if(null===n)throw new i.jpipExceptions.InternalErrorException("Could not reconstruct codestream although progressiveness stage has been reached");return n},r.prototype.on=function(e,t){if(this._ensureNotDisposed(),"data"!==e)throw"JpipImageDataContext error: Unexpected event "+e;this._dataListeners.push(t)},r.prototype.isDone=function(){return this._ensureNotDisposed(),this._isRequestDone},r.prototype.dispose=function(){this._ensureNotDisposed(),this._listener.unregister(),this._listener=null},r.prototype.setIsProgressive=function(e){this._ensureNotDisposed();var t=this._isProgressive;if(this._isProgressive=e,!t&&e&&this.hasData())for(var n=0;n<this._dataListeners.length;++n)this._dataListeners[n](this)},r.prototype.isDisposed=function(){return!this._listener},r.prototype.getCodestreamPartParams=function(){return this._codestreamPartParams},r.prototype.getNextQualityLayer=function(){return this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers},r.prototype._tryAdvanceProgressiveStage=function(){var e=this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;if(this._qualityLayersReached<e)return!1;for("max"===this._qualityLayersReached&&(this._progressiveStagesFinished=this._progressiveness.length);this._progressiveStagesFinished<this._progressiveness.length;){var t=this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;if("max"===t||t>this._qualityLayersReached)break;++this._progressiveStagesFinished}return this._isRequestDone=this._progressiveStagesFinished===this._progressiveness.length,!0},r.prototype._qualityLayerReachedCallback=function(e){if(this._qualityLayersReached=e,this._isRequestDone)throw new i.jpipExceptions.InternalErrorException("Request already done but callback is called");if(this._tryAdvanceProgressiveStage()&&(this._isProgressive||this._isRequestDone))for(var t=0;t<this._dataListeners.length;++t)this._dataListeners[t](this)},r.prototype._getParamsForDataWriter=function(e){if(0===this._progressiveStagesFinished)throw new i.jpipExceptions.IllegalOperationException("Cannot create codestream before first progressiveness stage has been reached");var t=this._progressiveness[this._progressiveStagesFinished-1].minNumQualityLayers,n=this._codestreamPartParams;return void 0!==e&&(n=Object.create(this._codestreamPartParams),n.quality=e,"max"!==t&&(t=Math.min(t,e))),{codestreamPartParams:n,minNumQualityLayers:t}},r.prototype._ensureNotDisposed=function(){if(this.isDisposed())throw new jpipExceptions.IllegalOperationException("Cannot use ImageDataContext after disposed")}},{"j2k-jpip-globals.js":15}],5:[function(e,t,n){var r=e("jpip-codestream-client.js").JpipCodestreamClient,i=e("pdfjs-jpx-decoder.js").PdfjsJpxDecoder,a=e("jpip-codestream-sizes-calculator.js").JpipCodestreamSizesCalculator;t.exports.JpipImageImplementation={createFetcher:function(e){return new Promise(function(t,n){var i=new r;i.setStatusCallback(function(e){e.isReady?t({fetcher:i,sizesParams:i.getSizesParams()}):e.exception&&(i.setStatusCallback(null),n(e.exception))}),i.open(e)})},createPixelsDecoder:function(){return new i},createImageParamsRetriever:function(e){return new a(e)},getScriptsToImport:function(){var e=new Error,t=e.stack.trim(),n=/at (|[^ ]+ \()([^ ]+):\d+:\d+/,r=n.exec(t);if(r&&""!==r[2])return[r[2]];var i=new RegExp(/.+\/(.*?):\d+(:\d+)*$/);if(r=i.exec(t),r&&""!==r[1])return[r[1]];if(void 0!==e.fileName)return[e.fileName];throw"JpipImageImplementation: Could not get current script URL"}}},{"jpip-codestream-client.js":1,"jpip-codestream-sizes-calculator.js":2,"pdfjs-jpx-decoder.js":6}],6:[function(e,t,n){"use strict";function r(){this._image=new pdfjsCoreJpx.JpxImage}t.exports.PdfjsJpxDecoder=r;e("j2k-jpip-globals.js");r.prototype.decode=function(e){var t=this;return new Promise(function(n,r){var i={left:e.headersCodestream.offsetX,top:e.headersCodestream.offsetY,right:e.headersCodestream.offsetX+e.codestreamPartParams.maxXExclusive-e.codestreamPartParams.minX,bottom:e.headersCodestream.offsetY+e.codestreamPartParams.maxYExclusive-e.codestreamPartParams.minY},a=t._image.parseCodestream(e.headersCodestream.codestream,0,e.headersCodestream.codestream.length,{isOnlyParseHeaders:!0});t._image.addPacketsData(a,e.codeblocksData),t._image.decode(a,{regionToParse:i});var s=t._copyTilesPixelsToOnePixelsArray(t._image.tiles,i,t._image.componentsCount);n(s)})},r.prototype._copyTilesPixelsToOnePixelsArray=function(e,t,n){for(var r=(e[0],t.right-t.left),i=t.bottom-t.top,a=new ImageData(r,i),s=4,o=r*s,l=0;l<e.length;++l){var c=e[l].left+e[l].width,u=e[l].top+e[l].height,p=Math.max(t.left,e[l].left),f=Math.max(t.top,e[l].top),d=Math.min(t.right,c),h=Math.min(t.bottom,u),g=d-p,v=h-f;if(p!==e[l].left||f!==e[l].top||g!==e[l].width||v!==e[l].height)throw"Unsupported tiles to copy";var m=p-t.left,x=f-t.top,y=m*s+x*o;this._copyTile(a.data,e[l],y,o,n)}return a},r.prototype._copyTile=function(e,t,n,r,i){var a=0,s=1,o=2,l=1,c=t.pixels||t.items;switch(void 0===i&&(i=c.length/(t.width*t.height)),i){case 1:s=0,o=0;break;case 3:l=3;break;case 4:l=4;break;default:throw"Unsupported components count "+i}for(var u=n,p=0,f=0;f<t.height;++f){for(var d=u,h=0;h<t.width;++h)e[u+0]=c[p+a],e[u+1]=c[p+s],e[u+2]=c[p+o],e[u+3]=255,p+=l,u+=4;u=d+r}}},{"j2k-jpip-globals.js":15}],7:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.CompositeArray=function(e){function t(t,n){if(void 0===t||void 0===n)throw new r.jpipExceptions.InternalErrorException("minOffset or maxOffset is undefined for CompositeArray.copyToArray");if(e>t)throw new r.jpipExceptions.InternalErrorException("minOffset ("+t+") must be smaller than CompositeArray offset ("+e+")");if(n>e+s)throw new r.jpipExceptions.InternalErrorException("maxOffset ("+n+") must be larger than CompositeArray end offset ("+e+s+")")}function n(t,n){var a=Math.max(e,t),o=e+s;if(void 0!==n&&(o=Math.min(o,n)),a>=o){var l={internalIteratorData:{isEndOfRange:!0}};return l}var c={subArray:null,offset:-1,internalIteratorData:{end:o,currentSubArray:null,currentInternalPartOffset:null,nextInternalPartOffset:e,currentInternalPartIndex:-1,isEndOfRange:!1}},u=!1;do{if(u)throw new r.jpipExceptions.InternalErrorException("Iterator reached to the end although no data has been iterated");u=!i(c)}while(a>=c.internalIteratorData.nextInternalPartOffset);var p=a-c.internalIteratorData.currentInternalPartOffset;return c.internalIteratorData.currentSubArray=c.internalIteratorData.currentSubArray.subarray(p),c.internalIteratorData.currentInternalPartOffset=a,c}function i(e){var t=e.internalIteratorData;if(t.isEndOfRange)return!1;if(e.subArray=t.currentSubArray,e.offset=t.currentInternalPartOffset,++t.currentInternalPartIndex,t.nextInternalPartOffset>=t.end)return t.isEndOfRange=!0,!0;a(t.currentInternalPartIndex),t.currentSubArray=o[t.currentInternalPartIndex],t.currentInternalPartOffset=t.nextInternalPartOffset;var n=o[t.currentInternalPartIndex].length;t.nextInternalPartOffset=t.currentInternalPartOffset+n;var r=t.end-t.currentInternalPartOffset,i=r<t.currentSubArray.length;return i&&(t.currentSubArray=t.currentSubArray.subarray(0,r)),!0}function a(e){if(e>=o.length)throw new r.jpipExceptions.InternalErrorException("CompositeArray: end of part has reached. Check end calculation")}var s=0,o=[];this.getLength=function(){return s},this.getOffset=function(){return e},this.pushSubArray=function(e){o.push(e),s+=e.length},this.copyToOtherAtTheEnd=function(e,r,a){t(r,a);for(var s=n(r,a);i(s);)e.pushSubArray(s.subArray)},this.copyToTypedArray=function(e,r,a,s){t(a,s);for(var o=n(a,s);i(o);){var l=o.offset-r;e.set(o.subArray,l)}},this.copyToArray=function(e,r,a,s){t(a,s);for(var o=n(a,s);i(o);)for(var l=o.offset-r,c=0;c<o.subArray.length;++c)e[l++]=o.subArray[c]},this.copyToOther=function(t){if(t.getOffset()>e)throw new r.jpipExceptions.InternalErrorException("CompositeArray: Trying to copy part into a latter part");var a=t.getOffset()+t.getLength(),o=a>=e+s;if(!o){var l=a,c=n(l);if(!i(c))throw new r.jpipExceptions.InternalErrorException("CompositeArray: Could not merge parts");var u=l;do{if(c.offset!==u)throw new r.jpipExceptions.InternalErrorException("CompositeArray: Non-continuous value of rangeToCopy.offset. Expected: "+u+", Actual: "+c.offset);t.pushSubArray(c.subArray),u+=c.subArray.length}while(i(c))}}}},{"j2k-jpip-globals.js":15}],8:[function(e,t,n){"use strict";t.exports.JpipDatabinParts=function(e,t,n){function r(e,t){var n,r=!1,a=0;if(void 0!==t&&(r=!!t.forceCopyAllRange,a=t.databinStartOffset,n=t.maxLengthToCopy,void 0===a&&(a=0)),void 0===e&&(e=0),0===n)return{resultWithoutCopy:0};if(null!==l&&a>=l)return{resultWithoutCopy:n&&r?null:0};var c=s(a);if(c===o.length)return{resultWithoutCopy:r?null:0};if(r){var u=i(a,n,c);if(!u)return{resultWithoutCopy:null}}var p={databinStartOffset:a,maxLengthToCopy:n,resultStartOffset:e};return p}function i(e,t,n){if(o[n].getOffset()>e)return!1;if(t){var r=e-o[n].getOffset(),i=o[n].getLength()-r,a=i>=t;return a}if(null===l||n<o.length-1)return!1;var s=o[o.length-1],c=s.getOffset()+s.getLength(),u=c===l;return u}function a(e,t,n){var r,i=e;if(void 0!==t)r=e+t;else{var a=o[o.length-1];r=a.getOffset()+a.getLength()}for(var s=null,l=0;l<o.length&&!(o[l].getOffset()>=r);++l){var c=Math.max(i,o[l].getOffset()),u=Math.min(r,o[l].getOffset()+o[l].getLength());n(o[l],c,u),s=o[l]}if(null===s)return 0;var p=Math.min(s.getOffset()+s.getLength(),r),f=p-e;return f}function s(e){var t;for(t=0;t<o.length&&!(o[t].getOffset()+o[t].getLength()>e);++t);return t}var o=[],l=null,c=0,u=[];return this.getDatabinLengthIfKnown=function(){return l},this.getLoadedBytes=function(){return c},this.isAllDatabinLoaded=function(){var e;switch(o.length){case 0:e=0===l;break;case 1:e=0===o[0].getOffset()&&o[0].getLength()===l;break;default:e=!1}return e},this.getCachedData=function(e){var t=u[e];return void 0===t&&(t={},u[e]=t),t},this.getClassId=function(){return e},this.getInClassId=function(){return t},this.copyToCompositeArray=function(e,t){var n=0,i=r(n,t);if(void 0!==i.resultWithoutCopy)return i.resultWithoutCopy;var s=a(i.databinStartOffset,i.maxLengthToCopy,function(t,n,r){t.copyToOtherAtTheEnd(e,n,r)});return s},this.copyBytes=function(e,t,n){var i=r(t,n);if(void 0!==i.resultWithoutCopy)return i.resultWithoutCopy;var s=i.databinStartOffset-i.resultStartOffset,o=a(i.databinStartOffset,i.maxLengthToCopy,function(t,n,r){t.copyToArray(e,s,n,r)});return o},this.getExistingRanges=function(){for(var e=new Array(o.length),t=0;t<o.length;++t)e[t]={start:o[t].getOffset(),length:o[t].getLength()};return e},this.addData=function(e,t){if(e.isLastByteInDatabin&&(l=e.messageOffsetFromDatabinStart+e.messageBodyLength),0!==e.messageBodyLength){var r=n.createCompositeArray(e.messageOffsetFromDatabinStart),i=e.bodyStart+e.messageBodyLength;r.pushSubArray(t.subarray(e.bodyStart,i));var a=s(e.messageOffsetFromDatabinStart),u=a;if(a>0){var p=o[a-1],f=p.getOffset()+p.getLength();f===e.messageOffsetFromDatabinStart&&--u}if(u>=o.length)return o.push(r),void(c+=e.messageBodyLength);var d=o[u],h=e.messageOffsetFromDatabinStart+e.messageBodyLength;if(d.getOffset()>h){for(var g=o.length;g>u;--g)o[g]=o[g-1];return o[u]=r,void(c+=e.messageBodyLength)}var v=d.getLength(),m=d.getOffset()>e.messageOffsetFromDatabinStart;m&&(o[u]=r,r=d,d=o[u]),r.copyToOther(d);var x,y=d.getOffset()+d.getLength();for(x=u;x<o.length-1&&!(y<o[x+1].getOffset());++x)v+=o[x+1].getLength();var j=x-u;if(j>0){o[x].copyToOther(d);for(var E=u+1;E<o.length-j;++E)o[E]=o[E+j];o.length-=j}c+=d.getLength()-v}},this}},{}],9:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipDatabinsSaver=function(e,t){function n(e,t){if(0!==e.inClassId)throw new r.jpipExceptions.IllegalDataException("Main header data-bin with in-class index other than zero is not valid","A.3.5");var n=m.getLoadedBytes();m.addData(e,t);var i=m.getLoadedBytes()-n;g+=i,v+=i}function i(e,t){}function a(n,i,a,s,o){if(s!==e)throw new r.jpipExceptions.WrongStreamException("databin of type "+o,e);var l=n.databins[a];return l||(l=t.createDatabinParts(i,a),n.databins[a]=l),l}function s(){return{databins:[],listeners:[],databinsWithListeners:[]}}var o=0,l=1,c=2,u=4,p=5,f=[],d=[],h=[],g=0,v=0;f[c]=s(),f[o]=s(),f[l]=f[o],h[c]=!0,h[o]=!0,h[l]=!0,f[u]=s(),f[p]=f[u],d[u]=!0,d[p]=!0;var m=t.createDatabinParts(6,0);return this.getIsJpipTilePartStream=function(){return e},this.getLoadedBytes=function(){return g},this.getMainHeaderDatabin=function(){return m},this.getTileHeaderDatabin=function(e){var t=a(f[c],c,e,!1,"tileHeader");return t},this.getPrecinctDatabin=function(e){var t=a(f[o],o,e,!1,"precinct");return t},this.getTileDatabin=function(e){var t=a(f[u],u,e,!0,"tilePart");return t},this.addEventListener=function(e,t,n,i){if("dataArrived"!==t)throw new r.jpipExceptions.InternalErrorException("Unsupported event: "+t);var a=e.getClassId(),s=e.getInClassId(),o=f[a];if(e!==o.databins[s])throw new r.jpipExceptions.InternalErrorException("Unmatched databin with class-ID="+a+" and in-class-ID="+s);void 0===o.listeners[s]&&(o.listeners[s]=[]),0===o.listeners[s].length&&(v+=e.getLoadedBytes()),o.listeners[s].push({listener:n,listenerThis:i,isRegistered:!0}),o.databinsWithListeners[s]=e},this.removeEventListener=function(e,t,n){if("dataArrived"!==t)throw new r.jpipExceptions.InternalErrorException("Unsupported event: "+t);var i=e.getClassId(),a=e.getInClassId(),s=f[i],o=s.listeners[a];if(e!==s.databins[a]||e!==s.databinsWithListeners[a])throw new r.jpipExceptions.InternalErrorException("Unmatched databin with class-ID="+i+" and in-class-ID="+a);for(var l=0;l<o.length;++l)if(o[l].listener===n)return o[l].isRegistered=!0,o[l]=o[o.length-1],o.length-=1,void(0===o.length&&(delete s.databinsWithListeners[a],v-=e.getLoadedBytes()));throw new r.jpipExceptions.InternalErrorException("Could not unregister listener from databin")},this.cleanupUnregisteredDatabins=function(){for(var e=0;e<f.length;++e)if(void 0!==f[e]){var t=f[e].databinsWithListeners;f[e].databins=t.slice()}g=v},this.saveData=function(e,t){if(0!==e.codestreamIndex)throw new r.jpipExceptions.UnsupportedFeatureException("Non zero Csn (Code Stream Index)","A.2.2");switch(e.classId){case 6:n(e,t);break;case 8:i(e,t);break;default:var s=f[e.classId];if(void 0===s)break;var o=!!d[e.classId],l=a(s,e.classId,e.inClassId,o,"<class ID "+e.classId+">"),c=l.getLoadedBytes();l.addData(e,t);var u=l.getLoadedBytes()-c;g+=u;var p=s.listeners,h=p[e.inClassId];if(void 0!==h&&h.length>0){v+=u;for(var m=h.slice(),x=0;x<m.length;++x){var y=m[x];y.isRegistered&&y.listener.call(y.listenerThis,l)}}}},this}},{"j2k-jpip-globals.js":15}],10:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipObjectPoolByDatabin=function(){var e=[];this.getObject=function(t){var n=t.getClassId(),i=e[n];void 0===i&&(i=[],e[n]=i);var a=t.getInClassId(),s=i[a];if(void 0===s)s={},s.databin=t,i[a]=s;else if(s.databin!==t)throw new r.jpipExceptions.InternalErrorException("Databin IDs are not unique");return s}}},{"j2k-jpip-globals.js":15}],11:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipRequestDatabinsListener=function(e,t,n,i,a,s){function o(){++d;var t=n.getTilesIterator(e);do{var r=t.tileIndex,a=i.getTileHeaderDatabin(r);v.push(a),i.addEventListener(a,"dataArrived",l),++d,l(a)}while(t.tryAdvance());--d,p()}function l(t){if(t.isAllDatabinLoaded()){var a=x.getObject(t);if(!a.isAlreadyLoaded){a.isAlreadyLoaded=!0,--d;var s=t.getInClassId(),o=n.getTileStructure(s),l=o.getNumQualityLayers(),f=o.getPrecinctIterator(s,e);do{if(!f.isInCodestreamPart)throw new r.jpipExceptions.InternalErrorException("Unexpected precinct not in codestream part");var h=o.precinctPositionToInClassIndex(f),g=i.getPrecinctDatabin(h);m.push(g);var v=x.getObject(g);if(void 0!==v.qualityInTile)throw new r.jpipExceptions.InternalErrorException("Tile was iterated twice in codestream part");v.qualityInTile=l,u(g,v,f),i.addEventListener(g,"dataArrived",c)}while(f.tryAdvance());p()}}}function c(e){var t=x.getObject(e),n=t.numQualityLayersReached,r=t.qualityInTile;n!==r&&(--y[n],u(e,t),p())}function u(t,n,r){var i=a.getQualityLayerOffset(t,e.quality,r),s=i.numQualityLayers;n.numQualityLayersReached=s;var o=n.qualityInTile;if(s!==o){var l=y[s]||0;y[s]=l+1}}function p(){if(!(y[h]>0||"max"===h||h>=f||d>0)){var e,n=y.length;do{if(++h,h>=n){h="max";break}e=y[h]>0}while(!e);t(h)}}var f,d=0,h=0,g=!1,v=[],m=[],x=s.createObjectPoolByDatabin(),y=[];o(),this.unregister=function(){if(!g){for(var e=0;e<v.length;++e)i.removeEventListener(v[e],"dataArrived",l);for(var t=0;t<m.length;++t)i.removeEventListener(m[t],"dataArrived",c);g=!0}}}},{"j2k-jpip-globals.js":15}],12:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipCodestreamStructure=function(e,t,n){function i(e,t){if(e.currentY>=t.maxTileYExclusive)throw new r.jpipExceptions.InternalErrorException("Cannot advance tile iterator after end");if(++e.currentX,e.currentX<t.maxTileXExclusive)return!0;e.currentX=t.minTileX,++e.currentY;var n=e.currentY<t.maxTileYExclusive;return n}function a(t){c();var n=p.getNumTilesX()*p.getNumTilesY()-1;if(0>t||t>n)throw new r.jpipExceptions.ArgumentException("tileId",t,"Expected value between 0 and "+n);var i=p.isEdgeTileId(t);if(void 0===h[t]){var a=e.parseOverridenTileParams(t);a?h[t]=l(a,i):h[t]=null}if(h[t])return h[t];var s=o(i);return s}function s(e,t,n){if(0>t||t>=n)throw new r.jpipExceptions.ArgumentException(e,t,e+" is expected to be between 0 and "+n-1)}function o(t){if(!f){var n=e.parseDefaultTileParams();f=new Array(3);for(var r=0;3>r;++r){f[r]=new Array(3);for(var i=0;3>i;++i){var a={horizontalEdgeType:r,verticalEdgeType:i};f[r][i]=l(n,a)}}}var s=f[t.horizontalEdgeType],o=s[t.verticalEdgeType];return o}function l(e,r){c();var i=JSON.parse(JSON.stringify(e));i.tileSize=p.getTileSize(r),i.defaultComponentParams.scaleX=1,i.defaultComponentParams.scaleY=1;for(var a=0;a<i.paramsPerComponent.length;++a)i.paramsPerComponent[a].scaleX=u.componentsScaleX[a],i.paramsPerComponent[a].scaleY=u.componentsScaleY[a];var s=t.createTileStructure(i,d,n);return s}function c(n){u||(u=e.parseCodestreamStructure(),p=t.createCodestreamSizesCalculator(u))}var u,p,f,d=this,h=[];return this.getSizesParams=function(){return c(),u},this.getNumTilesX=function(){c();var e=p.getNumTilesX();return e},this.getNumTilesY=function(){c();var e=p.getNumTilesY();return e},this.getNumComponents=function(){return c(),u.numComponents},this.getImageWidth=function(){c();var e=p.getLevelWidth();return e},this.getImageHeight=function(){c();var e=p.getLevelHeight();return e},this.getLevelWidth=function(e){c();var t=p.getLevelWidth(e);return t},this.getLevelHeight=function(e){c();var t=p.getLevelHeight(e);return t},this.getTileWidth=function(e){c();var t=p.getTileWidth(e);return t},this.getTileHeight=function(e){c();var t=p.getTileHeight(e);return t},this.getFirstTileOffsetX=function(){c();var e=p.getFirstTileOffsetX();return e},this.getFirstTileOffsetY=function(){c();var e=p.getFirstTileOffsetY();return e},this.getTileLeft=function(e,t){c();var n=e%p.getNumTilesX();if(0===n)return 0;var r=(n-1)*p.getTileWidth(t)+p.getFirstTileWidth(t);return r},this.getTileTop=function(e,t){c();var n=Math.floor(e/p.getNumTilesX());
-if(0===n)return 0;var r=(n-1)*p.getTileHeight(t)+p.getFirstTileHeight(t);return r},this.getDefaultTileStructure=function(){c();var e=o({horizontalEdgeType:p.EDGE_TYPE_NO_EDGE,verticalEdgeType:p.EDGE_TYPE_NO_EDGE});return e},this.getTileStructure=a,this.tilePositionToInClassIndex=function(e){c();var t=p.getNumTilesX(),n=p.getNumTilesY();s("tilePosition.tileX",e.tileX,t),s("tilePosition.tileY",e.tileY,n);var r=e.tileX+e.tileY*t;return r},this.tileInClassIndexToPosition=function(e){c();var t=p.getNumTilesX(),n=p.getNumTilesY();s("inClassIndex",e,t*n);var r=e%t,i=(e-r)/t,a={tileX:r,tileY:i};return a},this.getTilesIterator=function(e){c();var t=p.getTilesFromPixels(e),n={currentX:t.minTileX,currentY:t.minTileY},r={get tileIndex(){var e=n.currentY*p.getNumTilesX(),t=e+n.currentX;return t},tryAdvance:function(){var e=i(n,t);return e}};return r},this.getSizeOfPart=function(e){c();var t=p.getSizeOfPart(e);return t},this}},{"j2k-jpip-globals.js":15}],13:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipComponentStructure=function(e,t){function n(e,t,n){var r=a(n),i=e/r,s=t[n],o=Math.ceil(i/s);return o}function i(e,t,n,r,i){var s=a(e.resolutionLevel),o=Math.ceil(i/s),l=t*r[e.resolutionLevel],c=Math.min(r[e.resolutionLevel],o-l),u=0===e.resolutionLevel?1:2,p=Math.ceil(c/u),f=u*Math.ceil(p/n);return c%n===1&&e.resolutionLevel>0&&--f,f}function a(t){var n=e.numResolutionLevels-t-1,r=1<<n;return r}function s(){if(1!==e.scaleX||1!==e.scaleY)throw new r.j2kExceptions.UnsupportedFeatureException("Non 1 component scale","A.5.1");o=Math.floor(t.getTileWidth()/e.scaleX),l=Math.floor(t.getTileHeight()/e.scaleY)}var o,l;s(),this.getComponentScaleX=function(){return e.scaleX},this.getComponentScaleY=function(){return e.scaleY},this.getNumResolutionLevels=function(){return e.numResolutionLevels},this.getPrecinctWidth=function(t){var n=e.precinctWidthPerLevel[t];return n},this.getPrecinctHeight=function(t){var n=e.precinctHeightPerLevel[t];return n},this.getMaxCodeblockWidth=function(){var t=e.maxCodeblockWidth;return t},this.getMaxCodeblockHeight=function(){var t=e.maxCodeblockHeight;return t},this.getNumCodeblocksXInPrecinct=function(t){var n=i(t,t.precinctX,e.maxCodeblockWidth,e.precinctWidthPerLevel,o);return n},this.getNumCodeblocksYInPrecinct=function(t){var n=i(t,t.precinctY,e.maxCodeblockHeight,e.precinctHeightPerLevel,l);return n},this.getNumPrecinctsX=function(t){var r=n(o,e.precinctWidthPerLevel,t);return r},this.getNumPrecinctsY=function(t){var r=n(l,e.precinctHeightPerLevel,t);return r}}},{"j2k-jpip-globals.js":15}],14:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipTileStructure=function(e,t,n,i){function a(e,t,n){if(0>t||t>=n)throw new r.jpipExceptions.ArgumentException(e,t,e+" is expected to be between 0 and "+n-1)}function s(e){if(4!==e.length)throw new r.j2kExceptions.IllegalDataException("Illegal progression order "+e+": unexpected length");if("L"!==e[3])throw new r.jpipExceptions.IllegalDataException("Illegal target progression order of "+e,"A.3.2.1");var t=e.indexOf("P")>=0,n=e.indexOf("C")>=0,i=e.indexOf("R")>=0;if(!t||!n||!i)throw new r.j2kExceptions.IllegalDataException("Illegal progression order "+e+": missing letter");if("RPCL"!==e)throw new r.j2kExceptions.UnsupportedFeatureException("Progression order of "+e,"A.6.1")}function o(){h=new Array(n);var n=t.getNumComponents(),i=e.defaultComponentParams;g=i.numResolutionLevels;for(var a=!0,s=!0,o=0;n>o;++o){var c=e.paramsPerComponent[o];g=Math.min(g,c.numResolutionLevels),h[o]=new Array(c.numResolutionLevels);for(var u=d[o],p=0,f=(u.getNumPrecinctsX(o),u.getNumPrecinctsY(o),0);f<c.numResolutionLevels;++f){h[o][f]=p;var v=u.getNumPrecinctsX(f),m=u.getNumPrecinctsY(f);p+=v*m,i.precinctWidthPerLevel[f]===c.precinctWidthPerLevel[f]&&i.precinctHeightPerLevel[f]===c.precinctHeightPerLevel[f]||(a=!1);var x=l(f,c.numResolutionLevels,u.getPrecinctWidth,t.getLevelWidth,t.getTileWidth),y=l(f,c.numResolutionLevels,u.getPrecinctWidth,t.getLevelWidth,t.getTileWidth);s&=x&&y}}if(!a)throw new r.j2kExceptions.UnsupportedFeatureException("Special Coding Style for Component (COC)","A.6.2");if(!s)throw new r.j2kExceptions.UnsupportedFeatureException("Precinct TopLeft which is not matched to tile TopLeft","B.6")}function l(e,t,n,r,i){var a=n(e),s=r(e);if(a>s)return!0;var o=i(e),l=a%o===0||o%a===0;return l}function c(e,n){if(void 0===n)return null;for(var r=t.getNumComponents(),i=new Array(r),a=n.level||0,s=t.getTileLeft(e,a),o=t.getTileTop(e,a),l=n.minX-s,c=n.minY-o,u=n.maxXExclusive-s,p=n.maxYExclusive-o,f=(t.getLevelWidth(a),t.getLevelHeight(a),0);r>f;++f){for(var h=d[f],g=h.getNumResolutionLevels(),v=g-a,m=(h.getNumResolutionLevels(),new Array(g)),x=0;v>x;++x){var y=h.getComponentScaleX(),j=h.getComponentScaleY(),E=v-x-1,b=y<<E,I=j<<E,C=4,w=Math.floor(l/b)-C,k=Math.floor(c/I)-C,P=Math.ceil(u/b)+C,O=Math.ceil(p/I)+C,S=h.getPrecinctWidth(x)*y,L=h.getPrecinctHeight(x)*j,T=Math.floor(w/S),R=Math.floor(k/L),D=Math.ceil(P/S),A=Math.ceil(O/L),_=h.getNumPrecinctsX(x),M=h.getNumPrecinctsY(x);m[x]={minPrecinctX:Math.max(0,T),minPrecinctY:Math.max(0,R),maxPrecinctXExclusive:Math.min(D,_),maxPrecinctYExclusive:Math.min(A,M)}}i[f]=m}return i}function u(e,t,n,r){for(var a=!0,s=r?null:n,o=!1,l=2;l>=0;--l){var c=p(e,l,t,s);if(a=0===c,!a)break;"P"!==i[l]||r||(o=!0)}if(a)return!1;if(null===n)return e.isInCodestreamPart=!0,!0;var u=n[e.component],f=u[e.resolutionLevel];return o&&(e.precinctX=f.minPrecinctX,e.precinctY=f.minPrecinctY),e.isInCodestreamPart=e.precinctX>=f.minPrecinctX&&e.precinctY>=f.minPrecinctY&&e.precinctX<f.maxPrecinctXExclusive&&e.precinctY<f.maxPrecinctYExclusive,!0}function p(e,n,a,s){var o=d[e.component];switch(i[n]){case"R":var l=o.getNumResolutionLevels()-a;return++e.resolutionLevel,e.resolutionLevel%=l,e.resolutionLevel;case"C":return++e.component,e.component%=t.getNumComponents(),e.component;case"P":var c,u,p,f;if(null!==s){var h=s[e.component],g=h[e.resolutionLevel];c=g.minPrecinctX,u=g.minPrecinctY,p=g.maxPrecinctXExclusive,f=g.maxPrecinctYExclusive}else c=0,u=0,p=o.getNumPrecinctsX(e.resolutionLevel),f=o.getNumPrecinctsY(e.resolutionLevel);return e.precinctX-=c-1,e.precinctX%=p-c,e.precinctX+=c,e.precinctX!=c?e.precinctX-c:(e.precinctY-=u-1,e.precinctY%=f-u,e.precinctY+=u,e.precinctY-u);case"L":throw new r.jpipExceptions.InternalErrorException("Advancing L is not supported in JPIP");default:throw new r.jpipExceptions.InternalErrorException("Unexpected letter in progression order: "+i[n])}}var f,d,h,g;this.getProgressionOrder=function(){return i},this.getDefaultComponentStructure=function(e){return f},this.getComponentStructure=function(e){return d[e]},this.getTileWidth=function(){return e.tileSize[0]},this.getTileHeight=function(){return e.tileSize[1]},this.getNumQualityLayers=function(){return e.numQualityLayers},this.getIsPacketHeaderNearData=function(){return e.isPacketHeadersNearData},this.getIsStartOfPacketMarkerAllowed=function(){return e.isStartOfPacketMarkerAllowed},this.getIsEndPacketHeaderMarkerAllowed=function(){return e.isEndPacketHeaderMarkerAllowed},this.precinctInClassIndexToPosition=function(e){if(0>e)throw new r.jpipExceptions.ArgumentException("inClassIndex",e,"Invalid negative in-class index of precinct");var n,i=t.getNumTilesX()*t.getNumTilesY(),a=t.getNumComponents(),s=e%i,o=(e-s)/i,l=o%a,c=d[l],u=c.getNumResolutionLevels(),p=(o-l)/a,f=0;for(n=1;u>n;++n){var g=h[l][n];if(g>p)break;f=g}--n;var v=p-f,m=c.getNumPrecinctsX(n),x=c.getNumPrecinctsY(n),y=v%m,j=(v-y)/m;if(j>=x)throw new r.jpipExceptions.ArgumentException("inClassIndex",e,"Invalid in-class index of precinct");var E={tileIndex:s,component:l,precinctX:y,precinctY:j,resolutionLevel:n};return E},this.precinctPositionToInClassIndex=function(e){var n=t.getNumComponents();a("precinctPosition.component",e.component,n);var r=d[e.component],i=r.getNumResolutionLevels();a("precinctPosition.resolutionLevel",e.resolutionLevel,i);var s=t.getNumTilesX()*t.getNumTilesY(),o=r.getNumPrecinctsX(e.resolutionLevel),l=r.getNumPrecinctsY(e.resolutionLevel);a("precinctPosition.precinctX",e.precinctX,o),a("precinctPosition.precinctY",e.precinctY,l),a("precinctPosition.tileIndex",e.tileIndex,s);var c=e.precinctX+e.precinctY*o,u=h[e.component][e.resolutionLevel],p=c+u,f=e.component+p*t.getNumComponents(),g=e.tileIndex+f*t.getNumTilesX()*t.getNumTilesY();return g},this.getPrecinctIterator=function(e,t,n){var i=0;if(void 0!==t&&void 0!==t.level&&(i=t.level,i>=g))throw new r.jpipExceptions.InternalErrorException("Cannot advance resolution: level="+t.level+" but should be smaller than "+g);var a=c(e,t),s=0,o=0;if(!n&&null!==a){var l=a[0][0];s=l.minPrecinctX,o=l.minPrecinctY}var p={component:0,precinctX:s,precinctY:o,resolutionLevel:0,isInCodestreamPart:!0},f={get tileIndex(){return e},get component(){return p.component},get precinctIndexInComponentResolution(){var e=d[p.component],t=e.getNumPrecinctsX(p.resolutionLevel);return p.precinctIndexInComponentResolution=p.precinctX+p.precinctY*t,p.precinctIndexInComponentResolution},get precinctX(){return p.precinctX},get precinctY(){return p.precinctY},get resolutionLevel(){return p.resolutionLevel},get isInCodestreamPart(){return p.isInCodestreamPart}};return f.tryAdvance=function(){var e=u(p,i,a,n);return e},f},f=n.createComponentStructure(e.defaultComponentParams,this),d=new Array(t.getNumComponents());for(var v=0;v<t.getNumComponents();++v)d[v]=n.createComponentStructure(e.paramsPerComponent[v],this);return o(),s(i),this}},{"j2k-jpip-globals.js":15}],15:[function(e,t,n){"use strict";t.exports.j2kMarkers={StartOfCodestream:[255,79],ImageAndTileSize:[255,81],CodingStyleDefault:[255,82],CodingStyleComponent:[255,83],QuantizationDefault:[255,92],ProgressionOrderChange:[255,95],PackedPacketHeadersInMainHeader:[255,96],PackedPacketHeadersInTileHeader:[255,97],StartOfTile:[255,144],StartOfData:[255,147],EndOfCodestream:[255,217],Comment:[255,100]},t.exports.j2kOffsets={MARKER_SIZE:2,LENGTH_FIELD_SIZE:2,NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER:38,REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER:6},t.exports.jpipEndOfResponseReasons={IMAGE_DONE:1,WINDOW_DONE:2,WINDOW_CHANGE:3,BYTE_LIMIT:4,QUALITY_LIMIT:5,SESSION_LIMIT:6,RESPONSE_LIMIT:7,NON_SPECIFIED:8},t.exports.j2kExceptions={UnsupportedFeatureException:function(e,t){return this.description=e+" (specified in section "+t+" of part 1: Core Coding System standard) is not supported yet",this.toString=function(){return"J2k UnsupportedFeatureException: "+this.description},this},ParseException:function(e){return this.description=e,this.toString=function(){return"J2k ParseException: "+this.description},this},IllegalDataException:function(e,t){return this.description=e+" (see section "+t+" of part 9: Interactivity tools, APIs and Protocols)",this.toString=function(){return"J2k IllegalDataException: "+this.description},this}},t.exports.jpipExceptions={UnsupportedFeatureException:function(e,t){return this.description=e+" (specified in section "+t+" of part 9: Interactivity tools, APIs and Protocols) is not supported yet",this.toString=function(){return"Jpip UnsupportedFeatureException: "+this.description},this},ParseException:function(e){return this.description=e,this.toString=function(){return"Jpip ParseException: "+this.description},this},IllegalDataException:function(e,t){return this.description=e+" (see section "+t+" of part 9: Interactivity tools, APIs and Protocols)",this.toString=function(){return"Jpip IllegalDataException: "+this.description},this},IllegalOperationException:function(e){return this.description=e,this.toString=function(){return"Jpip IllegalOperationException: "+this.description},this},ArgumentException:function(e,t,n){return this.description="Argument "+e+" has invalid value "+t+(void 0!==n?" :"+n:""),this.toString=function(){return"Jpip ArgumentException: "+this.description},this},WrongStreamException:function(e,t){var n="JPP (JPIP Precinct)",r="JPT (JPIP Tile-part)";if(t){var i=n;n=r,r=i}return this.description="Stream type is "+r+", but "+e+" is allowed only in "+n+" stream",this.toString=function(){return"Jpip WrongStreamException: "+this.description},this},InternalErrorException:function(e){return this.description=e,this.toString=function(){return"Jpip InternalErrorException: "+this.description},this}},t.exports.j2kExceptions.UnsupportedFeatureException.Name="j2kExceptions.UnsupportedFeatureException",t.exports.j2kExceptions.ParseException.Name="j2kExceptions.ParseException",t.exports.j2kExceptions.IllegalDataException.Name="j2kExceptions.IllegalDataException",t.exports.jpipExceptions.UnsupportedFeatureException.Name="jpipExceptions.UnsupportedFeatureException",t.exports.jpipExceptions.ParseException.Name="jpipExceptions.ParseException",t.exports.jpipExceptions.IllegalDataException.Name="jpipExceptions.IllegalDataException",t.exports.jpipExceptions.IllegalOperationException.Name="jpipExceptions.IllegalOperationException",t.exports.jpipExceptions.ArgumentException.Name="jpipExceptions.ArgumentException",t.exports.jpipExceptions.WrongStreamException.Name="jpipExceptions.WrongStreamException",t.exports.jpipExceptions.InternalErrorException.Name="jpipExceptions.InternalErrorException"},{}],16:[function(e,t,n){"use strict";var r=e("simple-ajax-helper.js").simpleAjaxHelper,i=e("mutual-exclusive-transaction-helper.js").mutualExclusiveTransactionHelper,a=e("jpip-coding-passes-number-parser.js").jpipCodingPassesNumberParser,s=e("jpip-message-header-parser.js").jpipMessageHeaderParser,o=e("jpip-channel.js").JpipChannel,l=e("jpip-codestream-reconstructor.js").JpipCodestreamReconstructor,c=e("jpip-codestream-sizes-calculator.js").JpipCodestreamSizesCalculator,u=e("jpip-codestream-structure.js").JpipCodestreamStructure,p=e("jpip-component-structure.js").JpipComponentStructure,f=e("composite-array.js").CompositeArray,d=e("jpip-databin-parts.js").JpipDatabinParts,h=e("jpip-databins-saver.js").JpipDatabinsSaver,g=e("jpip-fetch-handle.js").JpipFetchHandle,v=e("jpip-header-modifier.js").JpipHeaderModifier,m=e("jpip-image-data-context.js").JpipImageDataContext,x=e("jpip-markers-parser.js").JpipMarkersParser,y=e("jpip-object-pool-by-databin.js").JpipObjectPoolByDatabin,j=e("jpip-offsets-calculator.js").JpipOffsetsCalculator,E=e("jpip-packets-data-collector.js").JpipPacketsDataCollector,b=e("jpip-request-databins-listener.js").JpipRequestDatabinsListener,I=e("jpip-request.js").JpipRequest,C=e("jpip-session-helper.js").JpipSessionHelper,w=e("jpip-session.js").JpipSession,k=e("jpip-reconnectable-requester.js").JpipReconnectableRequester,P=e("jpip-structure-parser.js").JpipStructureParser,O=e("jpip-tile-structure.js").JpipTileStructure,S=e("jpip-bitstream-reader.js").JpipBitstreamReader,L=e("jpip-tag-tree.js").JpipTagTree,T=e("jpip-codeblock-length-parser.js").JpipCodeblockLengthParser,R=e("jpip-subband-length-in-packet-header-calculator.js").JpipSubbandLengthInPacketHeaderCalculator,D=e("jpip-packet-length-calculator.js").JpipPacketLengthCalculator,A=e("jpip-quality-layers-cache.js").JpipQualityLayersCache,_={createChannel:function(e,t){return new o(e,t,_)},createCodestreamReconstructor:function(e,t,n,r){return new l(e,t,n,r)},createCodestreamSizesCalculator:function(e){return new c(e)},createCodestreamStructure:function(e,t){return new u(e,_,t)},createComponentStructure:function(e,t){return new p(e,t)},createCompositeArray:function(e){return new f(e)},createDatabinParts:function(e,t){return new d(e,t,_)},createDatabinsSaver:function(e){return new h(e,_)},createFetchHandle:function(e,t,n){return new g(e,t,n)},createHeaderModifier:function(e,t,n){return new v(e,t,n)},createImageDataContext:function(e,t,n){return new m(e,t,n)},createMarkersParser:function(e){return new x(e,s,_)},createObjectPoolByDatabin:function(){return new y},createOffsetsCalculator:function(e,t){return new j(e,t)},createPacketsDataCollector:function(e,t,n){return new E(e,t,n,_)},createRequestDatabinsListener:function(e,t,n,r,i){return new b(e,t,n,r,i,_)},createRequest:function(e,t,n,r,i){return new I(e,s,t,n,r,i)},createSessionHelper:function(e,t,n,i){return new C(e,t,n,i,r)},createSession:function(e,t,n,r,i){return new w(e,t,n,r,i,setInterval,clearInterval,_)},createReconnectableRequester:function(e,t,n,r){return new k(e,t,n,r,_)},createStructureParser:function(e,t,n){return new P(e,t,s,n)},createTileStructure:function(e,t,n){return new O(e,t,_,n)},createBitstreamReader:function(e){return new S(e,i)},createTagTree:function(e,t,n){return new L(e,t,n,i)},createCodeblockLengthParser:function(e,t){return new T(e,i)},createSubbandLengthInPacketHeaderCalculator:function(e,t,n){return new R(e,t,n,a,i,_)},createPacketLengthCalculator:function(e,t,n,r,i){return new D(e,t,n,r,i,_)},createQualityLayersCache:function(e){return new A(e,_)}};t.exports.jpipRuntimeFactory=_},{"composite-array.js":7,"jpip-bitstream-reader.js":27,"jpip-channel.js":21,"jpip-codeblock-length-parser.js":28,"jpip-codestream-reconstructor.js":36,"jpip-codestream-sizes-calculator.js":2,"jpip-codestream-structure.js":12,"jpip-coding-passes-number-parser.js":29,"jpip-component-structure.js":13,"jpip-databin-parts.js":8,"jpip-databins-saver.js":9,"jpip-fetch-handle.js":3,"jpip-header-modifier.js":37,"jpip-image-data-context.js":4,"jpip-markers-parser.js":18,"jpip-message-header-parser.js":22,"jpip-object-pool-by-databin.js":10,"jpip-offsets-calculator.js":19,"jpip-packet-length-calculator.js":30,"jpip-packets-data-collector.js":38,"jpip-quality-layers-cache.js":31,"jpip-reconnectable-requester.js":23,"jpip-request-databins-listener.js":11,"jpip-request.js":24,"jpip-session-helper.js":25,"jpip-session.js":26,"jpip-structure-parser.js":20,"jpip-subband-length-in-packet-header-calculator.js":32,"jpip-tag-tree.js":33,"jpip-tile-structure.js":14,"mutual-exclusive-transaction-helper.js":34,"simple-ajax-helper.js":17}],17:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.simpleAjaxHelper={request:function(e,t,n,i){function a(e){if(!l){if(4!==s.readyState){if(void 0===i||null===s.response||s.readyState<3)return;var r=s.response.byteLength,a=r-c;if(i>a)return;c=r}else if(l=!0,200!==s.status||null===s.response)return void n(s);o||t(s,l)}}var s=new XMLHttpRequest,o=void 0===t,l=!1,c=0;if(s.open("GET",e,!o),s.onreadystatechange=a,o||(s.mozResponseType=s.responseType="arraybuffer"),void 0!==i&&(s.setRequestHeader("X-Content-Type-Options","nosniff"),s.onprogress=a),s.send(null),o&&!l)throw new r.jpipExceptions.InternalErrorException("synchronous ajax call was not finished synchronously");return s}}},{"j2k-jpip-globals.js":15}],18:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipMarkersParser=function(e,t,n){function i(e,t,n){var r=e[n]===t[0]&&e[n+1]===t[1];return r}function a(e,t){var n=s(e,!0),r=c(t,"Predefined marker in jGlobals.j2kMarkers"),i=n.markerToOffset[r];return void 0===i?null:i}function s(t,n){var a=t.getCachedData(u);if(void 0===a.markerToOffset&&(a.isParsedAllMarkers=!1,a.lastOffsetParsed=0,a.markerToOffset={},a.databin=t),a.isParsedAllMarkers)return a;var s=[],c=!0;if(t===e&&0===a.lastOffsetParsed){var p=t.copyBytes(s,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE});if(null===p)c=!1;else if(!i(s,r.j2kMarkers.StartOfCodestream,0))throw new r.j2kExceptions.IllegalDataException("SOC (Start Of Codestream) is not found where expected to be","A.4.1");a.lastOffsetParsed=2}return c&&o(a),l(a,n),a}function o(e){for(var n=e.lastOffsetParsed,i=[],a=e.databin.copyBytes(i,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE,databinStartOffset:n});null!==a;){var s=c(i,"offset "+n+" of databin with class ID = "+e.databin.getClassId()+" and in class ID = "+e.databin.getInClassId());e.markerToOffset[s.toString()]=n;var o=t.getInt16(i,r.j2kOffsets.MARKER_SIZE);n+=o+r.j2kOffsets.MARKER_SIZE,a=e.databin.copyBytes(i,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE,databinStartOffset:n})}e.lastOffsetParsed=n}function l(t,n){var a=t.databin.getDatabinLengthIfKnown();if(t.isParsedAllMarkers=t.lastOffsetParsed===a,!t.isParsedAllMarkers&&t.databin!==e){var s=[],o=t.databin.copyBytes(s,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE,databinStartOffset:t.lastOffsetParsed});null!==o&&i(s,0,r.j2kMarkers.StartOfData)&&(t.lastOffsetParsed+=r.j2kOffsets.MARKER_SIZE,t.isParsedAllMarkers=!0)}if(n&&!t.isParsedAllMarkers)throw new r.jpipExceptions.InternalErrorException("data-bin with class ID = "+t.databin.getClassId()+" and in class ID = "+t.databin.getInClassId()+" was not recieved yet")}function c(e,t){if(255!==e[0])throw new r.j2kExceptions.IllegalDataException("Expected marker in "+t,"A");var n=e[1].toString(16);return n}var u="markers";this.getMandatoryMarkerOffsetInDatabin=function(e,t,n,i){var s=a(e,t);if(null===s)throw new r.j2kExceptions.IllegalDataException(n+" is not found where expected to be",i);return s},this.checkSupportedMarkers=function(e,t,n){n=!!n;for(var i=s(e,!0),a={},o=0;o<t.length;++o){var l=c(t[o],"jpipMarkersParser.supportedMarkers["+o+"]");a[l]=!0}for(var u in i.markerToOffset){var p=!!a[u];if(p!==n)throw new r.j2kExceptions.UnsupportedFeatureException("Unsupported marker found: "+u,"unknown")}},this.getMarkerOffsetInDatabin=a,this.isMarker=i}},{"j2k-jpip-globals.js":15}],19:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipOffsetsCalculator=function(e,t){function n(e,t){var n=l(e,t);if(null===n)return null;var i=8,a=n+r.j2kOffsets.MARKER_SIZE,s=c(e,i,a),o=2,u=s[o],p=!(1&u),f=!!(2&u),d=!!(4&u),h=7,g=s[h],v=g+1,m=a+h,x=p?null:n+14,y={codingStyleDefaultOffset:n,isDefaultPrecinctSize:p,isStartOfPacketMarkerAllowed:f,isEndPacketHeaderMarkerAllowed:d,numResolutionLevels:v,precinctSizesOffset:x,numDecompositionLevelsOffset:m};return y}function i(e,t,n){if(null!==t&&!t.isDefaultPrecinctSize){var i=t.numResolutionLevels-n,a=t.precinctSizesOffset+i,s=t.codingStyleDefaultOffset+r.j2kOffsets.MARKER_SIZE,o={markerSegmentLengthOffset:s,start:a,length:n};e.push(o)}}function a(e,t){var n,i=t+4,a=c(e,1,i),s=31&a[0];switch(s){case 0:n=1;break;case 1:n=0;break;case 2:n=2;break;default:throw new r.j2kExceptions.IllegalDataException("Quantization style of "+s,"A.6.4")}return n}function s(e,n,i,s){var o=t.getMarkerOffsetInDatabin(n,r.j2kMarkers.QuantizationDefault);if(null!==o){var l=a(n,o);if(0!==l){var c=i.numResolutionLevels-s,u=1+3*(c-1),p=3*s,f=o+5+u*l,d=p*l,h=o+r.j2kOffsets.MARKER_SIZE,g={markerSegmentLengthOffset:h,start:f,length:d};e.push(g)}}}function o(e){var n=t.getMarkerOffsetInDatabin(e,r.j2kMarkers.CodingStyleComponent);if(null!==n)throw new r.j2kExceptions.UnsupportedFeatureException("COC Marker (Coding Style Component)","A.6.2")}function l(e,n){o(e);var i;return i=n?t.getMandatoryMarkerOffsetInDatabin(e,r.j2kMarkers.CodingStyleDefault,"COD (Coding style Default)","A.6.1"):t.getMarkerOffsetInDatabin(e,r.j2kMarkers.CodingStyleDefault)}function c(e,t,n,i){var a=[],s={forceCopyAllRange:!0,maxLengthToCopy:t,databinStartOffset:n},o=e.copyBytes(a,0,s);if(null===o)throw new r.jpipExceptions.InternalErrorException("Header data-bin has not yet recieved "+t+" bytes starting from offset "+n);return a}var u=[r.j2kMarkers.ImageAndTileSize,r.j2kMarkers.CodingStyleDefault,r.j2kMarkers.QuantizationDefault,r.j2kMarkers.Comment];this.getCodingStyleOffset=l,this.getCodingStyleBaseParams=n,this.getImageAndTileSizeOffset=function(){var n=t.getMandatoryMarkerOffsetInDatabin(e,r.j2kMarkers.ImageAndTileSize,"Image and Tile Size (SIZ)","A.5.1");return n},this.getRangesOfBestResolutionLevelsData=function(a,o){t.checkSupportedMarkers(a,u,!0);var l=null,c=n(a,!1),p=c;null===c?p=n(e,!0):l=c.numDecompositionLevelsOffset;var f=p.numResolutionLevels;if(o>=f)throw new r.jpipExceptions.InternalErrorException("numResolutionLevels ("+o+") <= COD.numResolutionLevels ("+f+")");var d=[];i(d,c,o),s(d,a,p,o);var h={ranges:d,numDecompositionLevelsOffset:l};return h}}},{"j2k-jpip-globals.js":15}],20:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipStructureParser=function(e,t,n,i){function a(a,l){var c=i.getCodingStyleBaseParams(a,l);if(null===c)return null;var u=e.getMainHeaderDatabin(),p=i.getImageAndTileSizeOffset(),f=p+r.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER,d=o(u,2,f),h=n.getInt16(d,0),g=t.getMarkerOffsetInDatabin(a,r.j2kMarkers.PackedPacketHeadersInTileHeader),v=t.getMarkerOffsetInDatabin(u,r.j2kMarkers.PackedPacketHeadersInMainHeader),m=null===g&&null===v,x=c.codingStyleDefaultOffset+6,y=o(a,6,x),j=n.getInt16(y,0),E=s(y,4),b=s(y,5),I=new Array(c.numResolutionLevels),C=new Array(c.numResolutionLevels),w=null;if(!c.isDefaultPrecinctSize){var k=c.numResolutionLevels;w=o(a,k,c.precinctSizesOffset)}for(var P=32768,O=0;O<c.numResolutionLevels;++O)if(c.isDefaultPrecinctSize)I[O]=P,C[O]=P;else{var S=O,L=w[S],T=15&L,R=L>>>4;I[O]=1*Math.pow(2,T),C[O]=1*Math.pow(2,R)}for(var D=new Array(h),A=0;h>A;++A)D[A]={maxCodeblockWidth:E,maxCodeblockHeight:b,numResolutionLevels:c.numResolutionLevels,precinctWidthPerLevel:I,precinctHeightPerLevel:C};var _={maxCodeblockWidth:E,maxCodeblockHeight:b,numResolutionLevels:c.numResolutionLevels,precinctWidthPerLevel:I,precinctHeightPerLevel:C},M={numQualityLayers:j,isPacketHeadersNearData:m,isStartOfPacketMarkerAllowed:c.isStartOfPacketMarkerAllowed,isEndPacketHeaderMarkerAllowed:c.isEndPacketHeaderMarkerAllowed,paramsPerComponent:D,defaultComponentParams:_};return M}function s(e,t){var n=e[t],i=2+(15&n);if(i>10)throw new r.j2kExceptions.IllegalDataException("Illegal codeblock width exponent "+i,"A.6.1, Table A.18");var a=1<<i;return a}function o(e,t,n,i){var a=[],s={forceCopyAllRange:!0,maxLengthToCopy:t,databinStartOffset:n},o=e.copyBytes(a,0,s);if(null===o)throw new r.jpipExceptions.InternalErrorException("Header data-bin has not yet recieved "+t+" bytes starting from offset "+n);return a}this.parseCodestreamStructure=function(){for(var t=e.getMainHeaderDatabin(),a=i.getImageAndTileSizeOffset(),s=o(t,38,a+r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE),l=r.j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER-(r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE),c=r.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER-(r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE),u=n.getInt32(s,l),p=n.getInt32(s,l+4),f=(n.getInt32(s,10),n.getInt32(s,14),n.getInt32(s,18)),d=n.getInt32(s,22),h=n.getInt32(s,26),g=n.getInt32(s,30),v=n.getInt16(s,c),m=a+r.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER+2,x=3*v,y=o(t,x,m),j=new Array(v),E=new Array(v),b=0;v>b;++b)j[b]=y[3*b+1],E[b]=y[3*b+2];var I={numComponents:v,componentsScaleX:j,componentsScaleY:E,imageWidth:u-h,imageHeight:p-g,tileWidth:f,tileHeight:d,firstTileOffsetX:h,firstTileOffsetY:g};return I},this.parseDefaultTileParams=function(){var t=e.getMainHeaderDatabin(),n=a(t,!0);return n},this.parseOverridenTileParams=function(t){var n=e.getTileHeaderDatabin(t),r=a(n,!1);return r}}},{"j2k-jpip-globals.js":15}],21:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipChannel=function(e,t,n){function i(){var e=p.length+u.length;return e}function a(e){var n=t.getDataRequestUrl(),r=t.getTargetId();"0"!==r&&(n+="&tid="+r);var i=null!==l;if(i){var a=f&&e;n+=a?"&wait=no":"&wait=yes"}return n}function s(e,n){var r=a(!0),i=t.getCodestreamStructure(),s=i.getLevelWidth(e.level),o=i.getLevelHeight(e.level),l=e.maxXExclusive-e.minX,c=e.maxYExclusive-e.minY;return r+="&fsiz="+s+","+o+",closest&rsiz="+l+","+c+"&roff="+e.minX+","+e.minY,"max"!==n&&(r+="&layers="+n),r}var o=this,l=null,c=0,u=[],p=[],f=!1;this.requestData=function(a,c,d,h){if(!f){var g=i();if(g>=e)throw new r.jpipExceptions.InternalErrorException("Channel has too many requests not responded yet")}var v=s(a,h),m=n.createRequest(t,o,v,c,d);return null!==l||0===p.length?(p.push(m),m.startRequest()):f?u=[m]:u.push(m),m},this.sendMinimalRequest=function(e){if(null===l&&p.length>0)throw new r.jpipExceptions.InternalErrorException("Minimal requests should be used for first request or keep alive message. Keep alive requires an already initialized channel, and first request requires to not have any previous request");var i=a(),s=n.createRequest(t,o,i,e);p.push(s),s.startRequest()},this.getIsDedicatedForMovableRequest=function(){return f},this.dedicateForMovableRequest=function(){if(f)throw new r.jpipExceptions.InternalErrorException("Channel already dedicated for movable request");f=!0},this.getChannelId=function(){return l},this.setChannelId=function(e){if(null!==e){l=e;var t=u;u=[];for(var n=0;n<t.length;++n)p.push(t[n]),t[n].startRequest()}},this.nextRequestId=function(){return++c},this.getRequestsWaitingForResponse=function(){return p},this.getAllQueuedRequestCount=i,this.requestEnded=function(e,n){for(var i=p,a=!1,s=0;s<i.length;++s)if(i[s]===n){i[s]=i[i.length-1],i.length-=1,a=!0;break}if(!a)throw new r.jpipExceptions.InternalErrorException("channel.requestsWaitingForResponse inconsistency");if(t.requestEnded(e,o),null===l&&u.length>0){var c=u.shift();p.push(c),c.startRequest()}},this.isAllOldRequestsEnded=function(e){for(var t=0;t<p.length;++t)if(p[t].lastRequestId<=e)return!1;return!0}}},{"j2k-jpip-globals.js":15}],22:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js"),i={LSB_MASK:1,BIT_4_MASK:16,BITS_56_MASK:96,MSB_MASK:128,LSB_7_MASK:127,parseNumberInVbas:function(e,t,n){var r,a=i,s=t;if(n){var o=(1<<n)-1;r=e[s]&o}else r=e[s]&a.LSB_7_MASK;for(;e[s]&a.MSB_MASK;)++s,r<<=7,r|=e[s]&a.LSB_7_MASK;return{endOffset:s+1,number:r}},parseMessageHeader:function(e,t,n){var a=i,s=(e[t]&a.BITS_56_MASK)>>>5;if(0===s)throw new r.jpipExceptions.ParseException("Failed parsing message header (A.2.1): prohibited existance class and csn bits 00");var o=!!(2&s),l=3===s,c=!!(e[t]&a.BIT_4_MASK),u=a.parseNumberInVbas(e,t,4),p=u.number,f=u.endOffset,d=0;if(o){var h=a.parseNumberInVbas(e,f);d=h.number,f=h.endOffset}else n&&(d=n.classId);var g=0;if(l){var v=a.parseNumberInVbas(e,f);g=v.number,f=v.endOffset}else n&&(g=n.codestreamIndex);var m=a.parseNumberInVbas(e,f),x=m.number;f=m.endOffset;var y=a.parseNumberInVbas(e,f),j=y.number;f=y.endOffset;var E,b=!!(d&a.LSB_MASK);if(b){var I=a.parseNumberInVbas(e,f);E=I.number,f=I.endOffset}var C={isLastByteInDatabin:c,inClassId:p,bodyStart:f,classId:d,codestreamIndex:g,messageOffsetFromDatabinStart:x,messageBodyLength:j};return b&&(C.aux=E),C},getInt32:function(e,t){var n=e[t]*Math.pow(2,24),r=e[t+1]<<16,i=e[t+2]<<8,a=e[t+3],s=n+r+i+a;return s},getInt16:function(e,t){var n=e[t]<<8,r=e[t+1],i=n+r;return i}};t.exports.jpipMessageHeaderParser=i},{"j2k-jpip-globals.js":15}],23:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipReconnectableRequester=function(e,t,n,i,a,s){function o(){if(null!==v)throw new r.jpipExceptions.IllegalOperationException("Previous session still not established");return null!==j?void(null!==w&&w({isReady:!0,exception:"Previous session that should be closed still alive.Maybe old requestContexts have not beed closed. Reconnect will not be done"})):(i.cleanupUnregisteredDatabins(),void l())}function l(){var r;null!==y&&(r=y.getTargetId()),v=a.createSession(e,t,r,n,i),v.setStatusCallback(u),v.open(E)}function c(e){var t=y.tryGetChannel(!0);if(null===t)throw new r.jpipExceptions.IllegalOperationException("Too many concurrent requests. Limit the use of dedicated (movable) requests, enlarge maxChannelsInSession or wait for requests to finish and avoid create new ones");if(!t.getIsDedicatedForMovableRequest())throw new r.jpipExceptions.InternalErrorException("getIsDedicatedForMovableRequest inconsistency");e.internalDedicatedChannel=t}function u(e){if(null===v||e.isReady!==v.getIsReady())throw new r.jpipExceptions.InternalErrorException("Unexpected statusCallback when not registered to session or inconsistent isReady");if(e.isReady){if(null!==j)throw new r.jpipExceptions.InternalErrorException("sessionWaitingForDisconnect should be null");j=y,y=v,v=null,null!==j&&(j.setStatusCallback(null),g()||j.setRequestEndedCallback(g)),y.setStatusCallback(w),
-y.setRequestEndedCallback(h);for(var t=0;t<C.length;++t)c(C[t])}null!==w&&w(e)}function p(e){null!==e&&(++b,e.close(f))}function f(){--b,0===b&&void 0!==k&&k()}function d(){if(null===y)throw new r.jpipExceptions.InternalErrorException("This operation is forbidden when session is not ready")}function h(e){var t=null;if(i.getLoadedBytes()>x&&o(),null!==e){if(e.getIsDedicatedForMovableRequest())throw new r.jpipExceptions.InternalErrorException("Expected non-movable channel as channelFreed");do{if(0===I.length){t=null;break}if(t=I.shift(),null!==t.internalRequest)throw new r.jpipExceptions.InternalErrorException("Request was already sent but still in queue")}while(t.isEnded);null!==t&&(t.internalRequest=e.requestData(t.codestreamPartParams,t.callback,t.failureCallback,t.numQualityLayers))}}function g(){var e=!j.hasActiveRequests();return e&&(j.close(),j=null),e}var v,m=1048576,x=s||10*m,y=null,j=null,E=null,b=0,I=[],C=[],w=null,k=null;this.getIsReady=function(){return null!==y&&y.getIsReady()},this.open=function(e){if(void 0===e||null===e)throw new r.jpipExceptions.ArgumentException("baseUrl",e);if(null!==E)throw new r.jpipExceptions.IllegalOperationException("Image was already opened");E=e,l()},this.close=function(e){if(null!==k)throw new r.jpipExceptions.IllegalOperationException("closed twice");k=e,b=1,p(y),p(v),p(j),f()},this.setStatusCallback=function(e){w=e,null!==y&&y.setStatusCallback(e)},this.dedicateChannelForMovableRequest=function(){d();var e={internalDedicatedChannel:null};return C.push(e),c(e),e},this.requestData=function(e,t,n,i,a){d();var s,o={isEnded:!1,internalRequest:null,codestreamPartParams:e,callback:t,failureCallback:n,numQualityLayers:i},l=void 0!==a;if(l)s=a.internalDedicatedChannel;else{if(s=y.tryGetChannel(),null===s)return I.push(o),o;if(s.getIsDedicatedForMovableRequest())throw new r.jpipExceptions.InternalErrorException("Expected non-movable channel")}if(s.getIsDedicatedForMovableRequest()!==l)throw new r.jpipExceptions.InternalErrorException("getIsDedicatedForMovableRequest inconsistency");return o.internalRequest=s.requestData(e,t,n,i),o},this.stopRequestAsync=function(e){e.isEnded=!0,null!==e.internalRequest&&e.internalRequest.stopRequestAsync()},this.reconnect=o}},{"j2k-jpip-globals.js":15}],24:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipRequest=function(e,t,n,i,a,s){function o(t,r){var i=!1;try{var a=c(t,r);if(a===x)return;i=a===m}catch(o){i=!0,e.onException(o)}try{i||e.waitForConcurrentRequestsToEnd(y),n.requestEnded(t,y),i&&!E&&void 0!==s&&s(),e.checkConcurrentRequestsFinished()}catch(o){e.onException(o)}}function l(t){n.requestEnded(t,y),e.checkConcurrentRequestsFinished(),void 0!==s&&s()}function c(t,i){if(!i)throw new r.jpipExceptions.InternalErrorException("AJAX callback called although response is not done yet and chunked encoding is not enabled");var a=e.getCreatedChannelId(t);null!==a?null!==n.getChannelId()?e.onException(new r.jpipExceptions.IllegalDataException("Channel created although was not requested","D.2.3")):n.setChannelId(a):null===n.getChannelId()&&e.onException(new r.jpipExceptions.IllegalDataException("Cannot extract cid from cnew response","D.2.3"));var s=f(t);if(null===s)return m;var o=p(t,s);return o}function u(){d=n.nextRequestId();var t=i+"&len="+b+"&qid="+d;b*=2;var r=null===n.getChannelId();if(r){t+="&cnew=http";var a=e.getFirstChannel();null!==a&&(t+="&cid="+a.getChannelId())}else t+="&cid="+n.getChannelId();e.sendAjax(t,o,l)}function p(t,n){var i=m,a=new Uint8Array(t.response);if(n>a.length-2||0!==a[n])throw new r.jpipExceptions.IllegalDataException("Could not find End Of Response (EOR) code at the end of response","D.3");switch(a[n+1]){case r.jpipEndOfResponseReasons.IMAGE_DONE:case r.jpipEndOfResponseReasons.WINDOW_DONE:case r.jpipEndOfResponseReasons.QUALITY_LIMIT:i=v;break;case r.jpipEndOfResponseReasons.WINDOW_CHANGE:if(!E)throw new r.jpipExceptions.IllegalOperationException("Server response was terminated due to newer request issued on same channel. That may be an internal webjpip.js error - Check that movable requests are well maintained");break;case r.jpipEndOfResponseReasons.BYTE_LIMIT:case r.jpipEndOfResponseReasons.RESPONSE_LIMIT:E||(u(),i=x);break;case r.jpipEndOfResponseReasons.SESSION_LIMIT:e.onException(new r.jpipExceptions.IllegalOperationException("Server resources associated with the session is limitted, no further requests should be issued to this session"));break;case r.jpipEndOfResponseReasons.NON_SPECIFIED:e.onException(new r.jpipExceptions.IllegalOperationException("Server error terminated response with no reason specified"));break;default:e.onException(new r.jpipExceptions.IllegalDataException("Server responded with illegal End Of Response (EOR) code: "+a[n+1]))}return i}function f(n){try{for(var r,i=new Uint8Array(n.response),a=0;a<i.length&&0!==i[a];){var s=t.parseMessageHeader(i,a,r);if(s.bodyStart+s.messageBodyLength>i.length)return a;e.getDatabinsSaver().saveData(s,i),a=s.bodyStart+s.messageBodyLength,r=s}return a}catch(o){return e.onException(o),null}}var d,h=1024,g=10*h,v=1,m=2,x=3,y=this,j=!1,E=!1,b=g;this.startRequest=function(){if(j)throw new r.jpipExceptions.InternalErrorException("startRequest called twice");if(E)throw new r.jpipExceptions.InternalErrorException("request was already stopped");j=!0,e.requestStarted(),u()},this.stopRequestAsync=function(e){E=!0},this.getLastRequestId=function(){if(!j)throw new r.jpipExceptions.InternalErrorException("Unexpected call to getLastRequestId on inactive request");return d},this.callCallbackAfterConcurrentRequestsFinished=function(){a(y,!0)}}},{"j2k-jpip-globals.js":15}],25:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipSessionHelper=function(e,t,n,i,a){function s(e){var t=new r.jpipExceptions.InternalErrorException("Bad jpip server response (status = "+e.status+")");o(t)}function o(e){void 0===e&&(e=null),null!==l&&l({isReady:h,exception:e})}var l=null,c=null,u=[],p=null,f=0,d=[],h=!1,g=t||"0";this.onException=function(e){o(e)},this.getIsReady=function(){return h},this.setIsReady=function(e){h=e,o()},this.getCodestreamStructure=function(){return n},this.getDatabinsSaver=function(){return i},this.getDataRequestUrl=function(){return e},this.getTargetId=function(){return g},this.getFirstChannel=function(){return p},this.setStatusCallback=function(e){l=e},this.setRequestEndedCallback=function(e){c=e},this.requestStarted=function(){++f},this.requestEnded=function(e,t){--f;var n=e.getResponseHeader("JPIP-tid");if(""!==n&&null!==n)if("0"===g)g=n;else if(g!==n)throw new r.jpipExceptions.IllegalDataException("Server returned unmatched target ID");null===p&&(p=t);var i=t.getIsDedicatedForMovableRequest()?null:t;null!==c&&c(i)},this.getActiveRequestsCount=function(){return f},this.channelCreated=function(e){u.push(e)},this.getCreatedChannelId=function(e){var t=e.getResponseHeader("JPIP-cnew");if(!t)return null;for(var n=t.split(","),r=0;r<n.length;++r){var i=n[r].split("=");if("cid"===i[0])return i[1]}return null},this.waitForConcurrentRequestsToEnd=function(e){for(var t=[],n=0;n<u.length;++n){var r=u[n].getRequestsWaitingForResponse(),i=r.length;if(0!==i){for(var a=r[0].getLastRequestId(),s=1;s<r.length;++s)a=Math.max(a,r[s].getLastRequestId());t.push({channel:u[n],requestId:a})}}d.push({request:e,concurrentRequests:t})},this.checkConcurrentRequestsFinished=function(){for(var e=d.length-1;e>=0;--e){for(var t=d[e].concurrentRequests,n=t.length-1;n>=0;--n){var r=t[n];r.channel.isAllOldRequestsEnded(r.requestId)&&(t[n]=t[t.length-1],t.length-=1)}if(!(t.length>0)){var i=d[e].request;i.callback;d[e]=d[d.length-1],d.length-=1,i.callCallbackAfterConcurrentRequestsFinished()}}},this.sendAjax=function(e,t,n){var r;r=n?function(e){s(e),n(e)}:s,a.request(e,t,r)}}},{"j2k-jpip-globals.js":15}],26:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipSession=function(e,t,n,i,a,s,o,l){function c(){null!==P&&o(P),b.setIsReady(!1),b.sendAjax(m,E)}function u(e){++k;var n=l.createChannel(t,b);return b.channelCreated(n),e||w.push(n),n}function p(e,t){for(var n,r=null,i=e+1,a=0;a<w.length;++a){var s=w[a].getAllQueuedRequestCount();if(i>s&&(r=w[a],n=a,i=s),0===s)break}return t&&null!==r?(w[n]=w[w.length-1],w.length-=1,r):r}function f(){var e=a.getMainHeaderDatabin();if(!e.isAllDatabinLoaded())throw new r.jpipExceptions.IllegalDataException("Main header was not loaded on session creation");var t=b.getFirstChannel(),n=t.getChannelId();return m=g+"&cclose=*&cid="+n,j?void c():void(null!==n&&(P=s(d,y),b.setIsReady(!0)))}function d(){if(!(b.getActiveRequestsCount()>0)){var e=b.getFirstChannel();e.sendMinimalRequest(function(){})}}function h(){if(null===b||!b.getIsReady())throw new r.jpipExceptions.InternalErrorException("Cannot perform this operation when the session is not ready")}var g,v,m,x=1e3,y=30*x,j=!1,E=null,b=null,I=null,C=null,w=[],k=0,P=null;this.open=function(e){if(null!==b)throw new r.jpipExceptions.InternalErrorException("session.open() should be called only once");var t=e.indexOf("?")<0?"?":"&";g=e+t+"type="+(a.getIsJpipTilePartStream()?"jpt-stream":"jpp-stream"),v=g+"&stream=0",b=l.createSessionHelper(v,n,i,a),null!==I&&b.setStatusCallback(I),null!==C&&b.setRequestEndedCallback(C);var s=u();s.sendMinimalRequest(f)},this.getTargetId=function(){return h(),b.getTargetId()},this.getIsReady=function(){var e=null!==b&&b.getIsReady();return e},this.setStatusCallback=function(e){I=e,null!==b&&b.setStatusCallback(e)},this.setRequestEndedCallback=function(e){C=e,null!==b&&b.setRequestEndedCallback(e)},this.hasActiveRequests=function(){h();var e=b.getActiveRequestsCount()>0;return e},this.tryGetChannel=function(n){h();var r=e>k,i=r||n,a=i?0:t-1,s=p(a,n);return null===s&&r&&(s=u(n)),n&&null!==s&&s.dedicateForMovableRequest(),s},this.close=function(e){if(0===k)throw new r.jpipExceptions.InternalErrorException("Cannot close session before open");if(j)throw new r.jpipExceptions.InternalErrorException("Cannot close session twice");j=!0,E=e,void 0!==m&&c()}}},{"j2k-jpip-globals.js":15}],27:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipBitstreamReader=function(){function e(e,a){var s={nextOffsetToParse:0,validBitsInCurrentByte:0,originalByteWithoutShift:null,currentByte:null,isSkipNextByte:!1},o=a.createTransactionalObject(s),l=null;Object.defineProperty(this,"activeTransaction",{get:function(){if(null===l||!l.isActive)throw new r.jpipExceptions.InternalErrorException("No active transaction in bitstreamReader");return l}}),Object.defineProperty(this,"bitsCounter",{get:function(){var t=o.getValue(l);if(i(e,t),t.isSkipNextByte)throw new r.jpipExceptions.InternalErrorException("Unexpected state of bitstreamReader: When 0xFF encountered, tryValidateCurrentByte should skip the whole byte  after shiftRemainingBitsInByte and clear isSkipNextByte. However the flag is still set");var n=8*t.nextOffsetToParse-t.validBitsInCurrentByte;return n}}),Object.defineProperty(this,"databinOffset",{get:function(){var e=o.getValue(l);if(e.isSkipNextByte)return e.nextOffsetToParse+1;if(e.validBitsInCurrentByte%8!==0||255===e.originalByteWithoutShift)throw new r.jpipExceptions.InternalErrorException("Cannot calculate databin offset when bitstreamReader  is in the middle of the byte");return e.nextOffsetToParse-e.validBitsInCurrentByte/8},set:function(e){var t=o.getValue(l);t.validBitsInCurrentByte=0,t.isSkipNextByte=!1,t.originalByteWithoutShift=null,t.nextOffsetToParse=e}}),this.startNewTransaction=function(){if(null!==l&&l.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot start new transaction in bitstreamReader while another transaction is active");l=a.createTransaction()},this.shiftRemainingBitsInByte=function(){var e=o.getValue(l);e.isSkipNextByte=255===e.originalByteWithoutShift,e.validBitsInCurrentByte=Math.floor(e.validBitsInCurrentByte/8)},this.shiftBit=function(){var n=o.getValue(l);if(!i(e,n))return null;var r=t(e,n,!0,1);return r},this.countZerosAndShiftUntilFirstOneBit=function(n){var r=o.getValue(l),i=t(e,r,!1,n);return i},this.countOnesAndShiftUntilFirstZeroBit=function(n){var r=o.getValue(l),i=t(e,r,!0,n);return i},this.shiftBits=function(t){for(var r=0,a=o.getValue(l),s=t;s>0;){if(!i(e,a))return null;var c=Math.min(a.validBitsInCurrentByte,s),u=a.currentByte>>8-c;r=(r<<c)+u,n(a,c),s-=c}return r}}function t(e,t,r,a){var o,l=0,c=a;do{if(!i(e,t))return null;var u=r?~t.currentByte:t.currentByte,p=Math.min(s[u],t.validBitsInCurrentByte+1),f=p-1;if(void 0!==c){if(p>c){n(t,c),l+=c;break}c-=f}l+=f,o=p<=t.validBitsInCurrentByte,o?n(t,p):t.validBitsInCurrentByte=0}while(!o);return l}function n(e,t){e.validBitsInCurrentByte-=t,e.validBitsInCurrentByte>0&&(e.currentByte=e.currentByte<<t&255)}function i(e,t){if(t.validBitsInCurrentByte>0)return!0;var n=t.isSkipNextByte?2:1,i=[],a=e.copyBytes(i,0,{forceCopyAllRange:!0,databinStartOffset:t.nextOffsetToParse,maxLengthToCopy:n});if(a!==n)return!1;var s=t.originalByteWithoutShift;if(t.currentByte=i[n-1],t.validBitsInCurrentByte=8,t.originalByteWithoutShift=t.currentByte,255===s){if(0!==(128&i[0]))throw new r.j2kExceptions.IllegalDataException("Expected 0 bit after 0xFF byte","B.10.1");t.isSkipNextByte||(t.currentByte<<=1,t.validBitsInCurrentByte=7)}return t.isSkipNextByte=!1,t.nextOffsetToParse+=n,!0}function a(){var e=new Array(255);e[0]=9,e[1]=8,e[2]=7,e[3]=7;var t;for(t=4;7>=t;++t)e[t]=6;for(t=8;15>=t;++t)e[t]=5;for(t=16;31>=t;++t)e[t]=4;for(t=32;63>=t;++t)e[t]=3;for(t=64;127>=t;++t)e[t]=2;for(t=128;255>=t;++t)e[t]=1;for(t=0;255>=t;++t)e[t-256]=e[t];return e}var s=a();return e}()},{"j2k-jpip-globals.js":15}],28:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipCodeblockLengthParser=function(){function e(e,t){var i=t.createTransactionalObject({lBlockValue:3});this.parse=function(t){var a=e.countOnesAndShiftUntilFirstZeroBit();if(null===a)return null;var s=i.getValue(e.activeTransaction);s.lBlockValue+=a;var o=n[t];if(void 0===o)throw new r.jpipExceptions.InternalErrorException("Unexpected value of coding passes "+t+". Expected positive integer <= 164");var l=s.lBlockValue+o,c=e.shiftBits(l);return c}}function t(){for(var e=164,t=new Array(e),n=1,r=2,i=0;e>=n;){for(var a=n;r>a;++a)t[a]=i;n*=2,r*=2,++i}return t}var n=t();return e}()},{"j2k-jpip-globals.js":15}],29:[function(e,t,n){"use strict";t.exports.jpipCodingPassesNumberParser=function(){function e(){var e=new Array(17);return e[0]=0,e[1]=0,e[2]=1,e[3]=0,e[4]=4,e[5]=3,e[6]=2,e[7]=1,e[8]=0,e[9]=6,e[10]=5,e[11]=4,e[12]=3,e[13]=2,e[14]=1,e[15]=0,e[16]=0,e}function t(){var e=new Array(17);return e[0]=1,e[1]=2,e[2]=3,e[3]=5,e[4]=6,e[5]=22,e[6]=30,e[7]=34,e[8]=36,e[9]=37,e[10]=101,e[11]=133,e[12]=149,e[13]=157,e[14]=161,e[15]=163,e[16]=164,e}var n=e(),r=t(),i={parse:function(e){var t=e.countOnesAndShiftUntilFirstZeroBit(16);if(null===t)return null;var i=n[t],a=e.shiftBits(i);if(null===a)return null;var s=r[t],o=a+s;return o}};return i}()},{}],30:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipPacketLengthCalculator=function(e,t,n,i,a,s){function o(e){for(;h.length<e;){g.startNewTransaction();var t=l(h.length);if(null===t)return void g.activeTransaction.abort();h.push(t),g.activeTransaction.commit()}}function l(e){var t;if(e>0){var n=h[e-1];t=n.headerStartOffset+n.headerLength+n.overallBodyLengthBytes}else t=i;if(g.databinOffset=t,y&&j){var r=f(145);if(null===r)return null;if(r){var a=6;g.databinOffset+=a}}var s=g.shiftBit();if(null===s)return null;if(!s)return g.shiftRemainingBitsInByte(),{headerStartOffset:t,headerLength:1,codeblockBodyLengthByIndex:[],overallBodyLengthBytes:0};var o=c(e);if(null===o)return null;var l=g.databinOffset;return o.headerLength=l-t,o.headerStartOffset=t,o}function c(e){for(var t=0,n=null,r=0;r<b.length;++r){var i=b[r],a=i.calculateSubbandLength(e);if(null===a)return null;n=null===n?a.codeblockBodyLengthByIndex:n.concat(a.codeblockBodyLengthByIndex),t+=a.overallBodyLengthBytes}if(g.shiftRemainingBitsInByte(),E){var s=f(146);if(null===s)return null;if(s){var o=2;g.databinOffset+=o}}return{codeblockBodyLengthByIndex:n,overallBodyLengthBytes:t}}function u(e){var t=Math.min(e,h.length);if(0===t)return{endOffset:i,numQualityLayers:0};var n=h[t-1],r=n.headerStartOffset+n.headerLength+n.overallBodyLengthBytes,a={endOffset:r,numQualityLayers:t};return a}function p(){for(var e=0===a.resolutionLevel?1:3,t=[],n=0;e>n;++n){var r,i;0===a.resolutionLevel?(r=v,i=m):(r=1===n?Math.ceil(v/2):Math.floor(v/2),i=0===n?Math.ceil(m/2):Math.floor(m/2)),0!==r&&0!==i&&t.push(s.createSubbandLengthInPacketHeaderCalculator(g,r,i))}return t}function f(e){var t=new Array(2),r=n.copyBytes(t,0,{databinStartOffset:g.databinOffset,maxLengthToCopy:2,forceCopyAllRange:!1});switch(r){case 2:var i=255===t[0]&&t[1]===e;return i;case 1:return 255===t[0]?null:!1;default:return null}}function d(){if(!y)throw new r.jpipExceptions.UnsupportedFeatureException("PPM or PPT","A.7.4 and A.7.5")}var h=[],g=s.createBitstreamReader(n),v=t.getNumCodeblocksXInPrecinct(a),m=t.getNumCodeblocksYInPrecinct(a),x=e.getNumQualityLayers(),y=e.getIsPacketHeaderNearData(),j=e.getIsStartOfPacketMarkerAllowed(),E=e.getIsEndPacketHeaderMarkerAllowed(),b=p();this.calculateEndOffsetOfLastFullPacket=function(e){var t,r=void 0===e||e>=x;if(r){if(n.isAllDatabinLoaded()){var i=n.getDatabinLengthIfKnown();return{endOffset:i,numQualityLayers:x}}t=x}else t=e;d(),o(t);var a=u(t);return a},this.getPacketOffsetsByCodeblockIndex=function(e){return d(),o(e+1),h.length<=e?null:h[e]}}},{"j2k-jpip-globals.js":15}],31:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipQualityLayersCache=function(e,t){function n(n,a){var s=n.getCachedData(i);if(void 0!==s.calculator)return s.calculator;if(void 0===a)throw new r.jpipExceptions.InternalErrorException("precinctPosition should be given on the first time of using QualityLayersCache on this precinct");var o=e.getTileStructure(a.tileIndex),l=o.getComponentStructure(a.component);return s.calculator=t.createPacketLengthCalculator(o,l,n,0,a),s.calculator}var i="packetLengthCalculator";this.getPacketOffsetsByCodeblockIndex=function(e,t,r){var i=n(e,r),a=i.getPacketOffsetsByCodeblockIndex(t);return a},this.getQualityLayerOffset=function(e,t,r){var i,a=e.getExistingRanges(),s=n(e,r);a.length<1||a[0].start>0?(i=0,t=0):i=a[0].start+a[0].length;for(var o=s.calculateEndOffsetOfLastFullPacket(t);i<o.endOffset;){var l=o.numQualityLayers-1;o=s.calculateEndOffsetOfLastFullPacket(l)}return o}}},{"j2k-jpip-globals.js":15}],32:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipSubbandLengthInPacketHeaderCalculator=function(e,t,n,i,a,s){function o(t){var n=f.getValue(e.activeTransaction);if(n>=t+1)throw new r.jpipExceptions.InternalErrorException("Unexpected quality layer to parse")}function l(){if(null===u){u=new Array(t),p=new Array(t);for(var r=0;t>r;++r){u[r]=new Array(n),p[r]=new Array(n);for(var i=0;n>i;++i)u[r][i]=s.createCodeblockLengthParser(e,a),p[r][i]=a.createTransactionalObject({isIncluded:!1})}}}function c(t,n,r){var a,s=p[t][n].getValue(e.activeTransaction);if(a=s.isIncluded?e.shiftBit():d.isSmallerThanOrEqualsTo(t,n,r),null===a)return null;if(!a)return{codeblockBodyLengthBytes:0,codingPasses:0};var o=null;if(!s.isIncluded&&(o=h.getValue(t,n),null===o))return null;var l=i.parse(e);if(null===l)return null;var c=u[t][n],f=c.parse(l);if(null===f)return null;s.isIncluded=!0;var g={codeblockBodyLengthBytes:f,codingPasses:l};return null!==o&&(g.zeroBitPlanes=o),g}var u=null,p=null,f=a.createTransactionalObject(0,!0),d=s.createTagTree(e,t,n),h=s.createTagTree(e,t,n);this.calculateSubbandLength=function(r){o(r),l(),d.setMinimalValueIfNotReadBits(r);for(var i=0,a=0,s=new Array(t*n),u=0;n>u;++u)for(var p=0;t>p;++p){var h=c(p,u,r);if(null===h)return null;s[a++]=h,i+=h.codeblockBodyLengthBytes}return f.setValue(e.activeTransaction,r+1),{codeblockBodyLengthByIndex:s,overallBodyLengthBytes:i}}}},{"j2k-jpip-globals.js":15}],33:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipTagTree=function(e,t,n,i){function a(){u=[];for(var e=t,r=n;e>=1||r>=1;){e=Math.ceil(e),r=Math.ceil(r);var i=e*r;u.unshift({width:e,height:r,content:new Array(i)}),e/=2,r/=2}o(0,0)}function s(t,n){function i(){if(null===a)throw new r.jpipExceptions.InternalErrorException("Iterated too deep in tag tree");if(a===u.length)return a=null,null;var i=u.length-a-1,l=Math.floor(t>>i),c=Math.floor(n>>i),p=u[a].width*c+l,f=u[a].content[p];void 0===f&&(f=o(a,p));var d=f.getValue(e.activeTransaction);return null!==s&&s.minimalPossibleValue>d.minimalPossibleValue&&(d.minimalPossibleValue=s.minimalPossibleValue),s=d,++a,d}var a=0,s=null;return i}function o(e,t){var n={minimalPossibleValue:0,isFinalValue:!1},r=i.createTransactionalObject(n);return u[e].content[t]=r,r}function l(){var t=p.getValue(e.activeTransaction);return t}function c(){p.setValue(e.activeTransaction,!0)}var u,p=i.createTransactionalObject(!1,!0);a(),this.setMinimalValueIfNotReadBits=function(t){if(!l()){var n=u[0].content[0],r=n.getValue(e.activeTransaction);r.minimalPossibleValue=t}},this.isSmallerThanOrEqualsTo=function(t,n,i){c();for(var a,o=s(t,n),l=o();null!==l;){if(l.minimalPossibleValue>i)return!1;if(!l.isFinalValue){var u=i-l.minimalPossibleValue+1,p=e.countZerosAndShiftUntilFirstOneBit(u);if(null===p)return null;l.minimalPossibleValue+=p,u>p&&(l.isFinalValue=!0)}a=l,l=o()}var f=a.minimalPossibleValue<=i;if(f&&!a.isFinalValue)throw new r.jpipExceptions.InternalErrorException("Wrong parsing in TagTree.isSmallerThanOrEqualsTo: not sure if value is smaller than asked");return f},this.getValue=function(t,n){var r,i=s(t,n),a=i();for(c();null!==a;){if(!a.isFinalValue){var o=e.countZerosAndShiftUntilFirstOneBit();if(null===o)return null;a.minimalPossibleValue+=o,a.isFinalValue=!0}r=a,a=i()}return r.minimalPossibleValue}}},{"j2k-jpip-globals.js":15}],34:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.mutualExclusiveTransactionHelper={createTransaction:function(){function e(e){if(!n.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot terminate an already terminated transaction");t=e?2:3}var t=1,n={get isAborted(){return 3===t},get isActive(){return 1===t},commit:function(){e(!0)},abort:function(){e(!1)}};return n},createTransactionalObject:function(e,t){function n(e){if(!e.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot use terminated transaction to access objects");if(e!==l&&l.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot simultanously access transactional object from two active transactions")}function i(e){return e}function a(e){var t=JSON.parse(JSON.stringify(e));return t}var s=null,o=e,l={isActive:!1,isAborted:!0},c=t?i:a,u={getValue:function(e){return n(e),l===e?s:(l.isAborted?s=c(o):o=c(s),l=e,s)},setValue:function(e,t){return n(e),l===e?void(s=t):(l.isAborted||(o=c(s)),l=e,void(s=t))}};return u}}},{"j2k-jpip-globals.js":15}],35:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipImageImplementation=e("jpip-image-implementation.js").JpipImageImplementation,t.exports.JpipCodestreamClient=e("jpip-codestream-client.js").JpipCodestreamClient,t.exports.JpipCodestreamSizesCalculator=e("jpip-codestream-sizes-calculator.js").JpipCodestreamSizesCalculator,t.exports.PdfjsJpxDecoder=e("pdfjs-jpx-decoder.js").PdfjsJpxDecoder,t.exports.j2kExceptions=r.j2kExceptions,t.exports.jpipExceptions=r.jpipExceptions,t.exports.Internals={jpipRuntimeFactory:e("jpip-runtime-factory.js"),jGlobals:r}},{"j2k-jpip-globals.js":15,"jpip-codestream-client.js":1,"jpip-codestream-sizes-calculator.js":2,"jpip-image-implementation.js":5,"jpip-runtime-factory.js":16,"pdfjs-jpx-decoder.js":6}],36:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipCodestreamReconstructor=function(e,t,n,i){function a(e,i){if(t.getIsJpipTilePartStream())throw new r.jpipExceptions.UnsupportedFeatureException("reconstruction of codestream from JPT (Jpip Tile-part) stream","A.3.4");var a=t.getMainHeaderDatabin(),s=a.copyBytes(e,0,{forceCopyAllRange:!0});if(null===s)return null;var o=n.modifyMainOrTileHeader(e,a,0,i);return s+=o,o=c(e,s),s+=o}function s(r,i,a,s,c,u,p){var f,d=e.getTileStructure(s),h=i,g=t.getTileHeaderDatabin(s);void 0!==c&&(f=c.level);var v=o(r,i,g,a,f);if(null===v)return null;if(i=v.endTileHeaderOffset,!p){var m=l(r,i,d,s,c,u);if(i+=m,null===m)return null}var x=i,y=x-v.startOfTileHeaderOffset;n.modifyInt32(r,v.headerAndDataLengthPlaceholderOffset,y);var j=x-h;return j}function o(e,t,i,a,s){var o=t,l=u(e,t,r.j2kMarkers.StartOfTile);t+=l;var c=[0,10];l=u(e,t,c),t+=l;var p=[a>>>8,255&a];l=u(e,t,p),t+=l;var f=t,d=[0,0,0,0];l=u(e,t,d),t+=l;var h=[0];l=u(e,t,h),t+=l;var g=[1];l=u(e,t,g),t+=l;var v=t;if(l=i.copyBytes(e,t,{forceCopyAllRange:!0}),t+=l,null===l)return null;var m=e[t-2]===r.j2kMarkers.StartOfData[0]&&e[t-1]===r.j2kMarkers.StartOfData[1];m||(l=u(e,t,r.j2kMarkers.StartOfData),t+=l);var x=n.modifyMainOrTileHeader(e,i,v,s);t+=x;var y={startOfTileHeaderOffset:o,headerAndDataLengthPlaceholderOffset:f,endTileHeaderOffset:t};return y}function l(e,n,r,a,s,o){var l,c=r.getNumQualityLayers(),u=r.getPrecinctIterator(a,s,!0),p=0;void 0!==s&&(l=s.quality),"max"===o&&(o=c);do{var f=c;if(u.isInCodestreamPart){var d=r.precinctPositionToInClassIndex(u),h=t.getPrecinctDatabin(d),g=i.getQualityLayerOffset(h,l,u),v=g.endOffset;if(f=c-g.numQualityLayers,g.numQualityLayers<o)return null;var m=h.copyBytes(e,n,{forceCopyAllRange:!0,maxLengthToCopy:v});null===m&&(m=0,f=c),p+=m,n+=m}for(var x=0;f>x;++x)e[n++]=0;p+=f}while(u.tryAdvance());return p}function c(e,t){var n=t;e[t++]=255,e[t++]=100,e[t++]=0,e[t++]=9,e[t++]=77,e[t++]=97,e[t++]=109,e[t++]=97,e[t++]=122,e[t++]=97,e[t++]=118;var r=t-n;return r}function u(e,t,n){for(var r=0;r<n.length;++r)e[r+t]=n[r];return n.length}this.reconstructCodestream=function(t){var n=[],i=a(n);if(null===i)return null;var o,l=e.getNumTilesX()*e.getNumTilesY();void 0===t&&(t="max");for(var c=0;l>c;++c){var p=s(n,i,c,c,o,t);if(i+=p,null===p)return null}var f=u(n,i,r.j2kMarkers.EndOfCodestream);return i+=f,n.length=i,n},this.createCodestreamForRegion=function(t,i,o){var l=[],c=a(l,t.level);if(null===c)return null;var p=0,f=e.getTilesIterator(t),d=f.tileIndex,h=e.getTileLeft(d,t.level),g=e.getTileTop(d,t.level),v=t.minX-h,m=t.minY-g;do{var x=f.tileIndex,y=s(l,c,p++,x,t,i,o);if(c+=y,null===y)return null}while(f.tryAdvance());var j=u(l,c,r.j2kMarkers.EndOfCodestream);return c+=j,n.modifyImageSize(l,t),null===l?null:(l.length=c,{codestream:l,offsetX:v,offsetY:m})},this.createCodestreamForTile=function(t,i,o,l){var c=[],p=a(c,i);if(null===p)return null;var f={level:i,quality:l},d=s(c,p,0,t,f,o);if(p+=d,null===d)return null;var h=u(c,p,r.j2kMarkers.EndOfCodestream);p+=h;var g=e.getNumTilesX(),v=t%g,m=Math.floor(t/g);return n.modifyImageSize(c,{level:i,minTileX:v,maxTileXExclusive:v+1,minTileY:m,maxTileYExclusive:m+1}),c.length=p,c}}},{"j2k-jpip-globals.js":15}],37:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipHeaderModifier=function(e,t,n){function i(e,n,r){var i=t.getCodingStyleOffset(n);if(null!==i){var a=r+i+5;e[a]=l}}function a(e,t,n){if(0===t.length)return 0;for(var r=0;r<t.length;++r){var i=n+t[r].markerSegmentLengthOffset,a=(e[i]<<8)+e[i+1],s=a-t[r].length;e[i]=s>>>8,e[i+1]=255&s}for(var o=n+t[0].start,l=o,c=0;c<t.length;++c){l+=t[c].length;for(var u=c+1<t.length?n+t[c+1].start:e.length;u>l;++l)e[o]=e[l],++o}var p=l-o;return p}function s(e,t,n){e[t++]=n>>>24,e[t++]=n>>>16&255,e[t++]=n>>>8&255,e[t++]=255&n}function o(e){switch(e){case"LRCP":return 0;case"RLCP":return 1;case"RPCL":return 2;case"PCRL":return 3;case"CPRL":return 4;default:throw new r.j2kExceptions.IllegalDataException("Progression order of "+e,"A.6.1, table A.16")}}var l=o(n);this.modifyMainOrTileHeader=function(e,n,r,s){if(i(e,n,r),void 0===s)return 0;var o=t.getRangesOfBestResolutionLevelsData(n,s);if(null!==o.numDecompositionLevelsOffset){var l=r+o.numDecompositionLevelsOffset;e[l]-=s}var c=a(e,o.ranges,r),u=-c;return u},this.modifyImageSize=function(n,i){var a=e.getTileWidth(i.level),o=e.getTileHeight(i.level),l=e.getSizeOfPart(i),c=t.getImageAndTileSizeOffset(),u=c+r.j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER,p=u+8,f=u+16,d=u+24;s(n,u,l.width),s(n,u+4,l.height),s(n,f,a),s(n,f+4,o),s(n,p,0),s(n,p+4,0),s(n,d,0),s(n,d+4,0)},this.modifyInt32=s}},{"j2k-jpip-globals.js":15}],38:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipPacketsDataCollector=function(e,t,n,i){function a(n,a,o){var l=e.getTilesIterator(n),c=0,u=0,p={packetDataOffsets:[],data:i.createCompositeArray(u),allRelevantBytesLoaded:0};do{var f=e.getTileStructure(l.tileIndex),d=f.getPrecinctIterator(l.tileIndex,n),h=f.getNumQualityLayers();if(void 0!==n.quality&&(h=Math.min(h,n.quality)),"max"===a)a=h;else if(a>h)throw new r.jpipExceptions.InternalErrorException("minNumQualityLayers is larger than quality");do{if(!d.isInCodestreamPart)throw new r.jpipExceptions.InternalErrorException("Unexpected precinct not in codestream part");var g=f.precinctPositionToInClassIndex(d),v=t.getPrecinctDatabin(g),m=o.getObject(v);void 0===m.layerPerCodeblock&&(m.layerPerCodeblock=[]);var x=s(p,c,d,v,m,h);if(a>x)return null}while(d.tryAdvance());++c}while(l.tryAdvance());var y=new Uint8Array(p.data.getLength());return p.data.copyToTypedArray(y,0,0,p.data.getLength()),p.data=y,p}function s(e,t,r,i,a,s){var o,l;for(o=0;s>o;++o){var c=n.getPacketOffsetsByCodeblockIndex(i,o,r);if(null===c)break;l=c.headerStartOffset+c.headerLength;for(var u=c.codeblockBodyLengthByIndex.length,p=new Array(u),f=!1,d=0;u>d;++d){var h=a.layerPerCodeblock[d];if(void 0===h)h={layer:-1},a.layerPerCodeblock[d]=h;else if(h.layer>=o)continue;var g=c.codeblockBodyLengthByIndex[d],v=e.data.getLength(),m=i.copyToCompositeArray(e.data,{databinStartOffset:l,maxLengthToCopy:g.codeblockBodyLengthBytes,forceCopyAllRange:!0});if(m!==g.codeblockBodyLengthBytes){p.length=d,f=!0;break}h.layer=o,p[d]={start:v,end:v+g.codeblockBodyLengthBytes,codingpasses:g.codingPasses,zeroBitPlanes:g.zeroBitPlanes},l+=g.codeblockBodyLengthBytes}var x={tileIndex:t,r:r.resolutionLevel,p:r.precinctIndexInComponentResolution,c:r.component,l:o,codeblockOffsets:p};if(e.packetDataOffsets.push(x),f)break}return e.allRelevantBytesLoaded+=l,o}this.getAllCodeblocksData=function(e,t){var n=i.createObjectPoolByDatabin(),r=a(e,t,n);return{codeblocksData:r,alreadyReturnedCodeblocks:n}},this.getNewCodeblocksDataAndUpdateReturnedCodeblocks=a}},{"j2k-jpip-globals.js":15}]},{},[35])(35)});
+var globalScope = (typeof window === 'undefined') ? this : window;
+
+var isWorker = (typeof window === 'undefined');
+
+var FONT_IDENTITY_MATRIX = [0.001, 0, 0, 0.001, 0, 0];
+
+var TextRenderingMode = {
+  FILL: 0,
+  STROKE: 1,
+  FILL_STROKE: 2,
+  INVISIBLE: 3,
+  FILL_ADD_TO_PATH: 4,
+  STROKE_ADD_TO_PATH: 5,
+  FILL_STROKE_ADD_TO_PATH: 6,
+  ADD_TO_PATH: 7,
+  FILL_STROKE_MASK: 3,
+  ADD_TO_PATH_FLAG: 4
+};
+
+var ImageKind = {
+  GRAYSCALE_1BPP: 1,
+  RGB_24BPP: 2,
+  RGBA_32BPP: 3
+};
+
+var AnnotationType = {
+  WIDGET: 1,
+  TEXT: 2,
+  LINK: 3
+};
+
+var StreamType = {
+  UNKNOWN: 0,
+  FLATE: 1,
+  LZW: 2,
+  DCT: 3,
+  JPX: 4,
+  JBIG: 5,
+  A85: 6,
+  AHX: 7,
+  CCF: 8,
+  RL: 9
+};
+
+var FontType = {
+  UNKNOWN: 0,
+  TYPE1: 1,
+  TYPE1C: 2,
+  CIDFONTTYPE0: 3,
+  CIDFONTTYPE0C: 4,
+  TRUETYPE: 5,
+  CIDFONTTYPE2: 6,
+  TYPE3: 7,
+  OPENTYPE: 8,
+  TYPE0: 9,
+  MMTYPE1: 10
+};
+
+// The global PDFJS object exposes the API
+// In production, it will be declared outside a global wrapper
+// In development, it will be declared here
+if (!globalScope.PDFJS) {
+  globalScope.PDFJS = {};
+}
+
+globalScope.PDFJS.pdfBug = false;
+
+PDFJS.VERBOSITY_LEVELS = {
+  errors: 0,
+  warnings: 1,
+  infos: 5
+};
+
+// All the possible operations for an operator list.
+var OPS = PDFJS.OPS = {
+  // Intentionally start from 1 so it is easy to spot bad operators that will be
+  // 0's.
+  dependency: 1,
+  setLineWidth: 2,
+  setLineCap: 3,
+  setLineJoin: 4,
+  setMiterLimit: 5,
+  setDash: 6,
+  setRenderingIntent: 7,
+  setFlatness: 8,
+  setGState: 9,
+  save: 10,
+  restore: 11,
+  transform: 12,
+  moveTo: 13,
+  lineTo: 14,
+  curveTo: 15,
+  curveTo2: 16,
+  curveTo3: 17,
+  closePath: 18,
+  rectangle: 19,
+  stroke: 20,
+  closeStroke: 21,
+  fill: 22,
+  eoFill: 23,
+  fillStroke: 24,
+  eoFillStroke: 25,
+  closeFillStroke: 26,
+  closeEOFillStroke: 27,
+  endPath: 28,
+  clip: 29,
+  eoClip: 30,
+  beginText: 31,
+  endText: 32,
+  setCharSpacing: 33,
+  setWordSpacing: 34,
+  setHScale: 35,
+  setLeading: 36,
+  setFont: 37,
+  setTextRenderingMode: 38,
+  setTextRise: 39,
+  moveText: 40,
+  setLeadingMoveText: 41,
+  setTextMatrix: 42,
+  nextLine: 43,
+  showText: 44,
+  showSpacedText: 45,
+  nextLineShowText: 46,
+  nextLineSetSpacingShowText: 47,
+  setCharWidth: 48,
+  setCharWidthAndBounds: 49,
+  setStrokeColorSpace: 50,
+  setFillColorSpace: 51,
+  setStrokeColor: 52,
+  setStrokeColorN: 53,
+  setFillColor: 54,
+  setFillColorN: 55,
+  setStrokeGray: 56,
+  setFillGray: 57,
+  setStrokeRGBColor: 58,
+  setFillRGBColor: 59,
+  setStrokeCMYKColor: 60,
+  setFillCMYKColor: 61,
+  shadingFill: 62,
+  beginInlineImage: 63,
+  beginImageData: 64,
+  endInlineImage: 65,
+  paintXObject: 66,
+  markPoint: 67,
+  markPointProps: 68,
+  beginMarkedContent: 69,
+  beginMarkedContentProps: 70,
+  endMarkedContent: 71,
+  beginCompat: 72,
+  endCompat: 73,
+  paintFormXObjectBegin: 74,
+  paintFormXObjectEnd: 75,
+  beginGroup: 76,
+  endGroup: 77,
+  beginAnnotations: 78,
+  endAnnotations: 79,
+  beginAnnotation: 80,
+  endAnnotation: 81,
+  paintJpegXObject: 82,
+  paintImageMaskXObject: 83,
+  paintImageMaskXObjectGroup: 84,
+  paintImageXObject: 85,
+  paintInlineImageXObject: 86,
+  paintInlineImageXObjectGroup: 87,
+  paintImageXObjectRepeat: 88,
+  paintImageMaskXObjectRepeat: 89,
+  paintSolidColorImageMask: 90,
+  constructPath: 91
+};
+
+// A notice for devs. These are good for things that are helpful to devs, such
+// as warning that Workers were disabled, which is important to devs but not
+// end users.
+function info(msg) {
+  if (PDFJS.verbosity >= PDFJS.VERBOSITY_LEVELS.infos) {
+    console.log('Info: ' + msg);
+  }
+}
+
+// Non-fatal warnings.
+function warn(msg) {
+  if (PDFJS.verbosity >= PDFJS.VERBOSITY_LEVELS.warnings) {
+    console.log('Warning: ' + msg);
+  }
+}
+
+// Fatal errors that should trigger the fallback UI and halt execution by
+// throwing an exception.
+function error(msg) {
+  // If multiple arguments were passed, pass them all to the log function.
+  if (arguments.length > 1) {
+    var logArguments = ['Error:'];
+    logArguments.push.apply(logArguments, arguments);
+    console.log.apply(console, logArguments);
+    // Join the arguments into a single string for the lines below.
+    msg = [].join.call(arguments, ' ');
+  } else {
+    console.log('Error: ' + msg);
+  }
+  console.log(backtrace());
+  UnsupportedManager.notify(UNSUPPORTED_FEATURES.unknown);
+  throw new Error(msg);
+}
+
+function backtrace() {
+  try {
+    throw new Error();
+  } catch (e) {
+    return e.stack ? e.stack.split('\n').slice(2).join('\n') : '';
+  }
+}
+
+function assert(cond, msg) {
+  if (!cond) {
+    error(msg);
+  }
+}
+
+var UNSUPPORTED_FEATURES = PDFJS.UNSUPPORTED_FEATURES = {
+  unknown: 'unknown',
+  forms: 'forms',
+  javaScript: 'javaScript',
+  smask: 'smask',
+  shadingPattern: 'shadingPattern',
+  font: 'font'
+};
+
+var UnsupportedManager = PDFJS.UnsupportedManager =
+  (function UnsupportedManagerClosure() {
+  var listeners = [];
+  return {
+    listen: function (cb) {
+      listeners.push(cb);
+    },
+    notify: function (featureId) {
+      warn('Unsupported feature "' + featureId + '"');
+      for (var i = 0, ii = listeners.length; i < ii; i++) {
+        listeners[i](featureId);
+      }
+    }
+  };
+})();
+
+// Combines two URLs. The baseUrl shall be absolute URL. If the url is an
+// absolute URL, it will be returned as is.
+function combineUrl(baseUrl, url) {
+  if (!url) {
+    return baseUrl;
+  }
+  if (/^[a-z][a-z0-9+\-.]*:/i.test(url)) {
+    return url;
+  }
+  var i;
+  if (url.charAt(0) === '/') {
+    // absolute path
+    i = baseUrl.indexOf('://');
+    if (url.charAt(1) === '/') {
+      ++i;
+    } else {
+      i = baseUrl.indexOf('/', i + 3);
+    }
+    return baseUrl.substring(0, i) + url;
+  } else {
+    // relative path
+    var pathLength = baseUrl.length;
+    i = baseUrl.lastIndexOf('#');
+    pathLength = i >= 0 ? i : pathLength;
+    i = baseUrl.lastIndexOf('?', pathLength);
+    pathLength = i >= 0 ? i : pathLength;
+    var prefixLength = baseUrl.lastIndexOf('/', pathLength);
+    return baseUrl.substring(0, prefixLength + 1) + url;
+  }
+}
+
+// Validates if URL is safe and allowed, e.g. to avoid XSS.
+function isValidUrl(url, allowRelative) {
+  if (!url) {
+    return false;
+  }
+  // RFC 3986 (http://tools.ietf.org/html/rfc3986#section-3.1)
+  // scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+  var protocol = /^[a-z][a-z0-9+\-.]*(?=:)/i.exec(url);
+  if (!protocol) {
+    return allowRelative;
+  }
+  protocol = protocol[0].toLowerCase();
+  switch (protocol) {
+    case 'http':
+    case 'https':
+    case 'ftp':
+    case 'mailto':
+      return true;
+    default:
+      return false;
+  }
+}
+PDFJS.isValidUrl = isValidUrl;
+
+function shadow(obj, prop, value) {
+  Object.defineProperty(obj, prop, { value: value,
+                                     enumerable: true,
+                                     configurable: true,
+                                     writable: false });
+  return value;
+}
+
+var PasswordResponses = PDFJS.PasswordResponses = {
+  NEED_PASSWORD: 1,
+  INCORRECT_PASSWORD: 2
+};
+
+var PasswordException = (function PasswordExceptionClosure() {
+  function PasswordException(msg, code) {
+    this.name = 'PasswordException';
+    this.message = msg;
+    this.code = code;
+  }
+
+  PasswordException.prototype = new Error();
+  PasswordException.constructor = PasswordException;
+
+  return PasswordException;
+})();
+PDFJS.PasswordException = PasswordException;
+
+var UnknownErrorException = (function UnknownErrorExceptionClosure() {
+  function UnknownErrorException(msg, details) {
+    this.name = 'UnknownErrorException';
+    this.message = msg;
+    this.details = details;
+  }
+
+  UnknownErrorException.prototype = new Error();
+  UnknownErrorException.constructor = UnknownErrorException;
+
+  return UnknownErrorException;
+})();
+PDFJS.UnknownErrorException = UnknownErrorException;
+
+var InvalidPDFException = (function InvalidPDFExceptionClosure() {
+  function InvalidPDFException(msg) {
+    this.name = 'InvalidPDFException';
+    this.message = msg;
+  }
+
+  InvalidPDFException.prototype = new Error();
+  InvalidPDFException.constructor = InvalidPDFException;
+
+  return InvalidPDFException;
+})();
+PDFJS.InvalidPDFException = InvalidPDFException;
+
+var MissingPDFException = (function MissingPDFExceptionClosure() {
+  function MissingPDFException(msg) {
+    this.name = 'MissingPDFException';
+    this.message = msg;
+  }
+
+  MissingPDFException.prototype = new Error();
+  MissingPDFException.constructor = MissingPDFException;
+
+  return MissingPDFException;
+})();
+PDFJS.MissingPDFException = MissingPDFException;
+
+var UnexpectedResponseException =
+    (function UnexpectedResponseExceptionClosure() {
+  function UnexpectedResponseException(msg, status) {
+    this.name = 'UnexpectedResponseException';
+    this.message = msg;
+    this.status = status;
+  }
+
+  UnexpectedResponseException.prototype = new Error();
+  UnexpectedResponseException.constructor = UnexpectedResponseException;
+
+  return UnexpectedResponseException;
+})();
+PDFJS.UnexpectedResponseException = UnexpectedResponseException;
+
+var NotImplementedException = (function NotImplementedExceptionClosure() {
+  function NotImplementedException(msg) {
+    this.message = msg;
+  }
+
+  NotImplementedException.prototype = new Error();
+  NotImplementedException.prototype.name = 'NotImplementedException';
+  NotImplementedException.constructor = NotImplementedException;
+
+  return NotImplementedException;
+})();
+
+var MissingDataException = (function MissingDataExceptionClosure() {
+  function MissingDataException(begin, end) {
+    this.begin = begin;
+    this.end = end;
+    this.message = 'Missing data [' + begin + ', ' + end + ')';
+  }
+
+  MissingDataException.prototype = new Error();
+  MissingDataException.prototype.name = 'MissingDataException';
+  MissingDataException.constructor = MissingDataException;
+
+  return MissingDataException;
+})();
+
+var XRefParseException = (function XRefParseExceptionClosure() {
+  function XRefParseException(msg) {
+    this.message = msg;
+  }
+
+  XRefParseException.prototype = new Error();
+  XRefParseException.prototype.name = 'XRefParseException';
+  XRefParseException.constructor = XRefParseException;
+
+  return XRefParseException;
+})();
+
+
+function bytesToString(bytes) {
+  var length = bytes.length;
+  var MAX_ARGUMENT_COUNT = 8192;
+  if (length < MAX_ARGUMENT_COUNT) {
+    return String.fromCharCode.apply(null, bytes);
+  }
+  var strBuf = [];
+  for (var i = 0; i < length; i += MAX_ARGUMENT_COUNT) {
+    var chunkEnd = Math.min(i + MAX_ARGUMENT_COUNT, length);
+    var chunk = bytes.subarray(i, chunkEnd);
+    strBuf.push(String.fromCharCode.apply(null, chunk));
+  }
+  return strBuf.join('');
+}
+
+function stringToBytes(str) {
+  var length = str.length;
+  var bytes = new Uint8Array(length);
+  for (var i = 0; i < length; ++i) {
+    bytes[i] = str.charCodeAt(i) & 0xFF;
+  }
+  return bytes;
+}
+
+function string32(value) {
+  return String.fromCharCode((value >> 24) & 0xff, (value >> 16) & 0xff,
+                             (value >> 8) & 0xff, value & 0xff);
+}
+
+function log2(x) {
+  var n = 1, i = 0;
+  while (x > n) {
+    n <<= 1;
+    i++;
+  }
+  return i;
+}
+
+function readInt8(data, start) {
+  return (data[start] << 24) >> 24;
+}
+
+function readUint16(data, offset) {
+  return (data[offset] << 8) | data[offset + 1];
+}
+
+function readUint32(data, offset) {
+  return ((data[offset] << 24) | (data[offset + 1] << 16) |
+         (data[offset + 2] << 8) | data[offset + 3]) >>> 0;
+}
+
+// Lazy test the endianness of the platform
+// NOTE: This will be 'true' for simulated TypedArrays
+function isLittleEndian() {
+  var buffer8 = new Uint8Array(2);
+  buffer8[0] = 1;
+  var buffer16 = new Uint16Array(buffer8.buffer);
+  return (buffer16[0] === 1);
+}
+
+Object.defineProperty(PDFJS, 'isLittleEndian', {
+  configurable: true,
+  get: function PDFJS_isLittleEndian() {
+    return shadow(PDFJS, 'isLittleEndian', isLittleEndian());
+  }
+});
+
+//#if !(FIREFOX || MOZCENTRAL || B2G || CHROME)
+//// Lazy test if the userAgant support CanvasTypedArrays
+function hasCanvasTypedArrays() {
+  var canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  var ctx = canvas.getContext('2d');
+  var imageData = ctx.createImageData(1, 1);
+  return (typeof imageData.data.buffer !== 'undefined');
+}
+
+Object.defineProperty(PDFJS, 'hasCanvasTypedArrays', {
+  configurable: true,
+  get: function PDFJS_hasCanvasTypedArrays() {
+    return shadow(PDFJS, 'hasCanvasTypedArrays', hasCanvasTypedArrays());
+  }
+});
+
+var Uint32ArrayView = (function Uint32ArrayViewClosure() {
+
+  function Uint32ArrayView(buffer, length) {
+    this.buffer = buffer;
+    this.byteLength = buffer.length;
+    this.length = length === undefined ? (this.byteLength >> 2) : length;
+    ensureUint32ArrayViewProps(this.length);
+  }
+  Uint32ArrayView.prototype = Object.create(null);
+
+  var uint32ArrayViewSetters = 0;
+  function createUint32ArrayProp(index) {
+    return {
+      get: function () {
+        var buffer = this.buffer, offset = index << 2;
+        return (buffer[offset] | (buffer[offset + 1] << 8) |
+          (buffer[offset + 2] << 16) | (buffer[offset + 3] << 24)) >>> 0;
+      },
+      set: function (value) {
+        var buffer = this.buffer, offset = index << 2;
+        buffer[offset] = value & 255;
+        buffer[offset + 1] = (value >> 8) & 255;
+        buffer[offset + 2] = (value >> 16) & 255;
+        buffer[offset + 3] = (value >>> 24) & 255;
+      }
+    };
+  }
+
+  function ensureUint32ArrayViewProps(length) {
+    while (uint32ArrayViewSetters < length) {
+      Object.defineProperty(Uint32ArrayView.prototype,
+        uint32ArrayViewSetters,
+        createUint32ArrayProp(uint32ArrayViewSetters));
+      uint32ArrayViewSetters++;
+    }
+  }
+
+  return Uint32ArrayView;
+})();
+//#else
+//PDFJS.hasCanvasTypedArrays = true;
+//#endif
+
+var IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
+
+var Util = PDFJS.Util = (function UtilClosure() {
+  function Util() {}
+
+  var rgbBuf = ['rgb(', 0, ',', 0, ',', 0, ')'];
+
+  // makeCssRgb() can be called thousands of times. Using |rgbBuf| avoids
+  // creating many intermediate strings.
+  Util.makeCssRgb = function Util_makeCssRgb(rgb) {
+    rgbBuf[1] = rgb[0];
+    rgbBuf[3] = rgb[1];
+    rgbBuf[5] = rgb[2];
+    return rgbBuf.join('');
+  };
+
+  // Concatenates two transformation matrices together and returns the result.
+  Util.transform = function Util_transform(m1, m2) {
+    return [
+      m1[0] * m2[0] + m1[2] * m2[1],
+      m1[1] * m2[0] + m1[3] * m2[1],
+      m1[0] * m2[2] + m1[2] * m2[3],
+      m1[1] * m2[2] + m1[3] * m2[3],
+      m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+      m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+    ];
+  };
+
+  // For 2d affine transforms
+  Util.applyTransform = function Util_applyTransform(p, m) {
+    var xt = p[0] * m[0] + p[1] * m[2] + m[4];
+    var yt = p[0] * m[1] + p[1] * m[3] + m[5];
+    return [xt, yt];
+  };
+
+  Util.applyInverseTransform = function Util_applyInverseTransform(p, m) {
+    var d = m[0] * m[3] - m[1] * m[2];
+    var xt = (p[0] * m[3] - p[1] * m[2] + m[2] * m[5] - m[4] * m[3]) / d;
+    var yt = (-p[0] * m[1] + p[1] * m[0] + m[4] * m[1] - m[5] * m[0]) / d;
+    return [xt, yt];
+  };
+
+  // Applies the transform to the rectangle and finds the minimum axially
+  // aligned bounding box.
+  Util.getAxialAlignedBoundingBox =
+    function Util_getAxialAlignedBoundingBox(r, m) {
+
+    var p1 = Util.applyTransform(r, m);
+    var p2 = Util.applyTransform(r.slice(2, 4), m);
+    var p3 = Util.applyTransform([r[0], r[3]], m);
+    var p4 = Util.applyTransform([r[2], r[1]], m);
+    return [
+      Math.min(p1[0], p2[0], p3[0], p4[0]),
+      Math.min(p1[1], p2[1], p3[1], p4[1]),
+      Math.max(p1[0], p2[0], p3[0], p4[0]),
+      Math.max(p1[1], p2[1], p3[1], p4[1])
+    ];
+  };
+
+  Util.inverseTransform = function Util_inverseTransform(m) {
+    var d = m[0] * m[3] - m[1] * m[2];
+    return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d,
+      (m[2] * m[5] - m[4] * m[3]) / d, (m[4] * m[1] - m[5] * m[0]) / d];
+  };
+
+  // Apply a generic 3d matrix M on a 3-vector v:
+  //   | a b c |   | X |
+  //   | d e f | x | Y |
+  //   | g h i |   | Z |
+  // M is assumed to be serialized as [a,b,c,d,e,f,g,h,i],
+  // with v as [X,Y,Z]
+  Util.apply3dTransform = function Util_apply3dTransform(m, v) {
+    return [
+      m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+      m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+      m[6] * v[0] + m[7] * v[1] + m[8] * v[2]
+    ];
+  };
+
+  // This calculation uses Singular Value Decomposition.
+  // The SVD can be represented with formula A = USV. We are interested in the
+  // matrix S here because it represents the scale values.
+  Util.singularValueDecompose2dScale =
+    function Util_singularValueDecompose2dScale(m) {
+
+    var transpose = [m[0], m[2], m[1], m[3]];
+
+    // Multiply matrix m with its transpose.
+    var a = m[0] * transpose[0] + m[1] * transpose[2];
+    var b = m[0] * transpose[1] + m[1] * transpose[3];
+    var c = m[2] * transpose[0] + m[3] * transpose[2];
+    var d = m[2] * transpose[1] + m[3] * transpose[3];
+
+    // Solve the second degree polynomial to get roots.
+    var first = (a + d) / 2;
+    var second = Math.sqrt((a + d) * (a + d) - 4 * (a * d - c * b)) / 2;
+    var sx = first + second || 1;
+    var sy = first - second || 1;
+
+    // Scale values are the square roots of the eigenvalues.
+    return [Math.sqrt(sx), Math.sqrt(sy)];
+  };
+
+  // Normalize rectangle rect=[x1, y1, x2, y2] so that (x1,y1) < (x2,y2)
+  // For coordinate systems whose origin lies in the bottom-left, this
+  // means normalization to (BL,TR) ordering. For systems with origin in the
+  // top-left, this means (TL,BR) ordering.
+  Util.normalizeRect = function Util_normalizeRect(rect) {
+    var r = rect.slice(0); // clone rect
+    if (rect[0] > rect[2]) {
+      r[0] = rect[2];
+      r[2] = rect[0];
+    }
+    if (rect[1] > rect[3]) {
+      r[1] = rect[3];
+      r[3] = rect[1];
+    }
+    return r;
+  };
+
+  // Returns a rectangle [x1, y1, x2, y2] corresponding to the
+  // intersection of rect1 and rect2. If no intersection, returns 'false'
+  // The rectangle coordinates of rect1, rect2 should be [x1, y1, x2, y2]
+  Util.intersect = function Util_intersect(rect1, rect2) {
+    function compare(a, b) {
+      return a - b;
+    }
+
+    // Order points along the axes
+    var orderedX = [rect1[0], rect1[2], rect2[0], rect2[2]].sort(compare),
+        orderedY = [rect1[1], rect1[3], rect2[1], rect2[3]].sort(compare),
+        result = [];
+
+    rect1 = Util.normalizeRect(rect1);
+    rect2 = Util.normalizeRect(rect2);
+
+    // X: first and second points belong to different rectangles?
+    if ((orderedX[0] === rect1[0] && orderedX[1] === rect2[0]) ||
+        (orderedX[0] === rect2[0] && orderedX[1] === rect1[0])) {
+      // Intersection must be between second and third points
+      result[0] = orderedX[1];
+      result[2] = orderedX[2];
+    } else {
+      return false;
+    }
+
+    // Y: first and second points belong to different rectangles?
+    if ((orderedY[0] === rect1[1] && orderedY[1] === rect2[1]) ||
+        (orderedY[0] === rect2[1] && orderedY[1] === rect1[1])) {
+      // Intersection must be between second and third points
+      result[1] = orderedY[1];
+      result[3] = orderedY[2];
+    } else {
+      return false;
+    }
+
+    return result;
+  };
+
+  Util.sign = function Util_sign(num) {
+    return num < 0 ? -1 : 1;
+  };
+
+  Util.appendToArray = function Util_appendToArray(arr1, arr2) {
+    Array.prototype.push.apply(arr1, arr2);
+  };
+
+  Util.prependToArray = function Util_prependToArray(arr1, arr2) {
+    Array.prototype.unshift.apply(arr1, arr2);
+  };
+
+  Util.extendObj = function extendObj(obj1, obj2) {
+    for (var key in obj2) {
+      obj1[key] = obj2[key];
+    }
+  };
+
+  Util.getInheritableProperty = function Util_getInheritableProperty(dict,
+                                                                     name) {
+    while (dict && !dict.has(name)) {
+      dict = dict.get('Parent');
+    }
+    if (!dict) {
+      return null;
+    }
+    return dict.get(name);
+  };
+
+  Util.inherit = function Util_inherit(sub, base, prototype) {
+    sub.prototype = Object.create(base.prototype);
+    sub.prototype.constructor = sub;
+    for (var prop in prototype) {
+      sub.prototype[prop] = prototype[prop];
+    }
+  };
+
+  Util.loadScript = function Util_loadScript(src, callback) {
+    var script = document.createElement('script');
+    var loaded = false;
+    script.setAttribute('src', src);
+    if (callback) {
+      script.onload = function() {
+        if (!loaded) {
+          callback();
+        }
+        loaded = true;
+      };
+    }
+    document.getElementsByTagName('head')[0].appendChild(script);
+  };
+
+  return Util;
+})();
+
+/**
+ * PDF page viewport created based on scale, rotation and offset.
+ * @class
+ * @alias PDFJS.PageViewport
+ */
+var PageViewport = PDFJS.PageViewport = (function PageViewportClosure() {
+  /**
+   * @constructor
+   * @private
+   * @param viewBox {Array} xMin, yMin, xMax and yMax coordinates.
+   * @param scale {number} scale of the viewport.
+   * @param rotation {number} rotations of the viewport in degrees.
+   * @param offsetX {number} offset X
+   * @param offsetY {number} offset Y
+   * @param dontFlip {boolean} if true, axis Y will not be flipped.
+   */
+  function PageViewport(viewBox, scale, rotation, offsetX, offsetY, dontFlip) {
+    this.viewBox = viewBox;
+    this.scale = scale;
+    this.rotation = rotation;
+    this.offsetX = offsetX;
+    this.offsetY = offsetY;
+
+    // creating transform to convert pdf coordinate system to the normal
+    // canvas like coordinates taking in account scale and rotation
+    var centerX = (viewBox[2] + viewBox[0]) / 2;
+    var centerY = (viewBox[3] + viewBox[1]) / 2;
+    var rotateA, rotateB, rotateC, rotateD;
+    rotation = rotation % 360;
+    rotation = rotation < 0 ? rotation + 360 : rotation;
+    switch (rotation) {
+      case 180:
+        rotateA = -1; rotateB = 0; rotateC = 0; rotateD = 1;
+        break;
+      case 90:
+        rotateA = 0; rotateB = 1; rotateC = 1; rotateD = 0;
+        break;
+      case 270:
+        rotateA = 0; rotateB = -1; rotateC = -1; rotateD = 0;
+        break;
+      //case 0:
+      default:
+        rotateA = 1; rotateB = 0; rotateC = 0; rotateD = -1;
+        break;
+    }
+
+    if (dontFlip) {
+      rotateC = -rotateC; rotateD = -rotateD;
+    }
+
+    var offsetCanvasX, offsetCanvasY;
+    var width, height;
+    if (rotateA === 0) {
+      offsetCanvasX = Math.abs(centerY - viewBox[1]) * scale + offsetX;
+      offsetCanvasY = Math.abs(centerX - viewBox[0]) * scale + offsetY;
+      width = Math.abs(viewBox[3] - viewBox[1]) * scale;
+      height = Math.abs(viewBox[2] - viewBox[0]) * scale;
+    } else {
+      offsetCanvasX = Math.abs(centerX - viewBox[0]) * scale + offsetX;
+      offsetCanvasY = Math.abs(centerY - viewBox[1]) * scale + offsetY;
+      width = Math.abs(viewBox[2] - viewBox[0]) * scale;
+      height = Math.abs(viewBox[3] - viewBox[1]) * scale;
+    }
+    // creating transform for the following operations:
+    // translate(-centerX, -centerY), rotate and flip vertically,
+    // scale, and translate(offsetCanvasX, offsetCanvasY)
+    this.transform = [
+      rotateA * scale,
+      rotateB * scale,
+      rotateC * scale,
+      rotateD * scale,
+      offsetCanvasX - rotateA * scale * centerX - rotateC * scale * centerY,
+      offsetCanvasY - rotateB * scale * centerX - rotateD * scale * centerY
+    ];
+
+    this.width = width;
+    this.height = height;
+    this.fontScale = scale;
+  }
+  PageViewport.prototype = /** @lends PDFJS.PageViewport.prototype */ {
+    /**
+     * Clones viewport with additional properties.
+     * @param args {Object} (optional) If specified, may contain the 'scale' or
+     * 'rotation' properties to override the corresponding properties in
+     * the cloned viewport.
+     * @returns {PDFJS.PageViewport} Cloned viewport.
+     */
+    clone: function PageViewPort_clone(args) {
+      args = args || {};
+      var scale = 'scale' in args ? args.scale : this.scale;
+      var rotation = 'rotation' in args ? args.rotation : this.rotation;
+      return new PageViewport(this.viewBox.slice(), scale, rotation,
+                              this.offsetX, this.offsetY, args.dontFlip);
+    },
+    /**
+     * Converts PDF point to the viewport coordinates. For examples, useful for
+     * converting PDF location into canvas pixel coordinates.
+     * @param x {number} X coordinate.
+     * @param y {number} Y coordinate.
+     * @returns {Object} Object that contains 'x' and 'y' properties of the
+     * point in the viewport coordinate space.
+     * @see {@link convertToPdfPoint}
+     * @see {@link convertToViewportRectangle}
+     */
+    convertToViewportPoint: function PageViewport_convertToViewportPoint(x, y) {
+      return Util.applyTransform([x, y], this.transform);
+    },
+    /**
+     * Converts PDF rectangle to the viewport coordinates.
+     * @param rect {Array} xMin, yMin, xMax and yMax coordinates.
+     * @returns {Array} Contains corresponding coordinates of the rectangle
+     * in the viewport coordinate space.
+     * @see {@link convertToViewportPoint}
+     */
+    convertToViewportRectangle:
+      function PageViewport_convertToViewportRectangle(rect) {
+      var tl = Util.applyTransform([rect[0], rect[1]], this.transform);
+      var br = Util.applyTransform([rect[2], rect[3]], this.transform);
+      return [tl[0], tl[1], br[0], br[1]];
+    },
+    /**
+     * Converts viewport coordinates to the PDF location. For examples, useful
+     * for converting canvas pixel location into PDF one.
+     * @param x {number} X coordinate.
+     * @param y {number} Y coordinate.
+     * @returns {Object} Object that contains 'x' and 'y' properties of the
+     * point in the PDF coordinate space.
+     * @see {@link convertToViewportPoint}
+     */
+    convertToPdfPoint: function PageViewport_convertToPdfPoint(x, y) {
+      return Util.applyInverseTransform([x, y], this.transform);
+    }
+  };
+  return PageViewport;
+})();
+
+var PDFStringTranslateTable = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0x2D8, 0x2C7, 0x2C6, 0x2D9, 0x2DD, 0x2DB, 0x2DA, 0x2DC, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2022, 0x2020, 0x2021, 0x2026, 0x2014,
+  0x2013, 0x192, 0x2044, 0x2039, 0x203A, 0x2212, 0x2030, 0x201E, 0x201C,
+  0x201D, 0x2018, 0x2019, 0x201A, 0x2122, 0xFB01, 0xFB02, 0x141, 0x152, 0x160,
+  0x178, 0x17D, 0x131, 0x142, 0x153, 0x161, 0x17E, 0, 0x20AC
+];
+
+function stringToPDFString(str) {
+  var i, n = str.length, strBuf = [];
+  if (str[0] === '\xFE' && str[1] === '\xFF') {
+    // UTF16BE BOM
+    for (i = 2; i < n; i += 2) {
+      strBuf.push(String.fromCharCode(
+        (str.charCodeAt(i) << 8) | str.charCodeAt(i + 1)));
+    }
+  } else {
+    for (i = 0; i < n; ++i) {
+      var code = PDFStringTranslateTable[str.charCodeAt(i)];
+      strBuf.push(code ? String.fromCharCode(code) : str.charAt(i));
+    }
+  }
+  return strBuf.join('');
+}
+
+function stringToUTF8String(str) {
+  return decodeURIComponent(escape(str));
+}
+
+function isEmptyObj(obj) {
+  for (var key in obj) {
+    return false;
+  }
+  return true;
+}
+
+function isBool(v) {
+  return typeof v === 'boolean';
+}
+
+function isInt(v) {
+  return typeof v === 'number' && ((v | 0) === v);
+}
+
+function isNum(v) {
+  return typeof v === 'number';
+}
+
+function isString(v) {
+  return typeof v === 'string';
+}
+
+function isNull(v) {
+  return v === null;
+}
+
+function isName(v) {
+  return v instanceof Name;
+}
+
+function isCmd(v, cmd) {
+  return v instanceof Cmd && (cmd === undefined || v.cmd === cmd);
+}
+
+function isDict(v, type) {
+  if (!(v instanceof Dict)) {
+    return false;
+  }
+  if (!type) {
+    return true;
+  }
+  var dictType = v.get('Type');
+  return isName(dictType) && dictType.name === type;
+}
+
+function isArray(v) {
+  return v instanceof Array;
+}
+
+function isStream(v) {
+  return typeof v === 'object' && v !== null && v.getBytes !== undefined;
+}
+
+function isArrayBuffer(v) {
+  return typeof v === 'object' && v !== null && v.byteLength !== undefined;
+}
+
+function isRef(v) {
+  return v instanceof Ref;
+}
+
+/**
+ * Promise Capability object.
+ *
+ * @typedef {Object} PromiseCapability
+ * @property {Promise} promise - A promise object.
+ * @property {function} resolve - Fullfills the promise.
+ * @property {function} reject - Rejects the promise.
+ */
+
+/**
+ * Creates a promise capability object.
+ * @alias PDFJS.createPromiseCapability
+ *
+ * @return {PromiseCapability} A capability object contains:
+ * - a Promise, resolve and reject methods.
+ */
+function createPromiseCapability() {
+  var capability = {};
+  capability.promise = new Promise(function (resolve, reject) {
+    capability.resolve = resolve;
+    capability.reject = reject;
+  });
+  return capability;
+}
+
+PDFJS.createPromiseCapability = createPromiseCapability;
+
+/**
+ * Polyfill for Promises:
+ * The following promise implementation tries to generally implement the
+ * Promise/A+ spec. Some notable differences from other promise libaries are:
+ * - There currently isn't a seperate deferred and promise object.
+ * - Unhandled rejections eventually show an error if they aren't handled.
+ *
+ * Based off of the work in:
+ * https://bugzilla.mozilla.org/show_bug.cgi?id=810490
+ */
+(function PromiseClosure() {
+  if (globalScope.Promise) {
+    // Promises existing in the DOM/Worker, checking presence of all/resolve
+    if (typeof globalScope.Promise.all !== 'function') {
+      globalScope.Promise.all = function (iterable) {
+        var count = 0, results = [], resolve, reject;
+        var promise = new globalScope.Promise(function (resolve_, reject_) {
+          resolve = resolve_;
+          reject = reject_;
+        });
+        iterable.forEach(function (p, i) {
+          count++;
+          p.then(function (result) {
+            results[i] = result;
+            count--;
+            if (count === 0) {
+              resolve(results);
+            }
+          }, reject);
+        });
+        if (count === 0) {
+          resolve(results);
+        }
+        return promise;
+      };
+    }
+    if (typeof globalScope.Promise.resolve !== 'function') {
+      globalScope.Promise.resolve = function (value) {
+        return new globalScope.Promise(function (resolve) { resolve(value); });
+      };
+    }
+    if (typeof globalScope.Promise.reject !== 'function') {
+      globalScope.Promise.reject = function (reason) {
+        return new globalScope.Promise(function (resolve, reject) {
+          reject(reason);
+        });
+      };
+    }
+    if (typeof globalScope.Promise.prototype.catch !== 'function') {
+      globalScope.Promise.prototype.catch = function (onReject) {
+        return globalScope.Promise.prototype.then(undefined, onReject);
+      };
+    }
+    return;
+  }
+//#if !MOZCENTRAL
+  var STATUS_PENDING = 0;
+  var STATUS_RESOLVED = 1;
+  var STATUS_REJECTED = 2;
+
+  // In an attempt to avoid silent exceptions, unhandled rejections are
+  // tracked and if they aren't handled in a certain amount of time an
+  // error is logged.
+  var REJECTION_TIMEOUT = 500;
+
+  var HandlerManager = {
+    handlers: [],
+    running: false,
+    unhandledRejections: [],
+    pendingRejectionCheck: false,
+
+    scheduleHandlers: function scheduleHandlers(promise) {
+      if (promise._status === STATUS_PENDING) {
+        return;
+      }
+
+      this.handlers = this.handlers.concat(promise._handlers);
+      promise._handlers = [];
+
+      if (this.running) {
+        return;
+      }
+      this.running = true;
+
+      setTimeout(this.runHandlers.bind(this), 0);
+    },
+
+    runHandlers: function runHandlers() {
+      var RUN_TIMEOUT = 1; // ms
+      var timeoutAt = Date.now() + RUN_TIMEOUT;
+      while (this.handlers.length > 0) {
+        var handler = this.handlers.shift();
+
+        var nextStatus = handler.thisPromise._status;
+        var nextValue = handler.thisPromise._value;
+
+        try {
+          if (nextStatus === STATUS_RESOLVED) {
+            if (typeof handler.onResolve === 'function') {
+              nextValue = handler.onResolve(nextValue);
+            }
+          } else if (typeof handler.onReject === 'function') {
+              nextValue = handler.onReject(nextValue);
+              nextStatus = STATUS_RESOLVED;
+
+              if (handler.thisPromise._unhandledRejection) {
+                this.removeUnhandeledRejection(handler.thisPromise);
+              }
+          }
+        } catch (ex) {
+          nextStatus = STATUS_REJECTED;
+          nextValue = ex;
+        }
+
+        handler.nextPromise._updateStatus(nextStatus, nextValue);
+        if (Date.now() >= timeoutAt) {
+          break;
+        }
+      }
+
+      if (this.handlers.length > 0) {
+        setTimeout(this.runHandlers.bind(this), 0);
+        return;
+      }
+
+      this.running = false;
+    },
+
+    addUnhandledRejection: function addUnhandledRejection(promise) {
+      this.unhandledRejections.push({
+        promise: promise,
+        time: Date.now()
+      });
+      this.scheduleRejectionCheck();
+    },
+
+    removeUnhandeledRejection: function removeUnhandeledRejection(promise) {
+      promise._unhandledRejection = false;
+      for (var i = 0; i < this.unhandledRejections.length; i++) {
+        if (this.unhandledRejections[i].promise === promise) {
+          this.unhandledRejections.splice(i);
+          i--;
+        }
+      }
+    },
+
+    scheduleRejectionCheck: function scheduleRejectionCheck() {
+      if (this.pendingRejectionCheck) {
+        return;
+      }
+      this.pendingRejectionCheck = true;
+      setTimeout(function rejectionCheck() {
+        this.pendingRejectionCheck = false;
+        var now = Date.now();
+        for (var i = 0; i < this.unhandledRejections.length; i++) {
+          if (now - this.unhandledRejections[i].time > REJECTION_TIMEOUT) {
+            var unhandled = this.unhandledRejections[i].promise._value;
+            var msg = 'Unhandled rejection: ' + unhandled;
+            if (unhandled.stack) {
+              msg += '\n' + unhandled.stack;
+            }
+            warn(msg);
+            this.unhandledRejections.splice(i);
+            i--;
+          }
+        }
+        if (this.unhandledRejections.length) {
+          this.scheduleRejectionCheck();
+        }
+      }.bind(this), REJECTION_TIMEOUT);
+    }
+  };
+
+  function Promise(resolver) {
+    this._status = STATUS_PENDING;
+    this._handlers = [];
+    try {
+      resolver.call(this, this._resolve.bind(this), this._reject.bind(this));
+    } catch (e) {
+      this._reject(e);
+    }
+  }
+  /**
+   * Builds a promise that is resolved when all the passed in promises are
+   * resolved.
+   * @param {array} array of data and/or promises to wait for.
+   * @return {Promise} New dependant promise.
+   */
+  Promise.all = function Promise_all(promises) {
+    var resolveAll, rejectAll;
+    var deferred = new Promise(function (resolve, reject) {
+      resolveAll = resolve;
+      rejectAll = reject;
+    });
+    var unresolved = promises.length;
+    var results = [];
+    if (unresolved === 0) {
+      resolveAll(results);
+      return deferred;
+    }
+    function reject(reason) {
+      if (deferred._status === STATUS_REJECTED) {
+        return;
+      }
+      results = [];
+      rejectAll(reason);
+    }
+    for (var i = 0, ii = promises.length; i < ii; ++i) {
+      var promise = promises[i];
+      var resolve = (function(i) {
+        return function(value) {
+          if (deferred._status === STATUS_REJECTED) {
+            return;
+          }
+          results[i] = value;
+          unresolved--;
+          if (unresolved === 0) {
+            resolveAll(results);
+          }
+        };
+      })(i);
+      if (Promise.isPromise(promise)) {
+        promise.then(resolve, reject);
+      } else {
+        resolve(promise);
+      }
+    }
+    return deferred;
+  };
+
+  /**
+   * Checks if the value is likely a promise (has a 'then' function).
+   * @return {boolean} true if value is thenable
+   */
+  Promise.isPromise = function Promise_isPromise(value) {
+    return value && typeof value.then === 'function';
+  };
+
+  /**
+   * Creates resolved promise
+   * @param value resolve value
+   * @returns {Promise}
+   */
+  Promise.resolve = function Promise_resolve(value) {
+    return new Promise(function (resolve) { resolve(value); });
+  };
+
+  /**
+   * Creates rejected promise
+   * @param reason rejection value
+   * @returns {Promise}
+   */
+  Promise.reject = function Promise_reject(reason) {
+    return new Promise(function (resolve, reject) { reject(reason); });
+  };
+
+  Promise.prototype = {
+    _status: null,
+    _value: null,
+    _handlers: null,
+    _unhandledRejection: null,
+
+    _updateStatus: function Promise__updateStatus(status, value) {
+      if (this._status === STATUS_RESOLVED ||
+          this._status === STATUS_REJECTED) {
+        return;
+      }
+
+      if (status === STATUS_RESOLVED &&
+          Promise.isPromise(value)) {
+        value.then(this._updateStatus.bind(this, STATUS_RESOLVED),
+                   this._updateStatus.bind(this, STATUS_REJECTED));
+        return;
+      }
+
+      this._status = status;
+      this._value = value;
+
+      if (status === STATUS_REJECTED && this._handlers.length === 0) {
+        this._unhandledRejection = true;
+        HandlerManager.addUnhandledRejection(this);
+      }
+
+      HandlerManager.scheduleHandlers(this);
+    },
+
+    _resolve: function Promise_resolve(value) {
+      this._updateStatus(STATUS_RESOLVED, value);
+    },
+
+    _reject: function Promise_reject(reason) {
+      this._updateStatus(STATUS_REJECTED, reason);
+    },
+
+    then: function Promise_then(onResolve, onReject) {
+      var nextPromise = new Promise(function (resolve, reject) {
+        this.resolve = resolve;
+        this.reject = reject;
+      });
+      this._handlers.push({
+        thisPromise: this,
+        onResolve: onResolve,
+        onReject: onReject,
+        nextPromise: nextPromise
+      });
+      HandlerManager.scheduleHandlers(this);
+      return nextPromise;
+    },
+
+    catch: function Promise_catch(onReject) {
+      return this.then(undefined, onReject);
+    }
+  };
+
+  globalScope.Promise = Promise;
+//#else
+//throw new Error('DOM Promise is not present');
+//#endif
+})();
+
+var StatTimer = (function StatTimerClosure() {
+  function rpad(str, pad, length) {
+    while (str.length < length) {
+      str += pad;
+    }
+    return str;
+  }
+  function StatTimer() {
+    this.started = {};
+    this.times = [];
+    this.enabled = true;
+  }
+  StatTimer.prototype = {
+    time: function StatTimer_time(name) {
+      if (!this.enabled) {
+        return;
+      }
+      if (name in this.started) {
+        warn('Timer is already running for ' + name);
+      }
+      this.started[name] = Date.now();
+    },
+    timeEnd: function StatTimer_timeEnd(name) {
+      if (!this.enabled) {
+        return;
+      }
+      if (!(name in this.started)) {
+        warn('Timer has not been started for ' + name);
+      }
+      this.times.push({
+        'name': name,
+        'start': this.started[name],
+        'end': Date.now()
+      });
+      // Remove timer from started so it can be called again.
+      delete this.started[name];
+    },
+    toString: function StatTimer_toString() {
+      var i, ii;
+      var times = this.times;
+      var out = '';
+      // Find the longest name for padding purposes.
+      var longest = 0;
+      for (i = 0, ii = times.length; i < ii; ++i) {
+        var name = times[i]['name'];
+        if (name.length > longest) {
+          longest = name.length;
+        }
+      }
+      for (i = 0, ii = times.length; i < ii; ++i) {
+        var span = times[i];
+        var duration = span.end - span.start;
+        out += rpad(span['name'], ' ', longest) + ' ' + duration + 'ms\n';
+      }
+      return out;
+    }
+  };
+  return StatTimer;
+})();
+
+PDFJS.createBlob = function createBlob(data, contentType) {
+  if (typeof Blob !== 'undefined') {
+    return new Blob([data], { type: contentType });
+  }
+  // Blob builder is deprecated in FF14 and removed in FF18.
+  var bb = new MozBlobBuilder();
+  bb.append(data);
+  return bb.getBlob(contentType);
+};
+
+PDFJS.createObjectURL = (function createObjectURLClosure() {
+  // Blob/createObjectURL is not available, falling back to data schema.
+  var digits =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+  return function createObjectURL(data, contentType) {
+    if (!PDFJS.disableCreateObjectURL &&
+        typeof URL !== 'undefined' && URL.createObjectURL) {
+      var blob = PDFJS.createBlob(data, contentType);
+      return URL.createObjectURL(blob);
+    }
+
+    var buffer = 'data:' + contentType + ';base64,';
+    for (var i = 0, ii = data.length; i < ii; i += 3) {
+      var b1 = data[i] & 0xFF;
+      var b2 = data[i + 1] & 0xFF;
+      var b3 = data[i + 2] & 0xFF;
+      var d1 = b1 >> 2, d2 = ((b1 & 3) << 4) | (b2 >> 4);
+      var d3 = i + 1 < ii ? ((b2 & 0xF) << 2) | (b3 >> 6) : 64;
+      var d4 = i + 2 < ii ? (b3 & 0x3F) : 64;
+      buffer += digits[d1] + digits[d2] + digits[d3] + digits[d4];
+    }
+    return buffer;
+  };
+})();
+
+function MessageHandler(name, comObj) {
+  this.name = name;
+  this.comObj = comObj;
+  this.callbackIndex = 1;
+  this.postMessageTransfers = true;
+  var callbacksCapabilities = this.callbacksCapabilities = {};
+  var ah = this.actionHandler = {};
+
+  ah['console_log'] = [function ahConsoleLog(data) {
+    console.log.apply(console, data);
+  }];
+  ah['console_error'] = [function ahConsoleError(data) {
+    console.error.apply(console, data);
+  }];
+  ah['_unsupported_feature'] = [function ah_unsupportedFeature(data) {
+    UnsupportedManager.notify(data);
+  }];
+
+  comObj.onmessage = function messageHandlerComObjOnMessage(event) {
+    var data = event.data;
+    if (data.isReply) {
+      var callbackId = data.callbackId;
+      if (data.callbackId in callbacksCapabilities) {
+        var callback = callbacksCapabilities[callbackId];
+        delete callbacksCapabilities[callbackId];
+        if ('error' in data) {
+          callback.reject(data.error);
+        } else {
+          callback.resolve(data.data);
+        }
+      } else {
+        error('Cannot resolve callback ' + callbackId);
+      }
+    } else if (data.action in ah) {
+      var action = ah[data.action];
+      if (data.callbackId) {
+        Promise.resolve().then(function () {
+          return action[0].call(action[1], data.data);
+        }).then(function (result) {
+          comObj.postMessage({
+            isReply: true,
+            callbackId: data.callbackId,
+            data: result
+          });
+        }, function (reason) {
+          comObj.postMessage({
+            isReply: true,
+            callbackId: data.callbackId,
+            error: reason
+          });
+        });
+      } else {
+        action[0].call(action[1], data.data);
+      }
+    } else {
+      error('Unknown action from worker: ' + data.action);
+    }
+  };
+}
+
+MessageHandler.prototype = {
+  on: function messageHandlerOn(actionName, handler, scope) {
+    var ah = this.actionHandler;
+    if (ah[actionName]) {
+      error('There is already an actionName called "' + actionName + '"');
+    }
+    ah[actionName] = [handler, scope];
+  },
+  /**
+   * Sends a message to the comObj to invoke the action with the supplied data.
+   * @param {String} actionName Action to call.
+   * @param {JSON} data JSON data to send.
+   * @param {Array} [transfers] Optional list of transfers/ArrayBuffers
+   */
+  send: function messageHandlerSend(actionName, data, transfers) {
+    var message = {
+      action: actionName,
+      data: data
+    };
+    this.postMessage(message, transfers);
+  },
+  /**
+   * Sends a message to the comObj to invoke the action with the supplied data.
+   * Expects that other side will callback with the response.
+   * @param {String} actionName Action to call.
+   * @param {JSON} data JSON data to send.
+   * @param {Array} [transfers] Optional list of transfers/ArrayBuffers.
+   * @returns {Promise} Promise to be resolved with response data.
+   */
+  sendWithPromise:
+    function messageHandlerSendWithPromise(actionName, data, transfers) {
+    var callbackId = this.callbackIndex++;
+    var message = {
+      action: actionName,
+      data: data,
+      callbackId: callbackId
+    };
+    var capability = createPromiseCapability();
+    this.callbacksCapabilities[callbackId] = capability;
+    try {
+      this.postMessage(message, transfers);
+    } catch (e) {
+      capability.reject(e);
+    }
+    return capability.promise;
+  },
+  /**
+   * Sends raw message to the comObj.
+   * @private
+   * @param message {Object} Raw message.
+   * @param transfers List of transfers/ArrayBuffers, or undefined.
+   */
+  postMessage: function (message, transfers) {
+    if (transfers && this.postMessageTransfers) {
+      this.comObj.postMessage(message, transfers);
+    } else {
+      this.comObj.postMessage(message);
+    }
+  }
+};
+
+function loadJpegStream(id, imageUrl, objs) {
+  var img = new Image();
+  img.onload = (function loadJpegStream_onloadClosure() {
+    objs.resolve(id, img);
+  });
+  img.onerror = (function loadJpegStream_onerrorClosure() {
+    objs.resolve(id, null);
+    warn('Error during JPEG image loading');
+  });
+  img.src = imageUrl;
+}
+
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var t;t="undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this,t.webjpip=e()}}(function(){return function e(t,n,r){function i(s,o){if(!n[s]){if(!t[s]){var l="function"==typeof require&&require;if(!o&&l)return l(s,!0);if(a)return a(s,!0);var u=new Error("Cannot find module '"+s+"'");throw u.code="MODULE_NOT_FOUND",u}var c=n[s]={exports:{}};t[s][0].call(c.exports,function(e){var n=t[s][1][e];return i(n?n:e)},c,c.exports,e,t,n,r)}return n[s].exports}for(var a="function"==typeof require&&require,s=0;s<r.length;s++)i(r[s]);return i}({1:[function(e,t,n){"use strict";function r(e,t,n){function r(){if(h>=n.length)throw new i.jpipExceptions.IllegalOperationException("Unexpected requestData() after fetch done");if(null!==u&&null===l)throw new i.jpipExceptions.IllegalOperationException("Cannot resume already-active-fetch");if(p)throw new i.jpipExceptions.IllegalOperationException("Cannot resume already-terminated-fetch");setTimeout(function(){h>=n.length||null!==u||p||(d=f?h:n.length-1,u=t.requestData(o,a,s,n[d].minNumQualityLayers,l))})}function a(t,r){u=null,r&&(h=d,h>=n.length&&e.done())}function s(){c=!0}var o=null,l=null,u=null,c=!1,p=!1,f=!1,d=0,h=0;this.setDedicatedChannelHandle=function(e){l=e},this.move=function(e){if(null===l&&null!==o)throw new i.jpipExceptions.IllegalOperationException("Cannot move non movable fetch");o=e,r()},this.resume=function(){r()},this.stop=function(){if(null===u){if(p)throw new i.jpipExceptions.IllegalOperationException("Cannot stop already terminated fetch");throw new i.jpipExceptions.IllegalOperationException("Cannot stop already stopped fetch")}return l||(t.stopRequestAsync(u),u=null),e.stopped()},this.terminate=function(){if(l)throw new i.jpipExceptions.IllegalOperationException("Unexpected terminate event on movable fetch");if(p)throw new i.jpipExceptions.IllegalOperationException("Double terminate event");u=null,p=!0},this.isProgressiveChanged=function(e){f=e,l&&null!==u&&(u=null,r())}}t.exports=r;var i=e("j2k-jpip-globals.js")},{"j2k-jpip-globals.js":16}],2:[function(e,t,n){"use strict";function r(e,t){function n(e,t){var n=i.createFetch(e,v,t);return e.on("isProgressiveChanged",n.isProgressiveChanged),e.on("terminate",n.terminate),e.on("stop",n.stop),e.on("resume",n.resum),n}function r(e){var t=null;null!==e.exception&&(t=e.exception.toString());var n={isReady:e.isReady,exception:t};if(s&&(n.isReady||n.exception)){var r=s,i=o;if(s=null,o=null,!n.isReady)return void i(n.exception);var a=g.getSizesParams(),l=JSON.parse(JSON.stringify(a)),u=g.getDefaultTileStructure(),c=u.getDefaultComponentStructure();l.imageLevel=0,l.lowestQuality=1,l.highestQuality=u.getNumQualityLayers(),l.numResolutionLevelsForLimittedViewer=c.getNumResolutionLevels(),r(l)}}t=t||{};var a=!1,s=null,o=null,l="RPCL",u=t.maxChannelsInSession||1,c=t.maxRequestsWaitingForResponseInChannel||1,p=e.getMainHeaderDatabin(),f=i.createMarkersParser(p),d=i.createOffsetsCalculator(p,f),h=i.createStructureParser(e,f,d),g=i.createCodestreamStructure(h,l),v=i.createReconnectableRequester(u,c,g,e),m=i.createRequestParamsModifier(g);return v.setStatusCallback(r),this.open=function(e){if(a)throw"webJpip error: Cannot call JpipFetcher.open() twice";return new Promise(function(t,n){s=t,o=n,v.open(e)})},this.close=function(){return new Promise(function(e,t){v.close(e)})},this.on=function(){},this.startFetch=function(e,t){var r=m.modify(t),i=n(e,r.progressiveness);i.move(r.codestreamPartParams)},this.startMovableFetch=function(e,t){var r=m.modify(t),i=n(e,r.progressiveness),a=v.dedicateChannelForMovableRequest();i.setDedicatedChannelHandle(a),e.on("move",i.move),i.move(r.codestreamPartParams)},this.reconnect=function(){v.reconnect()},this}var i=(e("j2k-jpip-globals.js"),e("jpip-runtime-factory.js"));t.exports=r},{"j2k-jpip-globals.js":16,"jpip-runtime-factory.js":17}],3:[function(e,t,n){"use strict";function r(e,t,n){this._codestreamPartParams=t,this._progressiveness=n,this._reconstructor=e.reconstructor,this._packetsDataCollector=e.packetsDataCollector,this._qualityLayersCache=e.qualityLayersCache,this._codestreamStructure=e.codestreamStructure,this._databinsSaver=e.databinsSaver,this._jpipFactory=e.jpipFactory,this._progressiveStagesFinished=0,this._qualityLayersReached=0,this._dataListeners=[],this._listener=this._jpipFactory.createRequestDatabinsListener(t,this._qualityLayerReachedCallback.bind(this),this._codestreamStructure,this._databinsSaver,this._qualityLayersCache)}var i=e("j2k-jpip-globals.js");t.exports=r,r.prototype.hasData=function(){return this._ensureNotDisposed(),this._progressiveStagesFinished>0},r.prototype.getFetchedData=function(e){if(this._ensureNotDisposed(),!this.hasData())throw"JpipImageDataContext error: cannot call getFetchedData before hasData = true";var t=this._getParamsForDataWriter(e),n=this._packetsDataCollector.getAllCodeblocksData(t.codestreamPartParams,t.minNumQualityLayers),r=this._reconstructor.createCodestreamForRegion(t.codestreamPartParams,t.minNumQualityLayers,!0);if(null===n.codeblocksData)throw new i.jpipExceptions.InternalErrorException("Could not collect codeblocks although progressiveness stage has been reached");if(null===r)throw new i.jpipExceptions.InternalErrorException("Could not reconstruct codestream although progressiveness stage has been reached");return{headersCodestream:r,codeblocksData:n.codeblocksData,codestreamPartParams:this._codestreamPartParams}},r.prototype.getFetchedDataAsCodestream=function(e){this._ensureNotDisposed();var t=this._getParamsForDataWriter(e),n=this._reconstructor.createCodestreamForRegion(t.codestreamPartParams,t.minNumQualityLayers);if(null===n)throw new i.jpipExceptions.InternalErrorException("Could not reconstruct codestream although progressiveness stage has been reached");return n},r.prototype.on=function(e,t){if(this._ensureNotDisposed(),"data"!==e)throw"JpipImageDataContext error: Unexpected event "+e;this._dataListeners.push(t)},r.prototype.isDone=function(){return this._ensureNotDisposed(),this._isRequestDone},r.prototype.dispose=function(){this._ensureNotDisposed(),this._listener.unregister(),this._listener=null},r.prototype.setIsProgressive=function(e){this._ensureNotDisposed();var t=this._isProgressive;if(this._isProgressive=e,!t&&e&&this.hasData())for(var n=0;n<this._dataListeners.length;++n)this._dataListeners[n](this)},r.prototype.isDisposed=function(){return!this._listener},r.prototype.getCodestreamPartParams=function(){return this._codestreamPartParams},r.prototype.getNextQualityLayer=function(){return this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers},r.prototype._tryAdvanceProgressiveStage=function(){var e=this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;if(this._qualityLayersReached<e)return!1;for("max"===this._qualityLayersReached&&(this._progressiveStagesFinished=this._progressiveness.length);this._progressiveStagesFinished<this._progressiveness.length;){var t=this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;if("max"===t||t>this._qualityLayersReached)break;++this._progressiveStagesFinished}return this._isRequestDone=this._progressiveStagesFinished===this._progressiveness.length,!0},r.prototype._qualityLayerReachedCallback=function(e){if(this._qualityLayersReached=e,this._isRequestDone)throw new i.jpipExceptions.InternalErrorException("Request already done but callback is called");if(this._tryAdvanceProgressiveStage()&&(this._isProgressive||this._isRequestDone))for(var t=0;t<this._dataListeners.length;++t)this._dataListeners[t](this)},r.prototype._getParamsForDataWriter=function(e){if(0===this._progressiveStagesFinished)throw new i.jpipExceptions.IllegalOperationException("Cannot create codestream before first progressiveness stage has been reached");var t=this._progressiveness[this._progressiveStagesFinished-1].minNumQualityLayers,n=this._codestreamPartParams;return void 0!==e&&(n=Object.create(this._codestreamPartParams),n.quality=e,"max"!==t&&(t=Math.min(t,e))),{codestreamPartParams:n,minNumQualityLayers:t}},r.prototype._ensureNotDisposed=function(){if(this.isDisposed())throw new i.jpipExceptions.IllegalOperationException("Cannot use ImageDataContext after disposed")}},{"j2k-jpip-globals.js":16}],4:[function(e,t,n){"use strict";function r(e){var t=a.createDatabinsSaver(!1),n=t.getMainHeaderDatabin(),r=a.createMarkersParser(n),s=a.createOffsetsCalculator(n,r),o=a.createStructureParser(t,r,s),l="RPCL",u=a.createCodestreamStructure(o,l),c=a.createQualityLayersCache(u),p=a.createHeaderModifier(u,s,l),f=a.createCodestreamReconstructor(u,t,p,c),d=a.createPacketsDataCollector(u,t,c),h={reconstructor:f,packetsDataCollector:d,qualityLayersCache:c,codestreamStructure:u,databinsSaver:t,jpipFactory:a},g=a.createRequestParamsModifier(u),v=null,m=null,x=a.createFetcher(t,e);this.opened=function(e){v=e.getImageParams()},this.getLevelCalculator=function(){return null===m&&(m=a.createLevelCalculator(v)),m},this.getDecoderWorkersInputRetreiver=function(){return this},this.getFetcher=function(){return x},this.getWorkerTypeOptions=function(e){var t=[0,"headersCodestream","codestream","buffer"],n=[0,"codeblocksData","data","buffer"];return{ctorName:"webjpip.PdfjsJpxDecoder",ctorArgs:[],scriptsToImport:[i(new Error)],transferables:[t,n],pathToTransferablesInPromiseResult:[[]]}},this.getKeyAsString=function(e){return JSON.stringify(e)},this.taskStarted=function(e){function t(t){if(r!==t)throw"webjpip error: Unexpected context in data event";var n=r.getFetchedData();e.dataReady(n),r.isDone()&&(e.terminate(),r.dispose())}var n=g.modify(e.key),r=a.createImageDataContext(h,n.codestreamPartParams,n.progressiveness);r.on("data",t),r.hasData()&&t(r)}}function i(e){var t=e.stack.trim(),n=s.exec(t);if(n&&""!==n[2])return n[2];if(n=o.exec(t),n&&""!==n[1])return n[1];if(n=l.exec(t),n&&""!==n[1])return n[1];if(void 0!==e.fileName)return e.fileName;throw"webjpip.js: Could not get current script URL"}var a=e("jpip-runtime-factory.js");t.exports=r;var s=/at (|[^ ]+ \()([^ ]+):\d+:\d+/,o=new RegExp(/.+@(.*?):\d+:\d+/),l=new RegExp(/.+\/(.*?):\d+(:\d+)*$/)},{"jpip-runtime-factory.js":17}],5:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js"),i=Math.log(2);t.exports=function(e){function t(e){var t=e.level,r=f(t),i=d(t),s=n(e),u=s.minTileX+s.minTileY*l(),c=s.maxTileXExclusive-1+(s.maxTileYExclusive-1)*l(),p=o(u),h=o(c),g=a(p,t),v=a(h,t),m=g[0],x=g[1],y=s.maxTileXExclusive-s.minTileX,E=s.maxTileYExclusive-s.minTileY;return y>1&&(m+=v[0],m+=r*(y-2)),E>1&&(x+=v[1],x+=i*(E-2)),{width:m,height:x}}function n(e){var t=e.level,n=f(t),r=d(t),i=v(t),a=m(t),s=(e.minX-i)/n,o=(e.minY-a)/r,c=(e.maxXExclusive-i)/n,p=(e.maxYExclusive-a)/r,h=Math.max(0,1+s),g=Math.max(0,1+o),x=Math.min(l(),1+c),y=Math.min(u(),1+p),E={minTileX:Math.floor(h),minTileY:Math.floor(g),maxTileXExclusive:Math.ceil(x),maxTileYExclusive:Math.ceil(y)};return E}function a(e,t){var n=s(e.horizontalEdgeType,v,c,f),r=s(e.verticalEdgeType,m,p,d);if(void 0!==t){var i=1<<t;n=Math.ceil(n/i),r=Math.ceil(r/i)}return[n,r]}function s(e,t,n,i){var a;switch(e){case y:a=t();break;case E:var s=i(),o=n()-t();a=o%s,0===a&&(a=s);break;case x:a=i();break;default:throw new r.jpipExceptions.InternalErrorException("Unexpected edge type: "+e)}return a}function o(e){var t=l(),n=u(),i=e%t,a=Math.floor(e/t);if(a>n||i<0||a<0)throw new r.jpipExceptions.InternalErrorException("Tile index "+e+" is not in range");var s=0===i?y:i===t-1?E:x,o=0===a?y:a===n-1?E:x,c={horizontalEdgeType:s,verticalEdgeType:o};return c}function l(){var t=Math.ceil(e.imageWidth/e.tileWidth);return t}function u(){var t=Math.ceil(e.imageHeight/e.tileHeight);return t}function c(n){if(void 0===n)return e.imageWidth;var r=t({minX:0,maxXExclusive:e.imageWidth,minY:0,maxYExclusive:e.imageHeight,level:n});return r.width}function p(n){if(void 0===n)return e.imageHeight;var r=t({minX:0,maxXExclusive:e.imageWidth,minY:0,maxYExclusive:e.imageHeight,level:n});return r.height}function f(t){if(void 0===t)return e.tileWidth;var n=1<<t,r=Math.ceil(e.tileWidth/n);return r}function d(t){if(void 0===t)return e.tileHeight;var n=1<<t,r=Math.ceil(e.tileHeight/n);return r}function h(){return e.firstTileOffsetX}function g(){return e.firstTileOffsetY}function v(e){var t=f()-h(),n=c();t>n&&(t=n);var r=1<<e,i=Math.ceil(t/r);return i}function m(e){var t=d()-g(),n=p();t>n&&(t=n);var r=1<<e,i=Math.ceil(t/r);return i}var x=0,y=1,E=2;return this.EDGE_TYPE_NO_EDGE=x,this.EDGE_TYPE_FIRST=y,this.EDGE_TYPE_LAST=E,this.getSizeOfPart=t,this.getTilesFromPixels=n,this.getNumTilesX=l,this.getNumTilesY=u,this.getTileWidth=f,this.getTileHeight=d,this.getFirstTileOffsetX=h,this.getFirstTileOffsetY=g,this.getFirstTileWidth=v,this.getFirstTileHeight=m,this.isEdgeTileId=o,this.getTileSize=a,this.getLevelWidth=c,this.getLevelHeight=p,this.getImageLevel=function(){return 0},this.getLevel=function(t){if(void 0===e.numResolutionLevelsForLimittedViewer)throw"This method is available only when jpipSizesCalculator is created from params returned by jpipCodestreamClient. It shall be used for JPIP API purposes only";var n=Math.log((t.maxXExclusive-t.minX)/t.screenWidth)/i,r=Math.log((t.maxYExclusive-t.minY)/t.screenHeight)/i,a=Math.ceil(Math.max(n,r));return a=Math.max(0,Math.min(e.numResolutionLevelsForLimittedViewer-1,a))},this.getNumResolutionLevelsForLimittedViewer=function(){if(void 0===e.numResolutionLevelsForLimittedViewer)throw"This method is available only when jpipSizesCalculator is created from params returned by jpipCodestreamClient. It shall be used for JPIP API purposes only";return e.numResolutionLevelsForLimittedViewer},this.getLowestQuality=function(){return 1},this.getHighestQuality=function(){if(void 0===e.highestQuality)throw"This method is available only when jpipSizesCalculator is created from params returned by jpipCodestreamClient. It shall be used for JPIP API purposes only";return e.highestQuality},this}},{"j2k-jpip-globals.js":16}],6:[function(e,t,n){"use strict";function r(){this._image=new JpxImage}t.exports=r;e("j2k-jpip-globals.js");r.prototype.start=function(e){var t=this;return new Promise(function(n,r){var i={left:e.headersCodestream.offsetX,top:e.headersCodestream.offsetY,right:e.headersCodestream.offsetX+e.codestreamPartParams.maxXExclusive-e.codestreamPartParams.minX,bottom:e.headersCodestream.offsetY+e.codestreamPartParams.maxYExclusive-e.codestreamPartParams.minY},a=t._image.parseCodestream(e.headersCodestream.codestream,0,e.headersCodestream.codestream.length,{isOnlyParseHeaders:!0});t._image.addPacketsData(a,e.codeblocksData),t._image.decode(a,{regionToParse:i});var s=t._copyTilesPixelsToOnePixelsArray(t._image.tiles,i,t._image.componentsCount);n(s)})},r.prototype._copyTilesPixelsToOnePixelsArray=function(e,t,n){for(var r=(e[0],t.right-t.left),i=t.bottom-t.top,a=new ImageData(r,i),s=4,o=r*s,l=0;l<e.length;++l){var u=e[l].left+e[l].width,c=e[l].top+e[l].height,p=Math.max(t.left,e[l].left),f=Math.max(t.top,e[l].top),d=Math.min(t.right,u),h=Math.min(t.bottom,c),g=d-p,v=h-f;if(p!==e[l].left||f!==e[l].top||g!==e[l].width||v!==e[l].height)throw"Unsupported tiles to copy";var m=p-t.left,x=f-t.top,y=m*s+x*o;this._copyTile(a.data,e[l],y,o,n)}return a},r.prototype._copyTile=function(e,t,n,r,i){var a=0,s=1,o=2,l=1,u=t.pixels||t.items;switch(void 0===i&&(i=u.length/(t.width*t.height)),i){case 1:s=0,o=0;break;case 3:l=3;break;case 4:l=4;break;default:throw"Unsupported components count "+i}for(var c=n,p=0,f=0;f<t.height;++f){for(var d=c,h=0;h<t.width;++h)e[c+0]=u[p+a],e[c+1]=u[p+s],e[c+2]=u[p+o],e[c+3]=255,p+=l,c+=4;c=d+r}}},{"j2k-jpip-globals.js":16}],7:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e){function t(t,n){if(void 0===t||void 0===n)throw new r.jpipExceptions.InternalErrorException("minOffset or maxOffset is undefined for CompositeArray.copyToArray");if(t<e)throw new r.jpipExceptions.InternalErrorException("minOffset ("+t+") must be smaller than CompositeArray offset ("+e+")");if(n>e+s)throw new r.jpipExceptions.InternalErrorException("maxOffset ("+n+") must be larger than CompositeArray end offset ("+e+s+")")}function n(t,n){var a=Math.max(e,t),o=e+s;if(void 0!==n&&(o=Math.min(o,n)),a>=o){var l={internalIteratorData:{isEndOfRange:!0}};return l}var u={subArray:null,offset:-1,internalIteratorData:{end:o,currentSubArray:null,currentInternalPartOffset:null,nextInternalPartOffset:e,currentInternalPartIndex:-1,isEndOfRange:!1}},c=!1;do{if(c)throw new r.jpipExceptions.InternalErrorException("Iterator reached to the end although no data has been iterated");c=!i(u)}while(a>=u.internalIteratorData.nextInternalPartOffset);var p=a-u.internalIteratorData.currentInternalPartOffset;return u.internalIteratorData.currentSubArray=u.internalIteratorData.currentSubArray.subarray(p),u.internalIteratorData.currentInternalPartOffset=a,u}function i(e){var t=e.internalIteratorData;if(t.isEndOfRange)return!1;if(e.subArray=t.currentSubArray,e.offset=t.currentInternalPartOffset,++t.currentInternalPartIndex,t.nextInternalPartOffset>=t.end)return t.isEndOfRange=!0,!0;a(t.currentInternalPartIndex),t.currentSubArray=o[t.currentInternalPartIndex],t.currentInternalPartOffset=t.nextInternalPartOffset;var n=o[t.currentInternalPartIndex].length;t.nextInternalPartOffset=t.currentInternalPartOffset+n;var r=t.end-t.currentInternalPartOffset,i=r<t.currentSubArray.length;return i&&(t.currentSubArray=t.currentSubArray.subarray(0,r)),!0}function a(e){if(e>=o.length)throw new r.jpipExceptions.InternalErrorException("CompositeArray: end of part has reached. Check end calculation")}var s=0,o=[];this.getLength=function(){return s},this.getOffset=function(){return e},this.pushSubArray=function(e){o.push(e),s+=e.length},this.copyToOtherAtTheEnd=function(e,r,a){t(r,a);for(var s=n(r,a);i(s);)e.pushSubArray(s.subArray)},this.copyToTypedArray=function(e,r,a,s){t(a,s);for(var o=n(a,s);i(o);){var l=o.offset-r;e.set(o.subArray,l)}},this.copyToArray=function(e,r,a,s){t(a,s);for(var o=n(a,s);i(o);)for(var l=o.offset-r,u=0;u<o.subArray.length;++u)e[l++]=o.subArray[u]},this.copyToOther=function(t){if(t.getOffset()>e)throw new r.jpipExceptions.InternalErrorException("CompositeArray: Trying to copy part into a latter part");var a=t.getOffset()+t.getLength(),o=e+s<=a;if(!o){var l=a,u=n(l);if(!i(u))throw new r.jpipExceptions.InternalErrorException("CompositeArray: Could not merge parts");var c=l;do{if(u.offset!==c)throw new r.jpipExceptions.InternalErrorException("CompositeArray: Non-continuous value of rangeToCopy.offset. Expected: "+c+", Actual: "+u.offset);t.pushSubArray(u.subArray),c+=u.subArray.length}while(i(u))}}}},{"j2k-jpip-globals.js":16}],8:[function(e,t,n){"use strict";t.exports=function(e,t,n){function r(e,t){var n,r=!1,a=0;if(void 0!==t&&(r=!!t.forceCopyAllRange,a=t.databinStartOffset,n=t.maxLengthToCopy,void 0===a&&(a=0)),void 0===e&&(e=0),0===n)return{resultWithoutCopy:0};if(null!==l&&a>=l)return{resultWithoutCopy:n&&r?null:0};var u=s(a);if(u===o.length)return{resultWithoutCopy:r?null:0};if(r){var c=i(a,n,u);if(!c)return{resultWithoutCopy:null}}var p={databinStartOffset:a,maxLengthToCopy:n,resultStartOffset:e};return p}function i(e,t,n){if(o[n].getOffset()>e)return!1;if(t){var r=e-o[n].getOffset(),i=o[n].getLength()-r,a=i>=t;return a}if(null===l||n<o.length-1)return!1;var s=o[o.length-1],u=s.getOffset()+s.getLength(),c=u===l;return c}function a(e,t,n){var r,i=e;if(void 0!==t)r=e+t;else{var a=o[o.length-1];r=a.getOffset()+a.getLength()}for(var s=null,l=0;l<o.length&&!(o[l].getOffset()>=r);++l){var u=Math.max(i,o[l].getOffset()),c=Math.min(r,o[l].getOffset()+o[l].getLength());n(o[l],u,c),s=o[l]}if(null===s)return 0;var p=Math.min(s.getOffset()+s.getLength(),r),f=p-e;return f}function s(e){var t;for(t=0;t<o.length&&!(o[t].getOffset()+o[t].getLength()>e);++t);return t}var o=[],l=null,u=0,c=[];return this.getDatabinLengthIfKnown=function(){return l},this.getLoadedBytes=function(){return u},this.isAllDatabinLoaded=function(){var e;switch(o.length){case 0:e=0===l;break;case 1:e=0===o[0].getOffset()&&o[0].getLength()===l;break;default:e=!1}return e},this.getCachedData=function(e){var t=c[e];return void 0===t&&(t={},c[e]=t),t},this.getClassId=function(){return e},this.getInClassId=function(){return t},this.copyToCompositeArray=function(e,t){var n=0,i=r(n,t);if(void 0!==i.resultWithoutCopy)return i.resultWithoutCopy;var s=a(i.databinStartOffset,i.maxLengthToCopy,function(t,n,r){t.copyToOtherAtTheEnd(e,n,r)});return s},this.copyBytes=function(e,t,n){var i=r(t,n);if(void 0!==i.resultWithoutCopy)return i.resultWithoutCopy;var s=i.databinStartOffset-i.resultStartOffset,o=a(i.databinStartOffset,i.maxLengthToCopy,function(t,n,r){t.copyToArray(e,s,n,r)});return o},this.getExistingRanges=function(){for(var e=new Array(o.length),t=0;t<o.length;++t)e[t]={start:o[t].getOffset(),length:o[t].getLength()};return e},this.addData=function(e,t){if(e.isLastByteInDatabin&&(l=e.messageOffsetFromDatabinStart+e.messageBodyLength),0!==e.messageBodyLength){var r=n.createCompositeArray(e.messageOffsetFromDatabinStart),i=e.bodyStart+e.messageBodyLength;r.pushSubArray(t.subarray(e.bodyStart,i));var a=s(e.messageOffsetFromDatabinStart),c=a;if(a>0){var p=o[a-1],f=p.getOffset()+p.getLength();f===e.messageOffsetFromDatabinStart&&--c}if(c>=o.length)return o.push(r),void(u+=e.messageBodyLength);var d=o[c],h=e.messageOffsetFromDatabinStart+e.messageBodyLength;if(d.getOffset()>h){for(var g=o.length;g>c;--g)o[g]=o[g-1];return o[c]=r,void(u+=e.messageBodyLength)}var v=d.getLength(),m=d.getOffset()>e.messageOffsetFromDatabinStart;m&&(o[c]=r,r=d,d=o[c]),r.copyToOther(d);var x,y=d.getOffset()+d.getLength();for(x=c;x<o.length-1&&!(y<o[x+1].getOffset());++x)v+=o[x+1].getLength();var E=x-c;if(E>0){o[x].copyToOther(d);for(var j=c+1;j<o.length-E;++j)o[j]=o[j+E];o.length-=E}u+=d.getLength()-v}},this}},{}],9:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t){function n(e,t){if(0!==e.inClassId)throw new r.jpipExceptions.IllegalDataException("Main header data-bin with in-class index other than zero is not valid","A.3.5");var n=m.getLoadedBytes();m.addData(e,t);var i=m.getLoadedBytes()-n;g+=i,v+=i}function i(e,t){}function a(n,i,a,s,o){if(s!==e)throw new r.jpipExceptions.WrongStreamException("databin of type "+o,e);var l=n.databins[a];return l||(l=t.createDatabinParts(i,a),n.databins[a]=l),l}function s(){return{databins:[],listeners:[],databinsWithListeners:[]}}var o=0,l=1,u=2,c=4,p=5,f=[],d=[],h=[],g=0,v=0;f[u]=s(),f[o]=s(),f[l]=f[o],h[u]=!0,h[o]=!0,h[l]=!0,f[c]=s(),f[p]=f[c],d[c]=!0,d[p]=!0;var m=t.createDatabinParts(6,0);return this.getIsJpipTilePartStream=function(){return e},this.getLoadedBytes=function(){return g},this.getMainHeaderDatabin=function(){return m},this.getTileHeaderDatabin=function(e){var t=a(f[u],u,e,!1,"tileHeader");return t},this.getPrecinctDatabin=function(e){var t=a(f[o],o,e,!1,"precinct");return t},this.getTileDatabin=function(e){var t=a(f[c],c,e,!0,"tilePart");return t},this.addEventListener=function(e,t,n,i){if("dataArrived"!==t)throw new r.jpipExceptions.InternalErrorException("Unsupported event: "+t);var a=e.getClassId(),s=e.getInClassId(),o=f[a];if(e!==o.databins[s])throw new r.jpipExceptions.InternalErrorException("Unmatched databin with class-ID="+a+" and in-class-ID="+s);void 0===o.listeners[s]&&(o.listeners[s]=[]),0===o.listeners[s].length&&(v+=e.getLoadedBytes()),o.listeners[s].push({listener:n,listenerThis:i,isRegistered:!0}),o.databinsWithListeners[s]=e},this.removeEventListener=function(e,t,n){if("dataArrived"!==t)throw new r.jpipExceptions.InternalErrorException("Unsupported event: "+t);var i=e.getClassId(),a=e.getInClassId(),s=f[i],o=s.listeners[a];if(e!==s.databins[a]||e!==s.databinsWithListeners[a])throw new r.jpipExceptions.InternalErrorException("Unmatched databin with class-ID="+i+" and in-class-ID="+a);for(var l=0;l<o.length;++l)if(o[l].listener===n)return o[l].isRegistered=!0,o[l]=o[o.length-1],o.length-=1,void(0===o.length&&(delete s.databinsWithListeners[a],v-=e.getLoadedBytes()));throw new r.jpipExceptions.InternalErrorException("Could not unregister listener from databin")},this.cleanupUnregisteredDatabins=function(){for(var e=0;e<f.length;++e)if(void 0!==f[e]){var t=f[e].databinsWithListeners;f[e].databins=t.slice()}g=v},this.saveData=function(e,t){if(0!==e.codestreamIndex)throw new r.jpipExceptions.UnsupportedFeatureException("Non zero Csn (Code Stream Index)","A.2.2");switch(e.classId){case 6:n(e,t);break;case 8:i(e,t);break;default:var s=f[e.classId];if(void 0===s)break;var o=!!d[e.classId],l=a(s,e.classId,e.inClassId,o,"<class ID "+e.classId+">"),u=l.getLoadedBytes();l.addData(e,t);var c=l.getLoadedBytes()-u;g+=c;var p=s.listeners,h=p[e.inClassId];if(void 0!==h&&h.length>0){v+=c;for(var m=h.slice(),x=0;x<m.length;++x){var y=m[x];y.isRegistered&&y.listener.call(y.listenerThis,l)}}}},this}},{"j2k-jpip-globals.js":16}],10:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(){var e=[];this.getObject=function(t){var n=t.getClassId(),i=e[n];void 0===i&&(i=[],e[n]=i);var a=t.getInClassId(),s=i[a];if(void 0===s)s={},s.databin=t,i[a]=s;else if(s.databin!==t)throw new r.jpipExceptions.InternalErrorException("Databin IDs are not unique");return s}}},{"j2k-jpip-globals.js":16}],11:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a,s){function o(){++d;var t=n.getTilesIterator(e);do{var r=t.tileIndex,a=i.getTileHeaderDatabin(r);v.push(a),i.addEventListener(a,"dataArrived",l),++d,l(a)}while(t.tryAdvance());--d,p()}function l(t){if(t.isAllDatabinLoaded()){var a=x.getObject(t);if(!a.isAlreadyLoaded){a.isAlreadyLoaded=!0,--d;var s=t.getInClassId(),o=n.getTileStructure(s),l=o.getNumQualityLayers(),f=o.getPrecinctIterator(s,e);do{if(!f.isInCodestreamPart)throw new r.jpipExceptions.InternalErrorException("Unexpected precinct not in codestream part");var h=o.precinctPositionToInClassIndex(f),g=i.getPrecinctDatabin(h);m.push(g);var v=x.getObject(g);if(void 0!==v.qualityInTile)throw new r.jpipExceptions.InternalErrorException("Tile was iterated twice in codestream part");v.qualityInTile=l,c(g,v,f),i.addEventListener(g,"dataArrived",u)}while(f.tryAdvance());p()}}}function u(e){var t=x.getObject(e),n=t.numQualityLayersReached,r=t.qualityInTile;n!==r&&(--y[n],c(e,t),p())}function c(t,n,r){var i=a.getQualityLayerOffset(t,e.quality,r),s=i.numQualityLayers;n.numQualityLayersReached=s;var o=n.qualityInTile;if(s!==o){var l=y[s]||0;y[s]=l+1}}function p(){if(!(y[h]>0||"max"===h||h>=f||d>0)){var e,n=y.length;do{if(++h,h>=n){h="max";break}e=y[h]>0}while(!e);t(h)}}var f,d=0,h=0,g=!1,v=[],m=[],x=s.createObjectPoolByDatabin(),y=[];o(),this.unregister=function(){if(!g){for(var e=0;e<v.length;++e)i.removeEventListener(v[e],"dataArrived",l);for(var t=0;t<m.length;++t)i.removeEventListener(m[t],"dataArrived",u);g=!0}}}},{"j2k-jpip-globals.js":16}],12:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n){function i(e,t){if(e.currentY>=t.maxTileYExclusive)throw new r.jpipExceptions.InternalErrorException("Cannot advance tile iterator after end");if(++e.currentX,e.currentX<t.maxTileXExclusive)return!0;e.currentX=t.minTileX,++e.currentY;var n=e.currentY<t.maxTileYExclusive;return n}function a(t){u();var n=p.getNumTilesX()*p.getNumTilesY()-1;if(t<0||t>n)throw new r.jpipExceptions.ArgumentException("tileId",t,"Expected value between 0 and "+n);var i=p.isEdgeTileId(t);if(void 0===h[t]){var a=e.parseOverridenTileParams(t);a?h[t]=l(a,i):h[t]=null}if(h[t])return h[t];var s=o(i);return s}function s(e,t,n){if(t<0||t>=n)throw new r.jpipExceptions.ArgumentException(e,t,e+" is expected to be between 0 and "+n-1)}function o(t){if(!f){var n=e.parseDefaultTileParams();f=new Array(3);for(var r=0;r<3;++r){f[r]=new Array(3);for(var i=0;i<3;++i){var a={horizontalEdgeType:r,verticalEdgeType:i};f[r][i]=l(n,a)}}}var s=f[t.horizontalEdgeType],o=s[t.verticalEdgeType];return o}function l(e,r){u();var i=JSON.parse(JSON.stringify(e));i.tileSize=p.getTileSize(r),i.defaultComponentParams.scaleX=1,i.defaultComponentParams.scaleY=1;for(var a=0;a<i.paramsPerComponent.length;++a)i.paramsPerComponent[a].scaleX=c.componentsScaleX[a],i.paramsPerComponent[a].scaleY=c.componentsScaleY[a];var s=t.createTileStructure(i,d,n);return s}function u(n){c||(c=e.parseCodestreamStructure(),p=t.createLevelCalculator(c))}var c,p,f,d=this,h=[];return this.getSizesParams=function(){return u(),c},this.getNumTilesX=function(){u();var e=p.getNumTilesX();return e},this.getNumTilesY=function(){u();var e=p.getNumTilesY();return e},this.getNumComponents=function(){return u(),c.numComponents},this.getImageWidth=function(){u();var e=p.getLevelWidth();return e},this.getImageHeight=function(){u();var e=p.getLevelHeight();return e},this.getLevelWidth=function(e){u();var t=p.getLevelWidth(e);return t},this.getLevelHeight=function(e){u();var t=p.getLevelHeight(e);return t},this.getTileWidth=function(e){u();var t=p.getTileWidth(e);return t},this.getTileHeight=function(e){u();var t=p.getTileHeight(e);return t},this.getFirstTileOffsetX=function(){u();var e=p.getFirstTileOffsetX();return e},this.getFirstTileOffsetY=function(){u();var e=p.getFirstTileOffsetY();return e},this.getTileLeft=function(e,t){u();var n=e%p.getNumTilesX();if(0===n)return 0;var r=(n-1)*p.getTileWidth(t)+p.getFirstTileWidth(t);return r},this.getTileTop=function(e,t){u();var n=Math.floor(e/p.getNumTilesX());if(0===n)return 0;var r=(n-1)*p.getTileHeight(t)+p.getFirstTileHeight(t);return r},this.getDefaultTileStructure=function(){u();var e=o({horizontalEdgeType:p.EDGE_TYPE_NO_EDGE,verticalEdgeType:p.EDGE_TYPE_NO_EDGE});return e},this.getTileStructure=a,this.tilePositionToInClassIndex=function(e){u();var t=p.getNumTilesX(),n=p.getNumTilesY();s("tilePosition.tileX",e.tileX,t),s("tilePosition.tileY",e.tileY,n);var r=e.tileX+e.tileY*t;return r},this.tileInClassIndexToPosition=function(e){u();var t=p.getNumTilesX(),n=p.getNumTilesY();s("inClassIndex",e,t*n);var r=e%t,i=(e-r)/t,a={tileX:r,tileY:i};return a},this.getTilesIterator=function(e){u();var t=p.getTilesFromPixels(e),n={currentX:t.minTileX,currentY:t.minTileY},r={get tileIndex(){var e=n.currentY*p.getNumTilesX(),t=e+n.currentX;return t},tryAdvance:function(){var e=i(n,t);return e}};return r},this.getSizeOfPart=function(e){u();var t=p.getSizeOfPart(e);return t},this}},{"j2k-jpip-globals.js":16}],13:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t){function n(e,t,n){var r=a(n),i=e/r,s=t[n],o=Math.ceil(i/s);return o}function i(e,t,n,r,i){var s=a(e.resolutionLevel),o=Math.ceil(i/s),l=t*r[e.resolutionLevel],u=Math.min(r[e.resolutionLevel],o-l),c=0===e.resolutionLevel?1:2,p=Math.ceil(u/c),f=c*Math.ceil(p/n);return u%n===1&&e.resolutionLevel>0&&--f,f}function a(t){var n=e.numResolutionLevels-t-1,r=1<<n;return r}function s(){if(1!==e.scaleX||1!==e.scaleY)throw new r.j2kExceptions.UnsupportedFeatureException("Non 1 component scale","A.5.1");o=Math.floor(t.getTileWidth()/e.scaleX),l=Math.floor(t.getTileHeight()/e.scaleY)}var o,l;s(),this.getComponentScaleX=function(){return e.scaleX},this.getComponentScaleY=function(){return e.scaleY},this.getNumResolutionLevels=function(){return e.numResolutionLevels},this.getPrecinctWidth=function(t){var n=e.precinctWidthPerLevel[t];return n},this.getPrecinctHeight=function(t){var n=e.precinctHeightPerLevel[t];return n},this.getMaxCodeblockWidth=function(){var t=e.maxCodeblockWidth;return t},this.getMaxCodeblockHeight=function(){var t=e.maxCodeblockHeight;return t},this.getNumCodeblocksXInPrecinct=function(t){var n=i(t,t.precinctX,e.maxCodeblockWidth,e.precinctWidthPerLevel,o);return n},this.getNumCodeblocksYInPrecinct=function(t){var n=i(t,t.precinctY,e.maxCodeblockHeight,e.precinctHeightPerLevel,l);return n},this.getNumPrecinctsX=function(t){var r=n(o,e.precinctWidthPerLevel,t);return r},this.getNumPrecinctsY=function(t){
+var r=n(l,e.precinctHeightPerLevel,t);return r}}},{"j2k-jpip-globals.js":16}],14:[function(e,t,n){"use strict";function r(e){function t(e,t,n){for(var r=new Array(e.length),s=0;s<e.length;++s){var o=e[s].minNumQualityLayers;if("max"!==o){if(void 0!==t&&o>t)throw new i.jpipExceptions.ArgumentException("progressiveness["+s+"].minNumQualityLayers",o,"minNumQualityLayers is bigger than fetchParams.quality");o=a(o,n,"progressiveness["+s+"].minNumQualityLayers")}r[s]={minNumQualityLayers:o}}return r}function n(t){var n=[],r=e.getDefaultTileStructure(),i=r.getNumQualityLayers(),a="max";void 0!==t&&(i=Math.min(i,t),a=i);for(var s=i<4?i-1:3,o=1;o<s;++o)n.push({minNumQualityLayers:o});var l=Math.round(i/2);return l>s&&n.push({minNumQualityLayers:l}),n.push({minNumQualityLayers:a}),n}function r(t){var n=a(t.level,"level",void 0,!0),r=a(t.quality,"quality",void 0,!0),s=a(t.minX,"minX"),o=a(t.minY,"minY"),l=a(t.maxXExclusive,"maxXExclusive"),u=a(t.maxYExclusive,"maxYExclusive"),c=e.getLevelWidth(n),p=e.getLevelHeight(n);if(s<0||l>c||o<0||u>p||s>=l||o>=u)throw new i.jpipExceptions.ArgumentException("codestreamPartParams",t);var f={minX:s,minY:o,maxXExclusive:l,maxYExclusive:u,level:n,quality:r};return f}function a(e,t,n,r){if(void 0===e&&(void 0!==n||r))return n;var a=+e;if(isNaN(a)||a!==Math.floor(a))throw new i.jpipExceptions.ArgumentException(t,e);return a}this.modify=function(e,a){var s=r(e);a=a||{};var o,l=a.useCachedDataOnly,u=a.disableProgressiveness;if(void 0!==a.progressiveness){if(l||u)throw new i.jpipExceptions.ArgumentException("options.progressiveness",a.progressiveness,"options contradiction: cannot accept both progressivenessand useCachedDataOnly/disableProgressiveness options");o=t(a.progressiveness,s.quality,"quality")}else if(l)o=[{minNumQualityLayers:0}];else if(u){var c=s.quality,p=void 0===c?"max":c;o=[{minNumQualityLayers:p}]}else o=n(s.quality);return{codestreamPartParams:s,progressiveness:o}}}var i=e("j2k-jpip-globals.js");t.exports=r},{"j2k-jpip-globals.js":16}],15:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i){function a(e,t,n){if(t<0||t>=n)throw new r.jpipExceptions.ArgumentException(e,t,e+" is expected to be between 0 and "+n-1)}function s(e){if(4!==e.length)throw new r.j2kExceptions.IllegalDataException("Illegal progression order "+e+": unexpected length");if("L"!==e[3])throw new r.jpipExceptions.IllegalDataException("Illegal target progression order of "+e,"A.3.2.1");var t=e.indexOf("P")>=0,n=e.indexOf("C")>=0,i=e.indexOf("R")>=0;if(!t||!n||!i)throw new r.j2kExceptions.IllegalDataException("Illegal progression order "+e+": missing letter");if("RPCL"!==e)throw new r.j2kExceptions.UnsupportedFeatureException("Progression order of "+e,"A.6.1")}function o(){h=new Array(n);var n=t.getNumComponents(),i=e.defaultComponentParams;g=i.numResolutionLevels;for(var a=!0,s=!0,o=0;o<n;++o){var u=e.paramsPerComponent[o];g=Math.min(g,u.numResolutionLevels),h[o]=new Array(u.numResolutionLevels);for(var c=d[o],p=0,f=(c.getNumPrecinctsX(o),c.getNumPrecinctsY(o),0);f<u.numResolutionLevels;++f){h[o][f]=p;var v=c.getNumPrecinctsX(f),m=c.getNumPrecinctsY(f);p+=v*m,i.precinctWidthPerLevel[f]===u.precinctWidthPerLevel[f]&&i.precinctHeightPerLevel[f]===u.precinctHeightPerLevel[f]||(a=!1);var x=l(f,u.numResolutionLevels,c.getPrecinctWidth,t.getLevelWidth,t.getTileWidth),y=l(f,u.numResolutionLevels,c.getPrecinctWidth,t.getLevelWidth,t.getTileWidth);s&=x&&y}}if(!a)throw new r.j2kExceptions.UnsupportedFeatureException("Special Coding Style for Component (COC)","A.6.2");if(!s)throw new r.j2kExceptions.UnsupportedFeatureException("Precinct TopLeft which is not matched to tile TopLeft","B.6")}function l(e,t,n,r,i){var a=n(e),s=r(e),o=i(e);if(a>=s||o>=s)return!0;var l=a%o===0||o%a===0;return l}function u(e,n){if(void 0===n)return null;for(var r=t.getNumComponents(),i=new Array(r),a=n.level||0,s=t.getTileLeft(e,a),o=t.getTileTop(e,a),l=n.minX-s,u=n.minY-o,c=n.maxXExclusive-s,p=n.maxYExclusive-o,f=(t.getLevelWidth(a),t.getLevelHeight(a),0);f<r;++f){for(var h=d[f],g=h.getNumResolutionLevels(),v=g-a,m=(h.getNumResolutionLevels(),new Array(g)),x=0;x<v;++x){var y=h.getComponentScaleX(),E=h.getComponentScaleY(),j=v-x-1,b=y<<j,I=E<<j,w=4,C=Math.floor(l/b)-w,k=Math.floor(u/I)-w,P=Math.ceil(c/b)+w,O=Math.ceil(p/I)+w,L=h.getPrecinctWidth(x)*y,S=h.getPrecinctHeight(x)*E,T=Math.floor(C/L),R=Math.floor(k/S),A=Math.ceil(P/L),D=Math.ceil(O/S),M=h.getNumPrecinctsX(x),B=h.getNumPrecinctsY(x);m[x]={minPrecinctX:Math.max(0,T),minPrecinctY:Math.max(0,R),maxPrecinctXExclusive:Math.min(A,M),maxPrecinctYExclusive:Math.min(D,B)}}i[f]=m}return i}function c(e,t,n,r){for(var a=!0,s=r?null:n,o=!1,l=2;l>=0;--l){var u=p(e,l,t,s);if(a=0===u,!a)break;"P"!==i[l]||r||(o=!0)}if(a)return!1;if(null===n)return e.isInCodestreamPart=!0,!0;var c=n[e.component],f=c[e.resolutionLevel];return o&&(e.precinctX=f.minPrecinctX,e.precinctY=f.minPrecinctY),e.isInCodestreamPart=e.precinctX>=f.minPrecinctX&&e.precinctY>=f.minPrecinctY&&e.precinctX<f.maxPrecinctXExclusive&&e.precinctY<f.maxPrecinctYExclusive,!0}function p(e,n,a,s){var o=d[e.component];switch(i[n]){case"R":var l=o.getNumResolutionLevels()-a;return++e.resolutionLevel,e.resolutionLevel%=l,e.resolutionLevel;case"C":return++e.component,e.component%=t.getNumComponents(),e.component;case"P":var u,c,p,f;if(null!==s){var h=s[e.component],g=h[e.resolutionLevel];u=g.minPrecinctX,c=g.minPrecinctY,p=g.maxPrecinctXExclusive,f=g.maxPrecinctYExclusive}else u=0,c=0,p=o.getNumPrecinctsX(e.resolutionLevel),f=o.getNumPrecinctsY(e.resolutionLevel);return e.precinctX-=u-1,e.precinctX%=p-u,e.precinctX+=u,e.precinctX!=u?e.precinctX-u:(e.precinctY-=c-1,e.precinctY%=f-c,e.precinctY+=c,e.precinctY-c);case"L":throw new r.jpipExceptions.InternalErrorException("Advancing L is not supported in JPIP");default:throw new r.jpipExceptions.InternalErrorException("Unexpected letter in progression order: "+i[n])}}var f,d,h,g;this.getProgressionOrder=function(){return i},this.getDefaultComponentStructure=function(e){return f},this.getComponentStructure=function(e){return d[e]},this.getTileWidth=function(){return e.tileSize[0]},this.getTileHeight=function(){return e.tileSize[1]},this.getNumQualityLayers=function(){return e.numQualityLayers},this.getIsPacketHeaderNearData=function(){return e.isPacketHeadersNearData},this.getIsStartOfPacketMarkerAllowed=function(){return e.isStartOfPacketMarkerAllowed},this.getIsEndPacketHeaderMarkerAllowed=function(){return e.isEndPacketHeaderMarkerAllowed},this.precinctInClassIndexToPosition=function(e){if(e<0)throw new r.jpipExceptions.ArgumentException("inClassIndex",e,"Invalid negative in-class index of precinct");var n,i=t.getNumTilesX()*t.getNumTilesY(),a=t.getNumComponents(),s=e%i,o=(e-s)/i,l=o%a,u=d[l],c=u.getNumResolutionLevels(),p=(o-l)/a,f=0;for(n=1;n<c;++n){var g=h[l][n];if(g>p)break;f=g}--n;var v=p-f,m=u.getNumPrecinctsX(n),x=u.getNumPrecinctsY(n),y=v%m,E=(v-y)/m;if(E>=x)throw new r.jpipExceptions.ArgumentException("inClassIndex",e,"Invalid in-class index of precinct");var j={tileIndex:s,component:l,precinctX:y,precinctY:E,resolutionLevel:n};return j},this.precinctPositionToInClassIndex=function(e){var n=t.getNumComponents();a("precinctPosition.component",e.component,n);var r=d[e.component],i=r.getNumResolutionLevels();a("precinctPosition.resolutionLevel",e.resolutionLevel,i);var s=t.getNumTilesX()*t.getNumTilesY(),o=r.getNumPrecinctsX(e.resolutionLevel),l=r.getNumPrecinctsY(e.resolutionLevel);a("precinctPosition.precinctX",e.precinctX,o),a("precinctPosition.precinctY",e.precinctY,l),a("precinctPosition.tileIndex",e.tileIndex,s);var u=e.precinctX+e.precinctY*o,c=h[e.component][e.resolutionLevel],p=u+c,f=e.component+p*t.getNumComponents(),g=e.tileIndex+f*t.getNumTilesX()*t.getNumTilesY();return g},this.getPrecinctIterator=function(e,t,n){var i=0;if(void 0!==t&&void 0!==t.level&&(i=t.level,g<=i))throw new r.jpipExceptions.InternalErrorException("Cannot advance resolution: level="+t.level+" but should be smaller than "+g);var a=u(e,t),s=0,o=0;if(!n&&null!==a){var l=a[0][0];s=l.minPrecinctX,o=l.minPrecinctY}var p={component:0,precinctX:s,precinctY:o,resolutionLevel:0,isInCodestreamPart:!0},f={get tileIndex(){return e},get component(){return p.component},get precinctIndexInComponentResolution(){var e=d[p.component],t=e.getNumPrecinctsX(p.resolutionLevel);return p.precinctIndexInComponentResolution=p.precinctX+p.precinctY*t,p.precinctIndexInComponentResolution},get precinctX(){return p.precinctX},get precinctY(){return p.precinctY},get resolutionLevel(){return p.resolutionLevel},get isInCodestreamPart(){return p.isInCodestreamPart}};return f.tryAdvance=function(){var e=c(p,i,a,n);return e},f},f=n.createComponentStructure(e.defaultComponentParams,this),d=new Array(t.getNumComponents());for(var v=0;v<t.getNumComponents();++v)d[v]=n.createComponentStructure(e.paramsPerComponent[v],this);return o(),s(i),this}},{"j2k-jpip-globals.js":16}],16:[function(e,t,n){"use strict";t.exports.j2kMarkers={StartOfCodestream:[255,79],ImageAndTileSize:[255,81],CodingStyleDefault:[255,82],CodingStyleComponent:[255,83],QuantizationDefault:[255,92],ProgressionOrderChange:[255,95],PackedPacketHeadersInMainHeader:[255,96],PackedPacketHeadersInTileHeader:[255,97],StartOfTile:[255,144],StartOfData:[255,147],EndOfCodestream:[255,217],Comment:[255,100]},t.exports.j2kOffsets={MARKER_SIZE:2,LENGTH_FIELD_SIZE:2,NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER:38,REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER:6},t.exports.jpipEndOfResponseReasons={IMAGE_DONE:1,WINDOW_DONE:2,WINDOW_CHANGE:3,BYTE_LIMIT:4,QUALITY_LIMIT:5,SESSION_LIMIT:6,RESPONSE_LIMIT:7,NON_SPECIFIED:8},t.exports.j2kExceptions={UnsupportedFeatureException:function(e,t){return this.description=e+" (specified in section "+t+" of part 1: Core Coding System standard) is not supported yet",this.toString=function(){return"J2k UnsupportedFeatureException: "+this.description},this},ParseException:function(e){return this.description=e,this.toString=function(){return"J2k ParseException: "+this.description},this},IllegalDataException:function(e,t){return this.description=e+" (see section "+t+" of part 9: Interactivity tools, APIs and Protocols)",this.toString=function(){return"J2k IllegalDataException: "+this.description},this}},t.exports.jpipExceptions={UnsupportedFeatureException:function(e,t){return this.description=e+" (specified in section "+t+" of part 9: Interactivity tools, APIs and Protocols) is not supported yet",this.toString=function(){return"Jpip UnsupportedFeatureException: "+this.description},this},ParseException:function(e){return this.description=e,this.toString=function(){return"Jpip ParseException: "+this.description},this},IllegalDataException:function(e,t){return this.description=e+" (see section "+t+" of part 9: Interactivity tools, APIs and Protocols)",this.toString=function(){return"Jpip IllegalDataException: "+this.description},this},IllegalOperationException:function(e){return this.description=e,this.toString=function(){return"Jpip IllegalOperationException: "+this.description},this},ArgumentException:function(e,t,n){return this.description="Argument "+e+" has invalid value "+t+(void 0!==n?" :"+n:""),this.toString=function(){return"Jpip ArgumentException: "+this.description},this},WrongStreamException:function(e,t){var n="JPP (JPIP Precinct)",r="JPT (JPIP Tile-part)";if(t){var i=n;n=r,r=i}return this.description="Stream type is "+r+", but "+e+" is allowed only in "+n+" stream",this.toString=function(){return"Jpip WrongStreamException: "+this.description},this},InternalErrorException:function(e){return this.description=e,this.toString=function(){return"Jpip InternalErrorException: "+this.description},this}},t.exports.j2kExceptions.UnsupportedFeatureException.Name="j2kExceptions.UnsupportedFeatureException",t.exports.j2kExceptions.ParseException.Name="j2kExceptions.ParseException",t.exports.j2kExceptions.IllegalDataException.Name="j2kExceptions.IllegalDataException",t.exports.jpipExceptions.UnsupportedFeatureException.Name="jpipExceptions.UnsupportedFeatureException",t.exports.jpipExceptions.ParseException.Name="jpipExceptions.ParseException",t.exports.jpipExceptions.IllegalDataException.Name="jpipExceptions.IllegalDataException",t.exports.jpipExceptions.IllegalOperationException.Name="jpipExceptions.IllegalOperationException",t.exports.jpipExceptions.ArgumentException.Name="jpipExceptions.ArgumentException",t.exports.jpipExceptions.WrongStreamException.Name="jpipExceptions.WrongStreamException",t.exports.jpipExceptions.InternalErrorException.Name="jpipExceptions.InternalErrorException"},{}],17:[function(e,t,n){"use strict";var r,i=e("simple-ajax-helper.js"),a=e("mutual-exclusive-transaction-helper.js"),s=e("jpip-coding-passes-number-parser.js"),o=e("jpip-message-header-parser.js"),l=e("jpip-channel.js"),u=e("jpip-codestream-reconstructor.js"),c=e("jpip-codestream-structure.js"),p=e("jpip-component-structure.js"),f=e("composite-array.js"),d=e("jpip-databin-parts.js"),h=e("jpip-databins-saver.js"),g=e("jpip-fetch.js"),v=e("jpip-header-modifier.js"),m=e("jpip-image-data-context.js"),x=e("jpip-level-calculator.js"),y=e("jpip-markers-parser.js"),E=e("jpip-object-pool-by-databin.js"),j=e("jpip-offsets-calculator.js"),b=e("jpip-packets-data-collector.js"),I=e("jpip-request-databins-listener.js"),w=e("jpip-request-params-modifier.js"),C=e("jpip-request.js"),k=e("jpip-session-helper.js"),P=e("jpip-session.js"),O=e("jpip-reconnectable-requester.js"),L=e("jpip-structure-parser.js"),S=e("jpip-tile-structure.js"),T=e("jpip-bitstream-reader.js"),R=e("jpip-tag-tree.js"),A=e("jpip-codeblock-length-parser.js"),D=e("jpip-subband-length-in-packet-header-calculator.js"),M=e("jpip-packet-length-calculator.js"),B=e("jpip-quality-layers-cache.js"),_={createChannel:function(e,t){return new l(e,t,_)},createCodestreamReconstructor:function(e,t,n,r){return new u(e,t,n,r)},createLevelCalculator:function(e){return new x(e)},createCodestreamStructure:function(e,t){return new c(e,_,t)},createComponentStructure:function(e,t){return new p(e,t)},createCompositeArray:function(e){return new f(e)},createDatabinParts:function(e,t){return new d(e,t,_)},createDatabinsSaver:function(e){return new h(e,_)},createFetcher:function(t,n){return r||(r=e("jpip-fetcher.js")),new r(t,n)},createFetch:function(e,t,n){return new g(e,t,n)},createHeaderModifier:function(e,t,n){return new v(e,t,n)},createImageDataContext:function(e,t,n){return new m(e,t,n)},createMarkersParser:function(e){return new y(e,o,_)},createObjectPoolByDatabin:function(){return new E},createOffsetsCalculator:function(e,t){return new j(e,t)},createPacketsDataCollector:function(e,t,n){return new b(e,t,n,_)},createRequestDatabinsListener:function(e,t,n,r,i){return new I(e,t,n,r,i,_)},createRequestParamsModifier:function(e){return new w(e)},createRequest:function(e,t,n,r,i){return new C(e,o,t,n,r,i)},createSessionHelper:function(e,t,n,r){return new k(e,t,n,r,i)},createSession:function(e,t,n,r,i){return new P(e,t,n,r,i,setInterval,clearInterval,_)},createReconnectableRequester:function(e,t,n,r){return new O(e,t,n,r,_)},createStructureParser:function(e,t,n){return new L(e,t,o,n)},createTileStructure:function(e,t,n){return new S(e,t,_,n)},createBitstreamReader:function(e){return new T(e,a)},createTagTree:function(e,t,n){return new R(e,t,n,a)},createCodeblockLengthParser:function(e,t){return new A(e,a)},createSubbandLengthInPacketHeaderCalculator:function(e,t,n){return new D(e,t,n,s,a,_)},createPacketLengthCalculator:function(e,t,n,r,i){return new M(e,t,n,r,i,_)},createQualityLayersCache:function(e){return new B(e,_)}};t.exports=_},{"composite-array.js":7,"jpip-bitstream-reader.js":28,"jpip-channel.js":22,"jpip-codeblock-length-parser.js":29,"jpip-codestream-reconstructor.js":37,"jpip-codestream-structure.js":12,"jpip-coding-passes-number-parser.js":30,"jpip-component-structure.js":13,"jpip-databin-parts.js":8,"jpip-databins-saver.js":9,"jpip-fetch.js":1,"jpip-fetcher.js":2,"jpip-header-modifier.js":38,"jpip-image-data-context.js":3,"jpip-level-calculator.js":5,"jpip-markers-parser.js":19,"jpip-message-header-parser.js":23,"jpip-object-pool-by-databin.js":10,"jpip-offsets-calculator.js":20,"jpip-packet-length-calculator.js":31,"jpip-packets-data-collector.js":39,"jpip-quality-layers-cache.js":32,"jpip-reconnectable-requester.js":24,"jpip-request-databins-listener.js":11,"jpip-request-params-modifier.js":14,"jpip-request.js":25,"jpip-session-helper.js":26,"jpip-session.js":27,"jpip-structure-parser.js":21,"jpip-subband-length-in-packet-header-calculator.js":33,"jpip-tag-tree.js":34,"jpip-tile-structure.js":15,"mutual-exclusive-transaction-helper.js":35,"simple-ajax-helper.js":18}],18:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports={request:function(e,t,n,i){function a(e){if(!l){if(4!==s.readyState){if(void 0===i||null===s.response||s.readyState<3)return;var r=s.response.byteLength,a=r-u;if(a<i)return;u=r}else if(l=!0,200!==s.status||null===s.response)return void n(s);o||t(s,l)}}var s=new XMLHttpRequest,o=void 0===t,l=!1,u=0;if(s.open("GET",e,!o),s.onreadystatechange=a,o||(s.mozResponseType=s.responseType="arraybuffer"),void 0!==i&&(s.setRequestHeader("X-Content-Type-Options","nosniff"),s.onprogress=a),s.send(null),o&&!l)throw new r.jpipExceptions.InternalErrorException("synchronous ajax call was not finished synchronously");return s}}},{"j2k-jpip-globals.js":16}],19:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n){function i(e,t,n){var r=e[n]===t[0]&&e[n+1]===t[1];return r}function a(e,t){var n=s(e,!0),r=u(t,"Predefined marker in jGlobals.j2kMarkers"),i=n.markerToOffset[r];return void 0===i?null:i}function s(t,n){var a=t.getCachedData(c);if(void 0===a.markerToOffset&&(a.isParsedAllMarkers=!1,a.lastOffsetParsed=0,a.markerToOffset={},a.databin=t),a.isParsedAllMarkers)return a;var s=[],u=!0;if(t===e&&0===a.lastOffsetParsed){var p=t.copyBytes(s,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE});if(null===p)u=!1;else if(!i(s,r.j2kMarkers.StartOfCodestream,0))throw new r.j2kExceptions.IllegalDataException("SOC (Start Of Codestream) is not found where expected to be","A.4.1");a.lastOffsetParsed=2}return u&&o(a),l(a,n),a}function o(e){for(var n=e.lastOffsetParsed,i=[],a=e.databin.copyBytes(i,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE,databinStartOffset:n});null!==a;){var s=u(i,"offset "+n+" of databin with class ID = "+e.databin.getClassId()+" and in class ID = "+e.databin.getInClassId());e.markerToOffset[s.toString()]=n;var o=t.getInt16(i,r.j2kOffsets.MARKER_SIZE);n+=o+r.j2kOffsets.MARKER_SIZE,a=e.databin.copyBytes(i,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE,databinStartOffset:n})}e.lastOffsetParsed=n}function l(t,n){var a=t.databin.getDatabinLengthIfKnown();if(t.isParsedAllMarkers=t.lastOffsetParsed===a,!t.isParsedAllMarkers&&t.databin!==e){var s=[],o=t.databin.copyBytes(s,0,{forceCopyAllRange:!0,maxLengthToCopy:r.j2kOffsets.MARKER_SIZE,databinStartOffset:t.lastOffsetParsed});null!==o&&i(s,0,r.j2kMarkers.StartOfData)&&(t.lastOffsetParsed+=r.j2kOffsets.MARKER_SIZE,t.isParsedAllMarkers=!0)}if(n&&!t.isParsedAllMarkers)throw new r.jpipExceptions.InternalErrorException("data-bin with class ID = "+t.databin.getClassId()+" and in class ID = "+t.databin.getInClassId()+" was not recieved yet")}function u(e,t){if(255!==e[0])throw new r.j2kExceptions.IllegalDataException("Expected marker in "+t,"A");var n=e[1].toString(16);return n}var c="markers";this.getMandatoryMarkerOffsetInDatabin=function(e,t,n,i){var s=a(e,t);if(null===s)throw new r.j2kExceptions.IllegalDataException(n+" is not found where expected to be",i);return s},this.checkSupportedMarkers=function(e,t,n){n=!!n;for(var i=s(e,!0),a={},o=0;o<t.length;++o){var l=u(t[o],"jpipMarkersParser.supportedMarkers["+o+"]");a[l]=!0}for(var c in i.markerToOffset){var p=!!a[c];if(p!==n)throw new r.j2kExceptions.UnsupportedFeatureException("Unsupported marker found: "+c,"unknown")}},this.getMarkerOffsetInDatabin=a,this.isMarker=i}},{"j2k-jpip-globals.js":16}],20:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t){function n(e,t){var n=l(e,t);if(null===n)return null;var i=8,a=n+r.j2kOffsets.MARKER_SIZE,s=u(e,i,a),o=2,c=s[o],p=!(1&c),f=!!(2&c),d=!!(4&c),h=7,g=s[h],v=g+1,m=a+h,x=p?null:n+14,y={codingStyleDefaultOffset:n,isDefaultPrecinctSize:p,isStartOfPacketMarkerAllowed:f,isEndPacketHeaderMarkerAllowed:d,numResolutionLevels:v,precinctSizesOffset:x,numDecompositionLevelsOffset:m};return y}function i(e,t,n){if(null!==t&&!t.isDefaultPrecinctSize){var i=t.numResolutionLevels-n,a=t.precinctSizesOffset+i,s=t.codingStyleDefaultOffset+r.j2kOffsets.MARKER_SIZE,o={markerSegmentLengthOffset:s,start:a,length:n};e.push(o)}}function a(e,t){var n,i=t+4,a=u(e,1,i),s=31&a[0];switch(s){case 0:n=1;break;case 1:n=0;break;case 2:n=2;break;default:throw new r.j2kExceptions.IllegalDataException("Quantization style of "+s,"A.6.4")}return n}function s(e,n,i,s){var o=t.getMarkerOffsetInDatabin(n,r.j2kMarkers.QuantizationDefault);if(null!==o){var l=a(n,o);if(0!==l){var u=i.numResolutionLevels-s,c=1+3*(u-1),p=3*s,f=o+5+c*l,d=p*l,h=o+r.j2kOffsets.MARKER_SIZE,g={markerSegmentLengthOffset:h,start:f,length:d};e.push(g)}}}function o(e){var n=t.getMarkerOffsetInDatabin(e,r.j2kMarkers.CodingStyleComponent);if(null!==n)throw new r.j2kExceptions.UnsupportedFeatureException("COC Marker (Coding Style Component)","A.6.2")}function l(e,n){o(e);var i;return i=n?t.getMandatoryMarkerOffsetInDatabin(e,r.j2kMarkers.CodingStyleDefault,"COD (Coding style Default)","A.6.1"):t.getMarkerOffsetInDatabin(e,r.j2kMarkers.CodingStyleDefault)}function u(e,t,n,i){var a=[],s={forceCopyAllRange:!0,maxLengthToCopy:t,databinStartOffset:n},o=e.copyBytes(a,0,s);if(null===o)throw new r.jpipExceptions.InternalErrorException("Header data-bin has not yet recieved "+t+" bytes starting from offset "+n);return a}var c=[r.j2kMarkers.ImageAndTileSize,r.j2kMarkers.CodingStyleDefault,r.j2kMarkers.QuantizationDefault,r.j2kMarkers.Comment];this.getCodingStyleOffset=l,this.getCodingStyleBaseParams=n,this.getImageAndTileSizeOffset=function(){var n=t.getMandatoryMarkerOffsetInDatabin(e,r.j2kMarkers.ImageAndTileSize,"Image and Tile Size (SIZ)","A.5.1");return n},this.getRangesOfBestResolutionLevelsData=function(a,o){t.checkSupportedMarkers(a,c,!0);var l=null,u=n(a,!1),p=u;null===u?p=n(e,!0):l=u.numDecompositionLevelsOffset;var f=p.numResolutionLevels;if(f<=o)throw new r.jpipExceptions.InternalErrorException("numResolutionLevels ("+o+") <= COD.numResolutionLevels ("+f+")");var d=[];i(d,u,o),s(d,a,p,o);var h={ranges:d,numDecompositionLevelsOffset:l};return h}}},{"j2k-jpip-globals.js":16}],21:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i){function a(a,l){var u=i.getCodingStyleBaseParams(a,l);if(null===u)return null;var c=e.getMainHeaderDatabin(),p=i.getImageAndTileSizeOffset(),f=p+r.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER,d=o(c,2,f),h=n.getInt16(d,0),g=t.getMarkerOffsetInDatabin(a,r.j2kMarkers.PackedPacketHeadersInTileHeader),v=t.getMarkerOffsetInDatabin(c,r.j2kMarkers.PackedPacketHeadersInMainHeader),m=null===g&&null===v,x=u.codingStyleDefaultOffset+6,y=o(a,6,x),E=n.getInt16(y,0),j=s(y,4),b=s(y,5),I=new Array(u.numResolutionLevels),w=new Array(u.numResolutionLevels),C=null;if(!u.isDefaultPrecinctSize){var k=u.numResolutionLevels;C=o(a,k,u.precinctSizesOffset)}for(var P=32768,O=0;O<u.numResolutionLevels;++O)if(u.isDefaultPrecinctSize)I[O]=P,w[O]=P;else{var L=O,S=C[L],T=15&S,R=S>>>4;I[O]=1*Math.pow(2,T),w[O]=1*Math.pow(2,R)}for(var A=new Array(h),D=0;D<h;++D)A[D]={maxCodeblockWidth:j,maxCodeblockHeight:b,numResolutionLevels:u.numResolutionLevels,precinctWidthPerLevel:I,precinctHeightPerLevel:w};var M={maxCodeblockWidth:j,maxCodeblockHeight:b,numResolutionLevels:u.numResolutionLevels,precinctWidthPerLevel:I,precinctHeightPerLevel:w},B={numQualityLayers:E,isPacketHeadersNearData:m,isStartOfPacketMarkerAllowed:u.isStartOfPacketMarkerAllowed,isEndPacketHeaderMarkerAllowed:u.isEndPacketHeaderMarkerAllowed,paramsPerComponent:A,defaultComponentParams:M};return B}function s(e,t){var n=e[t],i=2+(15&n);if(i>10)throw new r.j2kExceptions.IllegalDataException("Illegal codeblock width exponent "+i,"A.6.1, Table A.18");var a=1<<i;return a}function o(e,t,n,i){var a=[],s={forceCopyAllRange:!0,maxLengthToCopy:t,databinStartOffset:n},o=e.copyBytes(a,0,s);if(null===o)throw new r.jpipExceptions.InternalErrorException("Header data-bin has not yet recieved "+t+" bytes starting from offset "+n);return a}this.parseCodestreamStructure=function(){for(var t=e.getMainHeaderDatabin(),a=i.getImageAndTileSizeOffset(),s=o(t,38,a+r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE),l=r.j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER-(r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE),u=r.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER-(r.j2kOffsets.MARKER_SIZE+r.j2kOffsets.LENGTH_FIELD_SIZE),c=n.getInt32(s,l),p=n.getInt32(s,l+4),f=(n.getInt32(s,10),n.getInt32(s,14),n.getInt32(s,18)),d=n.getInt32(s,22),h=n.getInt32(s,26),g=n.getInt32(s,30),v=n.getInt16(s,u),m=a+r.j2kOffsets.NUM_COMPONENTS_OFFSET_AFTER_SIZ_MARKER+2,x=3*v,y=o(t,x,m),E=new Array(v),j=new Array(v),b=0;b<v;++b)E[b]=y[3*b+1],j[b]=y[3*b+2];var I={numComponents:v,componentsScaleX:E,componentsScaleY:j,imageWidth:c-h,imageHeight:p-g,tileWidth:f,tileHeight:d,firstTileOffsetX:h,firstTileOffsetY:g};return I},this.parseDefaultTileParams=function(){var t=e.getMainHeaderDatabin(),n=a(t,!0);return n},this.parseOverridenTileParams=function(t){var n=e.getTileHeaderDatabin(t),r=a(n,!1);return r}}},{"j2k-jpip-globals.js":16}],22:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n){function i(){var e=p.length+c.length;return e}function a(e){var n=t.getDataRequestUrl(),r=t.getTargetId();"0"!==r&&(n+="&tid="+r);var i=null!==l;if(i){var a=f&&e;n+=a?"&wait=no":"&wait=yes"}return n}function s(e,n){var r=a(!0),i=t.getCodestreamStructure(),s=i.getLevelWidth(e.level),o=i.getLevelHeight(e.level),l=e.maxXExclusive-e.minX,u=e.maxYExclusive-e.minY;return r+="&fsiz="+s+","+o+",closest&rsiz="+l+","+u+"&roff="+e.minX+","+e.minY,"max"!==n&&(r+="&layers="+n),r}var o=this,l=null,u=0,c=[],p=[],f=!1;this.requestData=function(a,u,d,h){if(!f){var g=i();if(g>=e)throw new r.jpipExceptions.InternalErrorException("Channel has too many requests not responded yet")}var v=s(a,h),m=n.createRequest(t,o,v,u,d);return null!==l||0===p.length?(p.push(m),m.startRequest()):f?c=[m]:c.push(m),m},this.sendMinimalRequest=function(e){if(null===l&&p.length>0)throw new r.jpipExceptions.InternalErrorException("Minimal requests should be used for first request or keep alive message. Keep alive requires an already initialized channel, and first request requires to not have any previous request");var i=a(),s=n.createRequest(t,o,i,e);p.push(s),s.startRequest()},this.getIsDedicatedForMovableRequest=function(){return f},this.dedicateForMovableRequest=function(){if(f)throw new r.jpipExceptions.InternalErrorException("Channel already dedicated for movable request");f=!0},this.getChannelId=function(){return l},this.setChannelId=function(e){if(null!==e){l=e;var t=c;c=[];for(var n=0;n<t.length;++n)p.push(t[n]),t[n].startRequest()}},this.nextRequestId=function(){return++u},this.getRequestsWaitingForResponse=function(){return p},this.getAllQueuedRequestCount=i,this.requestEnded=function(e,n){for(var i=p,a=!1,s=0;s<i.length;++s)if(i[s]===n){i[s]=i[i.length-1],i.length-=1,a=!0;break}if(!a)throw new r.jpipExceptions.InternalErrorException("channel.requestsWaitingForResponse inconsistency");if(t.requestEnded(e,o),null===l&&c.length>0){var u=c.shift();p.push(u),u.startRequest()}},this.isAllOldRequestsEnded=function(e){for(var t=0;t<p.length;++t)if(p[t].lastRequestId<=e)return!1;return!0}}},{"j2k-jpip-globals.js":16}],23:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js"),i={LSB_MASK:1,BIT_4_MASK:16,BITS_56_MASK:96,MSB_MASK:128,LSB_7_MASK:127,parseNumberInVbas:function(e,t,n){var r,a=i,s=t;if(n){var o=(1<<n)-1;r=e[s]&o}else r=e[s]&a.LSB_7_MASK;for(;e[s]&a.MSB_MASK;)++s,r<<=7,r|=e[s]&a.LSB_7_MASK;return{endOffset:s+1,number:r}},parseMessageHeader:function(e,t,n){var a=i,s=(e[t]&a.BITS_56_MASK)>>>5;if(0===s)throw new r.jpipExceptions.ParseException("Failed parsing message header (A.2.1): prohibited existance class and csn bits 00");var o=!!(2&s),l=3===s,u=!!(e[t]&a.BIT_4_MASK),c=a.parseNumberInVbas(e,t,4),p=c.number,f=c.endOffset,d=0;if(o){var h=a.parseNumberInVbas(e,f);d=h.number,f=h.endOffset}else n&&(d=n.classId);var g=0;if(l){var v=a.parseNumberInVbas(e,f);g=v.number,f=v.endOffset}else n&&(g=n.codestreamIndex);var m=a.parseNumberInVbas(e,f),x=m.number;f=m.endOffset;var y=a.parseNumberInVbas(e,f),E=y.number;f=y.endOffset;var j,b=!!(d&a.LSB_MASK);if(b){var I=a.parseNumberInVbas(e,f);j=I.number,f=I.endOffset}var w={isLastByteInDatabin:u,inClassId:p,bodyStart:f,classId:d,codestreamIndex:g,messageOffsetFromDatabinStart:x,messageBodyLength:E};return b&&(w.aux=j),w},getInt32:function(e,t){var n=e[t]*Math.pow(2,24),r=e[t+1]<<16,i=e[t+2]<<8,a=e[t+3],s=n+r+i+a;return s},getInt16:function(e,t){var n=e[t]<<8,r=e[t+1],i=n+r;return i}};t.exports=i},{"j2k-jpip-globals.js":16}],24:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a,s){function o(){if(null!==v)throw new r.jpipExceptions.IllegalOperationException("Previous session still not established");return null!==E?void(null!==C&&C({isReady:!0,exception:"Previous session that should be closed still alive.Maybe old requestContexts have not beed closed. Reconnect will not be done"})):(i.cleanupUnregisteredDatabins(),void l())}function l(){var r;null!==y&&(r=y.getTargetId()),v=a.createSession(e,t,r,n,i),v.setStatusCallback(c),v.open(j)}function u(e){var t=y.tryGetChannel(!0);if(null===t)throw new r.jpipExceptions.IllegalOperationException("Too many concurrent requests. Limit the use of dedicated (movable) requests, enlarge maxChannelsInSession or wait for requests to finish and avoid create new ones");if(!t.getIsDedicatedForMovableRequest())throw new r.jpipExceptions.InternalErrorException("getIsDedicatedForMovableRequest inconsistency");e.internalDedicatedChannel=t}function c(e){if(null===v||e.isReady!==v.getIsReady())throw new r.jpipExceptions.InternalErrorException("Unexpected statusCallback when not registered to session or inconsistent isReady");if(e.isReady){if(null!==E)throw new r.jpipExceptions.InternalErrorException("sessionWaitingForDisconnect should be null");E=y,y=v,v=null,null!==E&&(E.setStatusCallback(null),g()||E.setRequestEndedCallback(g)),y.setStatusCallback(C),y.setRequestEndedCallback(h);for(var t=0;t<w.length;++t)u(w[t])}null!==C&&C(e)}function p(e){null!==e&&(++b,e.close(f))}function f(){--b,0===b&&void 0!==k&&k()}function d(){if(null===y)throw new r.jpipExceptions.InternalErrorException("This operation is forbidden when session is not ready")}function h(e){var t=null;if(i.getLoadedBytes()>x&&o(),null!==e){if(e.getIsDedicatedForMovableRequest())throw new r.jpipExceptions.InternalErrorException("Expected non-movable channel as channelFreed");do{if(0===I.length){t=null;break}if(t=I.shift(),null!==t.internalRequest)throw new r.jpipExceptions.InternalErrorException("Request was already sent but still in queue")}while(t.isEnded);null!==t&&(t.internalRequest=e.requestData(t.codestreamPartParams,t.callback,t.failureCallback,t.numQualityLayers))}}function g(){var e=!E.hasActiveRequests();return e&&(E.close(),E=null),e}var v,m=1048576,x=s||10*m,y=null,E=null,j=null,b=0,I=[],w=[],C=null,k=null;this.getIsReady=function(){return null!==y&&y.getIsReady()},this.open=function(e){if(void 0===e||null===e)throw new r.jpipExceptions.ArgumentException("baseUrl",e);if(null!==j)throw new r.jpipExceptions.IllegalOperationException("Image was already opened");j=e,l()},this.close=function(e){if(null!==k)throw new r.jpipExceptions.IllegalOperationException("closed twice");
+k=e,b=1,p(y),p(v),p(E),f()},this.setStatusCallback=function(e){C=e,null!==y&&y.setStatusCallback(e)},this.dedicateChannelForMovableRequest=function(){d();var e={internalDedicatedChannel:null};return w.push(e),u(e),e},this.requestData=function(e,t,n,i,a){d();var s,o={isEnded:!1,internalRequest:null,codestreamPartParams:e,callback:t,failureCallback:n,numQualityLayers:i},l=!!a;if(l)s=a.internalDedicatedChannel;else{if(s=y.tryGetChannel(),null===s)return I.push(o),o;if(s.getIsDedicatedForMovableRequest())throw new r.jpipExceptions.InternalErrorException("Expected non-movable channel")}if(s.getIsDedicatedForMovableRequest()!==l)throw new r.jpipExceptions.InternalErrorException("getIsDedicatedForMovableRequest inconsistency");return o.internalRequest=s.requestData(e,t,n,i),o},this.stopRequestAsync=function(e){e.isEnded=!0,null!==e.internalRequest&&e.internalRequest.stopRequestAsync()},this.reconnect=o}},{"j2k-jpip-globals.js":16}],25:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a,s){function o(t,r){var i=!1;try{var a=u(t,r);if(a===x)return;i=a===m}catch(o){i=!0,e.onException(o)}try{i||e.waitForConcurrentRequestsToEnd(y),n.requestEnded(t,y),i&&!j&&void 0!==s&&s(),e.checkConcurrentRequestsFinished()}catch(o){e.onException(o)}}function l(t){n.requestEnded(t,y),e.checkConcurrentRequestsFinished(),void 0!==s&&s()}function u(t,i){if(!i)throw new r.jpipExceptions.InternalErrorException("AJAX callback called although response is not done yet and chunked encoding is not enabled");var a=e.getCreatedChannelId(t);null!==a?null!==n.getChannelId()?e.onException(new r.jpipExceptions.IllegalDataException("Channel created although was not requested","D.2.3")):n.setChannelId(a):null===n.getChannelId()&&e.onException(new r.jpipExceptions.IllegalDataException("Cannot extract cid from cnew response","D.2.3"));var s=f(t);if(null===s)return m;var o=p(t,s);return o}function c(){d=n.nextRequestId();var t=i+"&len="+b+"&qid="+d;b*=2;var r=null===n.getChannelId();if(r){t+="&cnew=http";var a=e.getFirstChannel();null!==a&&(t+="&cid="+a.getChannelId())}else t+="&cid="+n.getChannelId();e.sendAjax(t,o,l)}function p(t,n){var i=m,a=new Uint8Array(t.response);if(n>a.length-2||0!==a[n])throw new r.jpipExceptions.IllegalDataException("Could not find End Of Response (EOR) code at the end of response","D.3");switch(a[n+1]){case r.jpipEndOfResponseReasons.IMAGE_DONE:case r.jpipEndOfResponseReasons.WINDOW_DONE:case r.jpipEndOfResponseReasons.QUALITY_LIMIT:i=v;break;case r.jpipEndOfResponseReasons.WINDOW_CHANGE:if(!j)throw new r.jpipExceptions.IllegalOperationException("Server response was terminated due to newer request issued on same channel. That may be an internal webjpip.js error - Check that movable requests are well maintained");break;case r.jpipEndOfResponseReasons.BYTE_LIMIT:case r.jpipEndOfResponseReasons.RESPONSE_LIMIT:j||(c(),i=x);break;case r.jpipEndOfResponseReasons.SESSION_LIMIT:e.onException(new r.jpipExceptions.IllegalOperationException("Server resources associated with the session is limitted, no further requests should be issued to this session"));break;case r.jpipEndOfResponseReasons.NON_SPECIFIED:e.onException(new r.jpipExceptions.IllegalOperationException("Server error terminated response with no reason specified"));break;default:e.onException(new r.jpipExceptions.IllegalDataException("Server responded with illegal End Of Response (EOR) code: "+a[n+1]))}return i}function f(n){try{for(var r,i=new Uint8Array(n.response),a=0;a<i.length&&0!==i[a];){var s=t.parseMessageHeader(i,a,r);if(s.bodyStart+s.messageBodyLength>i.length)return a;e.getDatabinsSaver().saveData(s,i),a=s.bodyStart+s.messageBodyLength,r=s}return a}catch(o){return e.onException(o),null}}var d,h=1024,g=10*h,v=1,m=2,x=3,y=this,E=!1,j=!1,b=g;this.startRequest=function(){if(E)throw new r.jpipExceptions.InternalErrorException("startRequest called twice");if(j)throw new r.jpipExceptions.InternalErrorException("request was already stopped");E=!0,e.requestStarted(),c()},this.stopRequestAsync=function(e){j=!0},this.getLastRequestId=function(){if(!E)throw new r.jpipExceptions.InternalErrorException("Unexpected call to getLastRequestId on inactive request");return d},this.callCallbackAfterConcurrentRequestsFinished=function(){a(y,!0)}}},{"j2k-jpip-globals.js":16}],26:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a){function s(e){var t=new r.jpipExceptions.InternalErrorException("Bad jpip server response (status = "+e.status+")");o(t)}function o(e){void 0===e&&(e=null),null!==l&&l({isReady:h,exception:e})}var l=null,u=null,c=[],p=null,f=0,d=[],h=!1,g=t||"0";this.onException=function(e){o(e)},this.getIsReady=function(){return h},this.setIsReady=function(e){h=e,o()},this.getCodestreamStructure=function(){return n},this.getDatabinsSaver=function(){return i},this.getDataRequestUrl=function(){return e},this.getTargetId=function(){return g},this.getFirstChannel=function(){return p},this.setStatusCallback=function(e){l=e},this.setRequestEndedCallback=function(e){u=e},this.requestStarted=function(){++f},this.requestEnded=function(e,t){--f;var n=e.getResponseHeader("JPIP-tid");if(""!==n&&null!==n)if("0"===g)g=n;else if(g!==n)throw new r.jpipExceptions.IllegalDataException("Server returned unmatched target ID");null===p&&(p=t);var i=t.getIsDedicatedForMovableRequest()?null:t;null!==u&&u(i)},this.getActiveRequestsCount=function(){return f},this.channelCreated=function(e){c.push(e)},this.getCreatedChannelId=function(e){var t=e.getResponseHeader("JPIP-cnew");if(!t)return null;for(var n=t.split(","),r=0;r<n.length;++r){var i=n[r].split("=");if("cid"===i[0])return i[1]}return null},this.waitForConcurrentRequestsToEnd=function(e){for(var t=[],n=0;n<c.length;++n){var r=c[n].getRequestsWaitingForResponse(),i=r.length;if(0!==i){for(var a=r[0].getLastRequestId(),s=1;s<r.length;++s)a=Math.max(a,r[s].getLastRequestId());t.push({channel:c[n],requestId:a})}}d.push({request:e,concurrentRequests:t})},this.checkConcurrentRequestsFinished=function(){for(var e=d.length-1;e>=0;--e){for(var t=d[e].concurrentRequests,n=t.length-1;n>=0;--n){var r=t[n];r.channel.isAllOldRequestsEnded(r.requestId)&&(t[n]=t[t.length-1],t.length-=1)}if(!(t.length>0)){var i=d[e].request;i.callback;d[e]=d[d.length-1],d.length-=1,i.callCallbackAfterConcurrentRequestsFinished()}}},this.sendAjax=function(e,t,n){var r;r=n?function(e){s(e),n(e)}:s,a.request(e,t,r)}}},{"j2k-jpip-globals.js":16}],27:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a,s,o,l){function u(){null!==P&&o(P),b.setIsReady(!1),b.sendAjax(m,j)}function c(e){++k;var n=l.createChannel(t,b);return b.channelCreated(n),e||C.push(n),n}function p(e,t){for(var n,r=null,i=e+1,a=0;a<C.length;++a){var s=C[a].getAllQueuedRequestCount();if(s<i&&(r=C[a],n=a,i=s),0===s)break}return t&&null!==r?(C[n]=C[C.length-1],C.length-=1,r):r}function f(){var e=a.getMainHeaderDatabin();if(!e.isAllDatabinLoaded())throw new r.jpipExceptions.IllegalDataException("Main header was not loaded on session creation");var t=b.getFirstChannel(),n=t.getChannelId();return m=g+"&cclose=*&cid="+n,E?void u():void(null!==n&&(P=s(d,y),b.setIsReady(!0)))}function d(){if(!(b.getActiveRequestsCount()>0)){var e=b.getFirstChannel();e.sendMinimalRequest(function(){})}}function h(){if(null===b||!b.getIsReady())throw new r.jpipExceptions.InternalErrorException("Cannot perform this operation when the session is not ready")}var g,v,m,x=1e3,y=30*x,E=!1,j=null,b=null,I=null,w=null,C=[],k=0,P=null;this.open=function(e){if(null!==b)throw new r.jpipExceptions.InternalErrorException("session.open() should be called only once");var t=e.indexOf("?")<0?"?":"&";g=e+t+"type="+(a.getIsJpipTilePartStream()?"jpt-stream":"jpp-stream"),v=g+"&stream=0",b=l.createSessionHelper(v,n,i,a),null!==I&&b.setStatusCallback(I),null!==w&&b.setRequestEndedCallback(w);var s=c();s.sendMinimalRequest(f)},this.getTargetId=function(){return h(),b.getTargetId()},this.getIsReady=function(){var e=null!==b&&b.getIsReady();return e},this.setStatusCallback=function(e){I=e,null!==b&&b.setStatusCallback(e)},this.setRequestEndedCallback=function(e){w=e,null!==b&&b.setRequestEndedCallback(e)},this.hasActiveRequests=function(){h();var e=b.getActiveRequestsCount()>0;return e},this.tryGetChannel=function(n){h();var r=k<e,i=r||n,a=i?0:t-1,s=p(a,n);return null===s&&r&&(s=c(n)),n&&null!==s&&s.dedicateForMovableRequest(),s},this.close=function(e){if(0===k)throw new r.jpipExceptions.InternalErrorException("Cannot close session before open");if(E)throw new r.jpipExceptions.InternalErrorException("Cannot close session twice");E=!0,j=e,void 0!==m&&u()}}},{"j2k-jpip-globals.js":16}],28:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(){function e(e,a){var s={nextOffsetToParse:0,validBitsInCurrentByte:0,originalByteWithoutShift:null,currentByte:null,isSkipNextByte:!1},o=a.createTransactionalObject(s),l=null;Object.defineProperty(this,"activeTransaction",{get:function(){if(null===l||!l.isActive)throw new r.jpipExceptions.InternalErrorException("No active transaction in bitstreamReader");return l}}),Object.defineProperty(this,"bitsCounter",{get:function(){var t=o.getValue(l);if(i(e,t),t.isSkipNextByte)throw new r.jpipExceptions.InternalErrorException("Unexpected state of bitstreamReader: When 0xFF encountered, tryValidateCurrentByte should skip the whole byte  after shiftRemainingBitsInByte and clear isSkipNextByte. However the flag is still set");var n=8*t.nextOffsetToParse-t.validBitsInCurrentByte;return n}}),Object.defineProperty(this,"databinOffset",{get:function(){var e=o.getValue(l);if(e.isSkipNextByte)return e.nextOffsetToParse+1;if(e.validBitsInCurrentByte%8!==0||255===e.originalByteWithoutShift)throw new r.jpipExceptions.InternalErrorException("Cannot calculate databin offset when bitstreamReader  is in the middle of the byte");return e.nextOffsetToParse-e.validBitsInCurrentByte/8},set:function(e){var t=o.getValue(l);t.validBitsInCurrentByte=0,t.isSkipNextByte=!1,t.originalByteWithoutShift=null,t.nextOffsetToParse=e}}),this.startNewTransaction=function(){if(null!==l&&l.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot start new transaction in bitstreamReader while another transaction is active");l=a.createTransaction()},this.shiftRemainingBitsInByte=function(){var e=o.getValue(l);e.isSkipNextByte=255===e.originalByteWithoutShift,e.validBitsInCurrentByte=Math.floor(e.validBitsInCurrentByte/8)},this.shiftBit=function(){var n=o.getValue(l);if(!i(e,n))return null;var r=t(e,n,!0,1);return r},this.countZerosAndShiftUntilFirstOneBit=function(n){var r=o.getValue(l),i=t(e,r,!1,n);return i},this.countOnesAndShiftUntilFirstZeroBit=function(n){var r=o.getValue(l),i=t(e,r,!0,n);return i},this.shiftBits=function(t){for(var r=0,a=o.getValue(l),s=t;s>0;){if(!i(e,a))return null;var u=Math.min(a.validBitsInCurrentByte,s),c=a.currentByte>>8-u;r=(r<<u)+c,n(a,u),s-=u}return r}}function t(e,t,r,a){var o,l=0,u=a;do{if(!i(e,t))return null;var c=r?~t.currentByte:t.currentByte,p=Math.min(s[c],t.validBitsInCurrentByte+1),f=p-1;if(void 0!==u){if(p>u){n(t,u),l+=u;break}u-=f}l+=f,o=p<=t.validBitsInCurrentByte,o?n(t,p):t.validBitsInCurrentByte=0}while(!o);return l}function n(e,t){e.validBitsInCurrentByte-=t,e.validBitsInCurrentByte>0&&(e.currentByte=e.currentByte<<t&255)}function i(e,t){if(t.validBitsInCurrentByte>0)return!0;var n=t.isSkipNextByte?2:1,i=[],a=e.copyBytes(i,0,{forceCopyAllRange:!0,databinStartOffset:t.nextOffsetToParse,maxLengthToCopy:n});if(a!==n)return!1;var s=t.originalByteWithoutShift;if(t.currentByte=i[n-1],t.validBitsInCurrentByte=8,t.originalByteWithoutShift=t.currentByte,255===s){if(0!==(128&i[0]))throw new r.j2kExceptions.IllegalDataException("Expected 0 bit after 0xFF byte","B.10.1");t.isSkipNextByte||(t.currentByte<<=1,t.validBitsInCurrentByte=7)}return t.isSkipNextByte=!1,t.nextOffsetToParse+=n,!0}function a(){var e=new Array(255);e[0]=9,e[1]=8,e[2]=7,e[3]=7;var t;for(t=4;t<=7;++t)e[t]=6;for(t=8;t<=15;++t)e[t]=5;for(t=16;t<=31;++t)e[t]=4;for(t=32;t<=63;++t)e[t]=3;for(t=64;t<=127;++t)e[t]=2;for(t=128;t<=255;++t)e[t]=1;for(t=0;t<=255;++t)e[t-256]=e[t];return e}var s=a();return e}()},{"j2k-jpip-globals.js":16}],29:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(){function e(e,t){var i=t.createTransactionalObject({lBlockValue:3});this.parse=function(t){var a=e.countOnesAndShiftUntilFirstZeroBit();if(null===a)return null;var s=i.getValue(e.activeTransaction);s.lBlockValue+=a;var o=n[t];if(void 0===o)throw new r.jpipExceptions.InternalErrorException("Unexpected value of coding passes "+t+". Expected positive integer <= 164");var l=s.lBlockValue+o,u=e.shiftBits(l);return u}}function t(){for(var e=164,t=new Array(e),n=1,r=2,i=0;n<=e;){for(var a=n;a<r;++a)t[a]=i;n*=2,r*=2,++i}return t}var n=t();return e}()},{"j2k-jpip-globals.js":16}],30:[function(e,t,n){"use strict";t.exports=function(){function e(){var e=new Array(17);return e[0]=0,e[1]=0,e[2]=1,e[3]=0,e[4]=4,e[5]=3,e[6]=2,e[7]=1,e[8]=0,e[9]=6,e[10]=5,e[11]=4,e[12]=3,e[13]=2,e[14]=1,e[15]=0,e[16]=0,e}function t(){var e=new Array(17);return e[0]=1,e[1]=2,e[2]=3,e[3]=5,e[4]=6,e[5]=22,e[6]=30,e[7]=34,e[8]=36,e[9]=37,e[10]=101,e[11]=133,e[12]=149,e[13]=157,e[14]=161,e[15]=163,e[16]=164,e}var n=e(),r=t(),i={parse:function(e){var t=e.countOnesAndShiftUntilFirstZeroBit(16);if(null===t)return null;var i=n[t],a=e.shiftBits(i);if(null===a)return null;var s=r[t],o=a+s;return o}};return i}()},{}],31:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a,s){function o(e){for(;h.length<e;){g.startNewTransaction();var t=l(h.length);if(null===t)return void g.activeTransaction.abort();h.push(t),g.activeTransaction.commit()}}function l(e){var t;if(e>0){var n=h[e-1];t=n.headerStartOffset+n.headerLength+n.overallBodyLengthBytes}else t=i;if(g.databinOffset=t,y&&E){var r=f(145);if(null===r)return null;if(r){var a=6;g.databinOffset+=a}}var s=g.shiftBit();if(null===s)return null;if(!s)return g.shiftRemainingBitsInByte(),{headerStartOffset:t,headerLength:1,codeblockBodyLengthByIndex:[],overallBodyLengthBytes:0};var o=u(e);if(null===o)return null;var l=g.databinOffset;return o.headerLength=l-t,o.headerStartOffset=t,o}function u(e){for(var t=0,n=null,r=0;r<b.length;++r){var i=b[r],a=i.calculateSubbandLength(e);if(null===a)return null;n=null===n?a.codeblockBodyLengthByIndex:n.concat(a.codeblockBodyLengthByIndex),t+=a.overallBodyLengthBytes}if(g.shiftRemainingBitsInByte(),j){var s=f(146);if(null===s)return null;if(s){var o=2;g.databinOffset+=o}}return{codeblockBodyLengthByIndex:n,overallBodyLengthBytes:t}}function c(e){var t=Math.min(e,h.length);if(0===t)return{endOffset:i,numQualityLayers:0};var n=h[t-1],r=n.headerStartOffset+n.headerLength+n.overallBodyLengthBytes,a={endOffset:r,numQualityLayers:t};return a}function p(){for(var e=0===a.resolutionLevel?1:3,t=[],n=0;n<e;++n){var r,i;0===a.resolutionLevel?(r=v,i=m):(r=1===n?Math.ceil(v/2):Math.floor(v/2),i=0===n?Math.ceil(m/2):Math.floor(m/2)),0!==r&&0!==i&&t.push(s.createSubbandLengthInPacketHeaderCalculator(g,r,i))}return t}function f(e){var t=new Array(2),r=n.copyBytes(t,0,{databinStartOffset:g.databinOffset,maxLengthToCopy:2,forceCopyAllRange:!1});switch(r){case 2:var i=255===t[0]&&t[1]===e;return i;case 1:return 255===t[0]&&null;default:return null}}function d(){if(!y)throw new r.jpipExceptions.UnsupportedFeatureException("PPM or PPT","A.7.4 and A.7.5")}var h=[],g=s.createBitstreamReader(n),v=t.getNumCodeblocksXInPrecinct(a),m=t.getNumCodeblocksYInPrecinct(a),x=e.getNumQualityLayers(),y=e.getIsPacketHeaderNearData(),E=e.getIsStartOfPacketMarkerAllowed(),j=e.getIsEndPacketHeaderMarkerAllowed(),b=p();this.calculateEndOffsetOfLastFullPacket=function(e){var t,r=void 0===e||e>=x;if(r){if(n.isAllDatabinLoaded()){var i=n.getDatabinLengthIfKnown();return{endOffset:i,numQualityLayers:x}}t=x}else t=e;d(),o(t);var a=c(t);return a},this.getPacketOffsetsByCodeblockIndex=function(e){return d(),o(e+1),h.length<=e?null:h[e]}}},{"j2k-jpip-globals.js":16}],32:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t){function n(n,a){var s=n.getCachedData(i);if(void 0!==s.calculator)return s.calculator;if(void 0===a)throw new r.jpipExceptions.InternalErrorException("precinctPosition should be given on the first time of using QualityLayersCache on this precinct");var o=e.getTileStructure(a.tileIndex),l=o.getComponentStructure(a.component);return s.calculator=t.createPacketLengthCalculator(o,l,n,0,a),s.calculator}var i="packetLengthCalculator";this.getPacketOffsetsByCodeblockIndex=function(e,t,r){var i=n(e,r),a=i.getPacketOffsetsByCodeblockIndex(t);return a},this.getQualityLayerOffset=function(e,t,r){var i,a=e.getExistingRanges(),s=n(e,r);a.length<1||a[0].start>0?(i=0,t=0):i=a[0].start+a[0].length;for(var o=s.calculateEndOffsetOfLastFullPacket(t);i<o.endOffset;){var l=o.numQualityLayers-1;o=s.calculateEndOffsetOfLastFullPacket(l)}return o}}},{"j2k-jpip-globals.js":16}],33:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i,a,s){function o(t){var n=f.getValue(e.activeTransaction);if(n>=t+1)throw new r.jpipExceptions.InternalErrorException("Unexpected quality layer to parse")}function l(){if(null===c){c=new Array(t),p=new Array(t);for(var r=0;r<t;++r){c[r]=new Array(n),p[r]=new Array(n);for(var i=0;i<n;++i)c[r][i]=s.createCodeblockLengthParser(e,a),p[r][i]=a.createTransactionalObject({isIncluded:!1})}}}function u(t,n,r){var a,s=p[t][n].getValue(e.activeTransaction);if(a=s.isIncluded?e.shiftBit():d.isSmallerThanOrEqualsTo(t,n,r),null===a)return null;if(!a)return{codeblockBodyLengthBytes:0,codingPasses:0};var o=null;if(!s.isIncluded&&(o=h.getValue(t,n),null===o))return null;var l=i.parse(e);if(null===l)return null;var u=c[t][n],f=u.parse(l);if(null===f)return null;s.isIncluded=!0;var g={codeblockBodyLengthBytes:f,codingPasses:l};return null!==o&&(g.zeroBitPlanes=o),g}var c=null,p=null,f=a.createTransactionalObject(0,!0),d=s.createTagTree(e,t,n),h=s.createTagTree(e,t,n);this.calculateSubbandLength=function(r){o(r),l(),d.setMinimalValueIfNotReadBits(r);for(var i=0,a=0,s=new Array(t*n),c=0;c<n;++c)for(var p=0;p<t;++p){var h=u(p,c,r);if(null===h)return null;s[a++]=h,i+=h.codeblockBodyLengthBytes}return f.setValue(e.activeTransaction,r+1),{codeblockBodyLengthByIndex:s,overallBodyLengthBytes:i}}}},{"j2k-jpip-globals.js":16}],34:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i){function a(){c=[];for(var e=t,r=n;e>=1||r>=1;){e=Math.ceil(e),r=Math.ceil(r);var i=e*r;c.unshift({width:e,height:r,content:new Array(i)}),e/=2,r/=2}o(0,0)}function s(t,n){function i(){if(null===a)throw new r.jpipExceptions.InternalErrorException("Iterated too deep in tag tree");if(a===c.length)return a=null,null;var i=c.length-a-1,l=Math.floor(t>>i),u=Math.floor(n>>i),p=c[a].width*u+l,f=c[a].content[p];void 0===f&&(f=o(a,p));var d=f.getValue(e.activeTransaction);return null!==s&&s.minimalPossibleValue>d.minimalPossibleValue&&(d.minimalPossibleValue=s.minimalPossibleValue),s=d,++a,d}var a=0,s=null;return i}function o(e,t){var n={minimalPossibleValue:0,isFinalValue:!1},r=i.createTransactionalObject(n);return c[e].content[t]=r,r}function l(){var t=p.getValue(e.activeTransaction);return t}function u(){p.setValue(e.activeTransaction,!0)}var c,p=i.createTransactionalObject(!1,!0);a(),this.setMinimalValueIfNotReadBits=function(t){if(!l()){var n=c[0].content[0],r=n.getValue(e.activeTransaction);r.minimalPossibleValue=t}},this.isSmallerThanOrEqualsTo=function(t,n,i){u();for(var a,o=s(t,n),l=o();null!==l;){if(l.minimalPossibleValue>i)return!1;if(!l.isFinalValue){var c=i-l.minimalPossibleValue+1,p=e.countZerosAndShiftUntilFirstOneBit(c);if(null===p)return null;l.minimalPossibleValue+=p,p<c&&(l.isFinalValue=!0)}a=l,l=o()}var f=a.minimalPossibleValue<=i;if(f&&!a.isFinalValue)throw new r.jpipExceptions.InternalErrorException("Wrong parsing in TagTree.isSmallerThanOrEqualsTo: not sure if value is smaller than asked");return f},this.getValue=function(t,n){var r,i=s(t,n),a=i();for(u();null!==a;){if(!a.isFinalValue){var o=e.countZerosAndShiftUntilFirstOneBit();if(null===o)return null;a.minimalPossibleValue+=o,a.isFinalValue=!0}r=a,a=i()}return r.minimalPossibleValue}}},{"j2k-jpip-globals.js":16}],35:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports={createTransaction:function(){function e(e){if(!n.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot terminate an already terminated transaction");t=e?2:3}var t=1,n={get isAborted(){return 3===t},get isActive(){return 1===t},commit:function(){e(!0)},abort:function(){e(!1)}};return n},createTransactionalObject:function(e,t){function n(e){if(!e.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot use terminated transaction to access objects");if(e!==l&&l.isActive)throw new r.jpipExceptions.InternalErrorException("Cannot simultanously access transactional object from two active transactions")}function i(e){return e}function a(e){var t=JSON.parse(JSON.stringify(e));return t}var s=null,o=e,l={isActive:!1,isAborted:!0},u=t?i:a,c={getValue:function(e){return n(e),l===e?s:(l.isAborted?s=u(o):o=u(s),l=e,s)},setValue:function(e,t){return n(e),l===e?void(s=t):(l.isAborted||(o=u(s)),l=e,void(s=t))}};return c}}},{"j2k-jpip-globals.js":16}],36:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports.JpipImage=e("jpip-image.js"),t.exports.PdfjsJpxDecoder=e("pdfjs-jpx-decoder.js"),t.exports.j2kExceptions=r.j2kExceptions,t.exports.jpipExceptions=r.jpipExceptions,t.exports.Internals={jpipRuntimeFactory:e("jpip-runtime-factory.js"),jGlobals:r}},{"j2k-jpip-globals.js":16,"jpip-image.js":4,"jpip-runtime-factory.js":17,"pdfjs-jpx-decoder.js":6}],37:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i){function a(e,t,n,i,a){var s=e(v,t,n,i,a);if(null===s)return null;var o=new Uint8Array(s),l=e(o,t,n,i,a);if(l===s)return o;if(null===l)return null;throw new r.jpipExceptions.InternalErrorException("JpipCodestreamReconstructor: Unmatched actualLength "+l+" and calculatedLength "+s)}function s(t,n){var i=u(t);if(null===i)return null;var a,s=e.getNumTilesX()*e.getNumTilesY();void 0===n&&(n="max");for(var o=0;o<s;++o){var l=c(t,i,o,o,a,n);if(i+=l,null===l)return null}var p=h(t,i,r.j2kMarkers.EndOfCodestream);return i+=p}function o(t,i,a,s){var o=u(t,i.level);if(null===o)return null;var l=0,p=e.getTilesIterator(i);do{var f=p.tileIndex,d=c(t,o,l++,f,i,a,s);if(o+=d,null===d)return null}while(p.tryAdvance());var g=h(t,o,r.j2kMarkers.EndOfCodestream);return o+=g,n.modifyImageSize(t,i),null===t?null:o}function l(t,i,a,s,o){var l=u(t,a);if(null===l)return null;var p={level:a,quality:o},f=c(t,l,0,i,p,s);if(l+=f,null===f)return null;var d=h(t,l,r.j2kMarkers.EndOfCodestream);l+=d;var g=e.getNumTilesX(),v=i%g,m=Math.floor(i/g);return n.modifyImageSize(t,{level:a,minTileX:v,maxTileXExclusive:v+1,minTileY:m,maxTileYExclusive:m+1}),l}function u(e,i){if(t.getIsJpipTilePartStream())throw new r.jpipExceptions.UnsupportedFeatureException("reconstruction of codestream from JPT (Jpip Tile-part) stream","A.3.4");var a=t.getMainHeaderDatabin(),s=a.copyBytes(e,0,{forceCopyAllRange:!0});if(null===s)return null;var o=n.modifyMainOrTileHeader(e,a,0,i);return s+=o,o=d(e,s),s+=o}function c(r,i,a,s,o,l,u){var c,d=e.getTileStructure(s),h=i,g=t.getTileHeaderDatabin(s);void 0!==o&&(c=o.level);var v=p(r,i,g,a,c);if(null===v)return null;if(i=v.endTileHeaderOffset,!u){var m=f(r,i,d,s,o,l);if(i+=m,null===m)return null}var x=i,y=x-v.startOfTileHeaderOffset;n.modifyInt32(r,v.headerAndDataLengthPlaceholderOffset,y);var E=x-h;return E}function p(e,t,i,a,s){var o=t,l=h(e,t,r.j2kMarkers.StartOfTile);t+=l;var u=[0,10];l=h(e,t,u),t+=l;var c=[a>>>8,255&a];l=h(e,t,c),t+=l;var p=t,f=[0,0,0,0];l=h(e,t,f),t+=l;var d=[0];l=h(e,t,d),t+=l;var g=[1];l=h(e,t,g),t+=l;var v=t;if(l=i.copyBytes(e,t,{forceCopyAllRange:!0}),t+=l,null===l)return null;var m=e[t-2]===r.j2kMarkers.StartOfData[0]&&e[t-1]===r.j2kMarkers.StartOfData[1];m||(l=h(e,t,r.j2kMarkers.StartOfData),t+=l);var x=n.modifyMainOrTileHeader(e,i,v,s);t+=x;var y={startOfTileHeaderOffset:o,headerAndDataLengthPlaceholderOffset:p,endTileHeaderOffset:t};return y}function f(e,n,r,a,s,o){var l,u=r.getNumQualityLayers(),c=r.getPrecinctIterator(a,s,!0),p=0;void 0!==s&&(l=s.quality),"max"===o&&(o=u);do{var f=u;if(c.isInCodestreamPart){var d=r.precinctPositionToInClassIndex(c),h=t.getPrecinctDatabin(d),g=i.getQualityLayerOffset(h,l,c),v=g.endOffset;if(f=u-g.numQualityLayers,g.numQualityLayers<o)return null;var m=h.copyBytes(e,n,{forceCopyAllRange:!0,maxLengthToCopy:v});null===m&&(m=0,f=u),p+=m,n+=m}if(!e.dummyBufferForLengthCalculation)for(var x=0;x<f;++x)e[n++]=0;p+=f}while(c.tryAdvance());return p}function d(e,t){var n=t;g(e,t++,255),g(e,t++,100),g(e,t++,0),g(e,t++,9),g(e,t++,77),g(e,t++,97),g(e,t++,109),g(e,t++,97),g(e,t++,122),g(e,t++,97),g(e,t++,118);var r=t-n;return r}function h(e,t,n){if(!e.dummyBufferForLengthCalculation)for(var r=0;r<n.length;++r)e[r+t]=n[r];return n.length}function g(e,t,n){e.dummyBufferForLengthCalculation||(e[t]=n)}var v={dummyBufferForLengthCalculation:!0};this.reconstructCodestream=function(e){return a(s,e)},this.createCodestreamForRegion=function(t,n,r){var i=a(o,t,n,r);if(null===i)return null;var s=e.getTilesIterator(t),l=s.tileIndex,u=e.getTileLeft(l,t.level),c=e.getTileTop(l,t.level),p=t.minX-u,f=t.minY-c;return{codestream:i,offsetX:p,offsetY:f}},this.createCodestreamForTile=function(e,t,n,r){return a(l,e,t,n,r)}}},{"j2k-jpip-globals.js":16}],38:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n){function i(e,n,r){var i=t.getCodingStyleOffset(n);if(null!==i){var a=r+i+5;e[a]=l}}function a(e,t,n){if(0===t.length)return 0;if(!e.dummyBufferForLengthCalculation)for(var r=0;r<t.length;++r){var i=n+t[r].markerSegmentLengthOffset,a=(e[i]<<8)+e[i+1],s=a-t[r].length;e[i]=s>>>8,e[i+1]=255&s}for(var o=n+t[0].start,l=o,u=0;u<t.length;++u){l+=t[u].length;for(var c=u+1<t.length?n+t[u+1].start:e.length;l<c;++l)e[o]=e[l],++o}var p=l-o;return p}function s(e,t,n){e.dummyBufferForLengthCalculation||(e[t++]=n>>>24,e[t++]=n>>>16&255,e[t++]=n>>>8&255,e[t++]=255&n)}function o(e){switch(e){case"LRCP":return 0;case"RLCP":return 1;case"RPCL":return 2;case"PCRL":return 3;case"CPRL":return 4;default:throw new r.j2kExceptions.IllegalDataException("Progression order of "+e,"A.6.1, table A.16")}}var l=o(n);this.modifyMainOrTileHeader=function(e,n,r,s){if(e.dummyBufferForLengthCalculation||i(e,n,r),void 0===s)return 0;var o=t.getRangesOfBestResolutionLevelsData(n,s);if(null!==o.numDecompositionLevelsOffset&&!e.dummyBufferForLengthCalculation){var l=r+o.numDecompositionLevelsOffset;e[l]-=s}var u=a(e,o.ranges,r),c=-u;return c},this.modifyImageSize=function(n,i){if(!n.dummyBufferForLengthCalculation){var a=e.getTileWidth(i.level),o=e.getTileHeight(i.level),l=e.getSizeOfPart(i),u=t.getImageAndTileSizeOffset(),c=u+r.j2kOffsets.REFERENCE_GRID_SIZE_OFFSET_AFTER_SIZ_MARKER,p=c+8,f=c+16,d=c+24;s(n,c,l.width),s(n,c+4,l.height),s(n,f,a),s(n,f+4,o),s(n,p,0),s(n,p+4,0),s(n,d,0),s(n,d+4,0)}},this.modifyInt32=s}},{"j2k-jpip-globals.js":16}],39:[function(e,t,n){"use strict";var r=e("j2k-jpip-globals.js");t.exports=function(e,t,n,i){function a(n,a,o){var l=e.getTilesIterator(n),u=0,c=0,p={packetDataOffsets:[],data:i.createCompositeArray(c),allRelevantBytesLoaded:0};do{var f=e.getTileStructure(l.tileIndex),d=f.getPrecinctIterator(l.tileIndex,n),h=f.getNumQualityLayers();if(void 0!==n.quality&&(h=Math.min(h,n.quality)),"max"===a)a=h;else if(a>h)throw new r.jpipExceptions.InternalErrorException("minNumQualityLayers is larger than quality");do{if(!d.isInCodestreamPart)throw new r.jpipExceptions.InternalErrorException("Unexpected precinct not in codestream part");var g=f.precinctPositionToInClassIndex(d),v=t.getPrecinctDatabin(g),m=o.getObject(v);void 0===m.layerPerCodeblock&&(m.layerPerCodeblock=[]);var x=s(p,u,d,v,m,h);if(x<a)return null}while(d.tryAdvance());++u}while(l.tryAdvance());var y=new Uint8Array(p.data.getLength());return p.data.copyToTypedArray(y,0,0,p.data.getLength()),p.data=y,p}function s(e,t,r,i,a,s){var o,l;for(o=0;o<s;++o){var u=n.getPacketOffsetsByCodeblockIndex(i,o,r);if(null===u)break;l=u.headerStartOffset+u.headerLength;for(var c=u.codeblockBodyLengthByIndex.length,p=new Array(c),f=!1,d=0;d<c;++d){var h=a.layerPerCodeblock[d];if(void 0===h)h={layer:-1},a.layerPerCodeblock[d]=h;else if(h.layer>=o)continue;var g=u.codeblockBodyLengthByIndex[d],v=e.data.getLength(),m=i.copyToCompositeArray(e.data,{databinStartOffset:l,maxLengthToCopy:g.codeblockBodyLengthBytes,forceCopyAllRange:!0});if(m!==g.codeblockBodyLengthBytes){p.length=d,f=!0;break}h.layer=o,p[d]={start:v,end:v+g.codeblockBodyLengthBytes,codingpasses:g.codingPasses,zeroBitPlanes:g.zeroBitPlanes},l+=g.codeblockBodyLengthBytes}var x={tileIndex:t,r:r.resolutionLevel,p:r.precinctIndexInComponentResolution,c:r.component,l:o,codeblockOffsets:p};if(e.packetDataOffsets.push(x),f)break}return e.allRelevantBytesLoaded+=l,o}this.getAllCodeblocksData=function(e,t){var n=i.createObjectPoolByDatabin(),r=a(e,t,n);return{codeblocksData:r,alreadyReturnedCodeblocks:n}},this.getNewCodeblocksDataAndUpdateReturnedCodeblocks=a}},{"j2k-jpip-globals.js":16}]},{},[36])(36)});

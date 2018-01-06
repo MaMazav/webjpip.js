@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipSubbandLengthInPacketHeaderCalculator =
+module.exports =
     function JpipSubbandLengthInPacketHeaderCalculator(
         bitstreamReader,
         numCodeblocksX,

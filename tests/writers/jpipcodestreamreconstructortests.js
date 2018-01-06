@@ -94,8 +94,9 @@ QUnit.test('reconstructCodestream (simple reconstruction)', function(assert) {
         
     var fullReconstructedExpected = getFullReconstructedExpected();
     var fullReconstructedActual = reconstructor.reconstructCodestream();
+    var fullReconstructedActualAsArray = Array.from(fullReconstructedActual);
     assert.deepEqual(
-        fullReconstructedActual, fullReconstructedExpected, 'reconstructCodestream');
+        fullReconstructedActualAsArray, fullReconstructedExpected, 'reconstructCodestream');
     });
     
 QUnit.test('createCodestreamForTile (simple reconstruction)', function(assert) {
@@ -103,8 +104,9 @@ QUnit.test('createCodestreamForTile (simple reconstruction)', function(assert) {
         
     var singleTileReconstructedExpected = getSingleTileReconstructedExpected();
     var tileReconstructedActual = reconstructor.createCodestreamForTile(1);
+    var tileReconstructedActualAsArray = Array.from(tileReconstructedActual);
     assert.deepEqual(
-        tileReconstructedActual, singleTileReconstructedExpected, 'createCodestreamForTile');
+        tileReconstructedActualAsArray, singleTileReconstructedExpected, 'createCodestreamForTile');
     });
 
 QUnit.test('createCodestreamForTile (with resolution levels to cut)', function(assert) {
@@ -127,8 +129,9 @@ QUnit.test('createCodestreamForTile (with resolution levels to cut)', function(a
     var singleTileReconstructedExpected = getSingleTileReconstructedExpected();
     var tileReconstructedActual = reconstructor.createCodestreamForTile(
         1, numResolutionLevels);
+    var tileReconstructedActualAsArray = Array.from(tileReconstructedActual);
     assert.deepEqual(
-        tileReconstructedActual, singleTileReconstructedExpected, 'createCodestreamForTile');
+        tileReconstructedActualAsArray, singleTileReconstructedExpected, 'createCodestreamForTile');
         
     var levelExpected = numResolutionLevels;
     var levelActual = modifier.levelArgumentForTest;
@@ -152,8 +155,11 @@ QUnit.test('reconstructCodestream (precinct data not recieved)', function(assert
     var noPrecinctReconstructedExpected =
         getFullReconstructedExpectedWithEmptyPrecinctExpected();
     
+    var noPrecinctReconstructedActualAsArray =
+        Array.from(noPrecinctReconstructedActual);
+    
     assert.deepEqual(
-        noPrecinctReconstructedActual,
+        noPrecinctReconstructedActualAsArray,
         noPrecinctReconstructedExpected,
         'No precinct data - reconstruction should succeed with empty packets'
         );
@@ -173,8 +179,11 @@ QUnit.test('createCodestreamForTile (precinct data not recieved)', function(asse
     var noPrecinctReconstructedExpected =
         getSingleTileReconstructedWithEmptyPrecinctExpected();
     
+    var noPrecinctReconstructedActualAsArray =
+        Array.from(noPrecinctReconstructedActual);
+    
     assert.deepEqual(
-        noPrecinctReconstructedActual,
+        noPrecinctReconstructedActualAsArray,
         noPrecinctReconstructedExpected,
         'Missing precinct - empty precinct should be added'
         );

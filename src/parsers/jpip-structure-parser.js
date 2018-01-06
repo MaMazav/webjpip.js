@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipStructureParser = function JpipStructureParser(
+module.exports = function JpipStructureParser(
     databinsSaver, markersParser, messageHeaderParser, offsetsCalculator) {
     
     this.parseCodestreamStructure = function parseCodestreamStructure() {

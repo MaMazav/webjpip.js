@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipPacketLengthCalculator = function JpipPacketLengthCalculator(
+module.exports = function JpipPacketLengthCalculator(
     tileStructure,
     componentStructure,
     databin,

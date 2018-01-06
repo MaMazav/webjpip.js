@@ -2,7 +2,7 @@
 
 var jGlobals = require('j2k-jpip-globals.js');
 
-module.exports.JpipBitstreamReader = (function JpipBitstreamReaderClosure() {
+module.exports = (function JpipBitstreamReaderClosure() {
     var zeroBitsUntilFirstOneBitMap = createZeroBitsUntilFirstOneBitMap();
 
     function JpipBitstreamReader(databin, transactionHelper) {
