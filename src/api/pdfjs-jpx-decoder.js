@@ -4,8 +4,10 @@ module.exports = PdfjsJpxDecoder;
 
 var jGlobals = require('j2k-jpip-globals.js');
 
+import { JpxImage } from 'jpx.js';
+
 function PdfjsJpxDecoder() {
-    this._image = new pdfjsCoreJpx.JpxImage();
+    this._image = new JpxImage();
 }
 
 PdfjsJpxDecoder.prototype.start = function start(data) {

@@ -132,7 +132,7 @@ function JpipFetch(fetchContext, requester, progressiveness) {
         if (nextProgressiveStage >= progressiveness.length) {
             fetchContext.done();
         }
-    };
+    }
 
     function requesterCallbackOnFailure() {
         //updateStatus(STATUS_ENDED, 'endAsync()');
@@ -148,7 +148,7 @@ function JpipFetch(fetchContext, requester, progressiveness) {
         //    throw new jGlobals.jpipExceptions.InternalErrorException(
         //        'Failure callback to an old fetch which has been already moved');
         //}
-    };
+    }
 }
 
 //function JpipFetchHandle(requester, imageDataContext, dedicatedChannelHandle) {
