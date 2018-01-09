@@ -7,5 +7,6 @@
 		"pdfjsCoreJpx": false,
 		"Promise": false,
 		"ImageData": false
-	}
+	},
+    "esversion": 6
 }
