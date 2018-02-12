@@ -3,14 +3,14 @@
 var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = function JpipHeaderModifier(
-    codestreamStructure, offsetsCalculator, progressionOrder) {
+    offsetsCalculator, progressionOrder) {
 
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);
         
     this.modifyMainOrTileHeader = function modifyMainOrTileHeader(
         result, originalDatabin, databinOffsetInResult, level) {
         
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             modifyProgressionOrder(result, originalDatabin, databinOffsetInResult);
         }
         
@@ -22,7 +22,7 @@ module.exports = function JpipHeaderModifier(
             offsetsCalculator.getRangesOfBestResolutionLevelsData(
                 originalDatabin, level);
         
-        if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null && !result.dummyBufferForLengthCalculation) {
+        if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null && !result.isDummyBufferForLengthCalculation) {
             var offset =
                 databinOffsetInResult +
                 bestResolutionLevelsRanges.numDecompositionLevelsOffset;
@@ -37,18 +37,12 @@ module.exports = function JpipHeaderModifier(
         return bytesAdded;
     };
     
-    this.modifyImageSize = function modifyImageSize(result, codestreamPartParams) {
-        if (result.dummyBufferForLengthCalculation) {
+    this.modifyImageSize = function modifyImageSize(
+        result, newReferenceGridSize) {
+        
+        if (result.isDummyBufferForLengthCalculation) {
             return;
         }
-        
-        var newTileWidth = codestreamStructure.getTileWidth(
-            codestreamPartParams.level);
-        var newTileHeight = codestreamStructure.getTileHeight(
-            codestreamPartParams.level);
-        
-        var newReferenceGridSize = codestreamStructure.getSizeOfPart(
-            codestreamPartParams);
         
         var sizMarkerOffset = offsetsCalculator.getImageAndTileSizeOffset();
             
@@ -59,11 +53,11 @@ module.exports = function JpipHeaderModifier(
         var tileSizeBytesOffset = referenceGridSizeOffset + 16;
         var firstTileOffsetBytesOffset = referenceGridSizeOffset + 24;
         
-        modifyInt32(result, referenceGridSizeOffset, newReferenceGridSize.width);
-        modifyInt32(result, referenceGridSizeOffset + 4, newReferenceGridSize.height);
+        modifyInt32(result, referenceGridSizeOffset, newReferenceGridSize.regionWidth);
+        modifyInt32(result, referenceGridSizeOffset + 4, newReferenceGridSize.regionHeight);
         
-        modifyInt32(result, tileSizeBytesOffset, newTileWidth);
-        modifyInt32(result, tileSizeBytesOffset + 4, newTileHeight);
+        modifyInt32(result, tileSizeBytesOffset, newReferenceGridSize.tileWidth);
+        modifyInt32(result, tileSizeBytesOffset + 4, newReferenceGridSize.tileHeight);
         
         modifyInt32(result, imageOffsetBytesOffset, 0);
         modifyInt32(result, imageOffsetBytesOffset + 4, 0);
@@ -90,7 +84,7 @@ module.exports = function JpipHeaderModifier(
             return 0; // zero bytes removed
         }
         
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             for (var i = 0; i < rangesToRemove.length; ++i) {
                 var offset =
                     addOffset +
@@ -129,7 +123,7 @@ module.exports = function JpipHeaderModifier(
     }
 
     function modifyInt32(bytes, offset, newValue) {
-        if (bytes.dummyBufferForLengthCalculation) {
+        if (bytes.isDummyBufferForLengthCalculation) {
             return;
         }
         

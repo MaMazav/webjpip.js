@@ -171,59 +171,20 @@ module.exports = function JpipCodestreamStructure(
         return result;
     };
     
-    this.getTilesIterator = function getTilesIterator(codestreamPartParams) {
+    this.getTilesFromPixels = function getTilesFromPixels(
+        codestreamPartParams) {
+        
         validateParams();
-        var bounds = sizesCalculator.getTilesFromPixels(codestreamPartParams);
-        
-        var setableIterator = {
-            currentX: bounds.minTileX,
-            currentY: bounds.minTileY
-        };
-        
-        var iterator = {
-            get tileIndex() {
-                var firstInRow =
-                    setableIterator.currentY * sizesCalculator.getNumTilesX();
-                var index = firstInRow + setableIterator.currentX;
-                
-                return index;
-            },
-            
-            tryAdvance: function tryAdvance() {
-                var result = tryAdvanceTileIterator(setableIterator, bounds);
-                return result;
-            }
-        };
-        
-        return iterator;
+
+        return sizesCalculator.getTilesFromPixels(codestreamPartParams);
     };
-    
-    this.getSizeOfPart = function getSizeOfPart(codestreamPartParams) {
+
+    this.getSizeOfTiles = function getSizeOfTiles(tileBounds) {
         validateParams();
         
-        var size = sizesCalculator.getSizeOfPart(codestreamPartParams);
+        var size = sizesCalculator.getSizeOfTiles(tileBounds);
         return size;
     };
-    
-    function tryAdvanceTileIterator(setableIterator, bounds) {
-        if (setableIterator.currentY >= bounds.maxTileYExclusive) {
-            throw new jGlobals.jpipExceptions.InternalErrorException(
-                'Cannot advance tile iterator after end');
-        }
-        
-        ++setableIterator.currentX;
-        if (setableIterator.currentX < bounds.maxTileXExclusive) {
-            return true;
-        }
-        
-        setableIterator.currentX = bounds.minTileX;
-        ++setableIterator.currentY;
-        
-        var isMoreTilesAvailable =
-            setableIterator.currentY < bounds.maxTileYExclusive;
-        
-        return isMoreTilesAvailable;
-    }
     
     function getTileStructure(tileId) {
         validateParams();

@@ -4,8 +4,8 @@ var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = JpipImageDataContext;
 
-function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness) {
-    this._codestreamPartParams = codestreamPartParams;
+function JpipImageDataContext(jpipObjects, codestreamPart, progressiveness) {
+    this._codestreamPart       = codestreamPart;
     this._progressiveness      = progressiveness;
     this._reconstructor        = jpipObjects.reconstructor;
     this._packetsDataCollector = jpipObjects.packetsDataCollector;
@@ -17,9 +17,11 @@ function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness
     this._progressiveStagesFinished = 0;
     this._qualityLayersReached = 0;
     this._dataListeners = [];
+    this._offsetX = -1;
+    this._offsetY = -1;
     
     this._listener = this._jpipFactory.createRequestDatabinsListener(
-        codestreamPartParams,
+        this._codestreamPart,
         this._qualityLayerReachedCallback.bind(this),
         this._codestreamStructure,
         this._databinsSaver,
@@ -39,15 +41,11 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality)
     }
     
     //ensureNoFailure();
-    var params = this._getParamsForDataWriter(quality);
-    var codeblocks = this._packetsDataCollector.getAllCodeblocksData(
-        params.codestreamPartParams,
-        params.minNumQualityLayers);
+    var part = this._getPartForDataWriter(quality);
+    var codeblocks = this._packetsDataCollector.getAllCodeblocksData(part);
     
-    var headersCodestream = this._reconstructor.createCodestreamForRegion(
-        params.codestreamPartParams,
-        params.minNumQualityLayers,
-        /*isOnlyHeadersWithoutBitstream=*/true);
+    var headersCodestream =
+        this._getCodestream(quality, /*isOnlyHeadersWithoutBitstream=*/true);
     
     if (codeblocks.codeblocksData === null) {
         throw new jGlobals.jpipExceptions.InternalErrorException(
@@ -65,27 +63,13 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality)
     return {
         headersCodestream: headersCodestream,
         codeblocksData: codeblocks.codeblocksData,
-        codestreamPartParams: this._codestreamPartParams
+        width: this._codestreamPart.width,
+        height: this._codestreamPart.height
     };
 };
 
 JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedDataAsCodestream(quality) {
-    this._ensureNotDisposed();
-    //ensureNoFailure();
-    
-    var params = this._getParamsForDataWriter(quality);
-    
-    var codestream = this._reconstructor.createCodestreamForRegion(
-        params.codestreamPartParams,
-        params.minNumQualityLayers);
-    
-    if (codestream === null) {
-        throw new jGlobals.jpipExceptions.InternalErrorException(
-            'Could not reconstruct codestream although ' +
-            'progressiveness stage has been reached');
-    }
-    
-    return codestream;
+    return this._getCodestream(quality, /*isOnlyHeadersWithoutBitstream=*/false);
 };
 
 JpipImageDataContext.prototype.on = function on(event, listener) {
@@ -125,12 +109,6 @@ JpipImageDataContext.prototype.isDisposed = function isDisposed() {
     return !this._listener;
 };
 
-JpipImageDataContext.prototype.getCodestreamPartParams =
-    function getCodestreamPartParams() {
-        
-    return this._codestreamPartParams;
-};
-
 JpipImageDataContext.prototype.getNextQualityLayer =
     function getNextQualityLayer() {
         
@@ -138,6 +116,47 @@ JpipImageDataContext.prototype.getNextQualityLayer =
 };
 
 // Private methods
+
+JpipImageDataContext.prototype._getCodestream = function getCodestream(
+    quality, isOnlyHeadersWithoutBitstream) {
+    
+    this._ensureNotDisposed();
+    //ensureNoFailure();
+    
+    var codestreamPart = this._getPartForDataWriter(quality);
+    
+    var codestream = this._reconstructor.createCodestreamForRegion(
+        codestreamPart, isOnlyHeadersWithoutBitstream);
+    
+    if (codestream === null) {
+        throw new jGlobals.jpipExceptions.InternalErrorException(
+            'Could not reconstruct codestream although ' +
+            'progressiveness stage has been reached');
+    }
+    
+    if (this._offsetX < 0) {
+        var tileIterator = codestreamPart.getTileIterator();
+        if (!tileIterator.tryAdvance()) {
+            throw new jGlobals.jpipExceptions.InternalErrorException(
+                'Empty codestreamPart in JpipImageDataContext');
+        }
+        var firstTileId = tileIterator.tileIndex;
+        
+        var firstTileLeft = this._codestreamStructure.getTileLeft(
+            firstTileId, codestreamPart.level);
+        var firstTileTop = this._codestreamStructure.getTileTop(
+            firstTileId, codestreamPart.level);
+            
+        this._offsetX = codestreamPart.minX - firstTileLeft;
+        this._offsetY = codestreamPart.minY - firstTileTop;
+    }
+    
+    return {
+        codestream: codestream,
+        offsetX: this._offsetX,
+        offsetY: this._offsetY
+    };
+};
 
 JpipImageDataContext.prototype._tryAdvanceProgressiveStage = function tryAdvanceProgressiveStage() {
     var numQualityLayersToWait = this._progressiveness[
@@ -190,7 +209,7 @@ JpipImageDataContext.prototype._qualityLayerReachedCallback = function qualityLa
     }
 };
 
-JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDataWriter(quality) {
+JpipImageDataContext.prototype._getPartForDataWriter = function getPartForDataWriter(quality) {
     //ensureNotEnded(status, /*allowZombie=*/true);
     
     //if (codestreamPartParams === null) {
@@ -209,24 +228,18 @@ JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDa
             'stage has been reached');
     }
     
-    var minNumQualityLayers =
+    var qualityReached =
         this._progressiveness[this._progressiveStagesFinished - 1].minNumQualityLayers;
     
-    var newParams = this._codestreamPartParams;
-    if (quality !== undefined) {
-        newParams = Object.create(this._codestreamPartParams);
-        newParams.quality = quality;
-        
-        if (minNumQualityLayers !== 'max') {
-            minNumQualityLayers = Math.min(
-                minNumQualityLayers, quality);
-        }
-    }
+    var minNumQualityLayers =
+        qualityReached === 'max' ? quality :
+        quality === 'max' || quality === undefined ? qualityReached :
+        Math.min(qualityReached, quality);
     
-    return {
-        codestreamPartParams: newParams,
-        minNumQualityLayers: minNumQualityLayers
-        };
+    this._codestreamPart.setMinNumQualityLayers(minNumQualityLayers);
+    this._codestreamPart.setMaxNumQualityLayersLimit(quality);
+    
+    return this._codestreamPart;
 };
 
 JpipImageDataContext.prototype._ensureNotDisposed = function ensureNotDisposed() {

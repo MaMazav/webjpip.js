@@ -52,6 +52,10 @@ module.exports = function JpipTileStructure(
         return sizeParams.isEndPacketHeaderMarkerAllowed;
     };
     
+    this.getMinNumResolutionLevelsOverComponents = function() {
+        return minNumResolutionLevels;
+    };
+    
     this.precinctInClassIndexToPosition = function(inClassIndex) {
         // A.3.2
         
@@ -121,7 +125,7 @@ module.exports = function JpipTileStructure(
         var numComponents = codestreamStructure.getNumComponents();
         validateArgumentInRange(
             'precinctPosition.component', precinctPosition.component, numComponents);
-        
+
         var componentStructure = componentStructures[precinctPosition.component];
 
         var numResolutionLevels = componentStructure.getNumResolutionLevels();
@@ -131,7 +135,7 @@ module.exports = function JpipTileStructure(
         var numTiles = codestreamStructure.getNumTilesX() * codestreamStructure.getNumTilesY();
         var precinctsX = componentStructure.getNumPrecinctsX(precinctPosition.resolutionLevel);
         var precinctsY = componentStructure.getNumPrecinctsY(precinctPosition.resolutionLevel);
-        
+
         validateArgumentInRange(
             'precinctPosition.precinctX', precinctPosition.precinctX, precinctsX);
         validateArgumentInRange(
@@ -139,96 +143,35 @@ module.exports = function JpipTileStructure(
         validateArgumentInRange(
             'precinctPosition.tileIndex', precinctPosition.tileIndex, numTiles);
 
-        var precinctIndexInLevel = precinctPosition.precinctX + 
+        var precinctIndexInLevel = precinctPosition.precinctX +
             precinctPosition.precinctY * precinctsX;
-        
+
         var levelStartIndex = componentToInClassLevelStartIndex[precinctPosition.component][precinctPosition.resolutionLevel];
-        
+
         var precinctIndex = precinctIndexInLevel + levelStartIndex;
 
         var inClassIndexWithoutTile =
             precinctPosition.component + precinctIndex * codestreamStructure.getNumComponents();
 
-        var inClassIndex = precinctPosition.tileIndex + 
+        var inClassIndex = precinctPosition.tileIndex +
             inClassIndexWithoutTile * codestreamStructure.getNumTilesX() * codestreamStructure.getNumTilesY();
-        
+
         return inClassIndex;
     };
     
-    this.getPrecinctIterator = function getPrecinctIterator(
-        tileIndex, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
+    this.precinctPositionToIndexInComponentResolution = function(precinctPosition) {
+        var componentStructure = componentStructures[
+            precinctPosition.component];
         
-        var level = 0;
-        if (codestreamPartParams !== undefined &&
-            codestreamPartParams.level !== undefined) {
-            
-            level = codestreamPartParams.level;
-            
-            if (minNumResolutionLevels <= level) {
-                throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'Cannot advance resolution: level=' +
-                    codestreamPartParams.level + ' but should ' +
-                    'be smaller than ' + minNumResolutionLevels);
-            }
-        }
+        var precinctsX = componentStructure.getNumPrecinctsX(
+            precinctPosition.resolutionLevel);
+        var precinctIndexInComponentResolution =
+            precinctPosition.precinctX +
+            precinctPosition.precinctY * precinctsX;
 
-        var precinctsInCodestreamPartPerLevelPerComponent =
-            getPrecinctsInCodestreamPartPerLevelPerComponent(
-                tileIndex, codestreamPartParams);
-                
-        var precinctX = 0;
-        var precinctY = 0;
-        if (!isIteratePrecinctsNotInCodestreamPart &&
-            precinctsInCodestreamPartPerLevelPerComponent !== null) {
-            
-            var firstPrecinctsRange =
-                precinctsInCodestreamPartPerLevelPerComponent[0][0];
-            precinctX = firstPrecinctsRange.minPrecinctX;
-            precinctY = firstPrecinctsRange.minPrecinctY;
-        }
-        
-        // A.6.1 in part 1: Core Coding System
-        
-        var setableIterator = {
-            component: 0,
-            precinctX: precinctX,
-            precinctY: precinctY,
-            resolutionLevel: 0,
-            isInCodestreamPart: true
-            };
-
-        var iterator = {
-            get tileIndex() { return tileIndex; },
-            get component() { return setableIterator.component; },
-            get precinctIndexInComponentResolution() {
-                var componentStructure = componentStructures[setableIterator.component];
-                var precinctsX = componentStructure.getNumPrecinctsX(
-                    setableIterator.resolutionLevel);
-                setableIterator.precinctIndexInComponentResolution =
-                    setableIterator.precinctX + setableIterator.precinctY * precinctsX;
-        
-                return setableIterator.precinctIndexInComponentResolution;
-            },
-                
-            get precinctX() { return setableIterator.precinctX; },
-            get precinctY() { return setableIterator.precinctY; },
-            get resolutionLevel() { return setableIterator.resolutionLevel; },
-            get isInCodestreamPart() { return setableIterator.isInCodestreamPart; }
-            };
-        
-        iterator.tryAdvance = function tryAdvance() {
-            var isSucceeded = tryAdvancePrecinctIterator(
-                setableIterator,
-                level,
-                precinctsInCodestreamPartPerLevelPerComponent,
-                isIteratePrecinctsNotInCodestreamPart);
-            
-            return isSucceeded;
-        };
-        
-        return iterator;
+        return precinctIndexInComponentResolution;
     };
-    
+
     function validateArgumentInRange(paramName, paramValue, suprimumParamValue) {
         if (paramValue < 0 || paramValue >= suprimumParamValue) {
             throw new jGlobals.jpipExceptions.ArgumentException(
@@ -363,209 +306,6 @@ module.exports = function JpipTileStructure(
             tileSize % precinctSize === 0;
         
         return isPrecinctPartitionFitsToTilePartition;
-    }
-    
-    function getPrecinctsInCodestreamPartPerLevelPerComponent(
-        tileIndex, codestreamPartParams) {
-        
-        if (codestreamPartParams === undefined) {
-            return null;
-        }
-        
-        var components = codestreamStructure.getNumComponents();
-        var perComponentResult = new Array(components);
-        var minLevel =
-            codestreamPartParams.level || 0;
-        
-        var tileLeftInLevel = codestreamStructure.getTileLeft(
-            tileIndex, minLevel);
-        var tileTopInLevel = codestreamStructure.getTileTop(
-            tileIndex, minLevel);
-        
-        var minXInTile =
-            codestreamPartParams.minX - tileLeftInLevel;
-        var minYInTile =
-            codestreamPartParams.minY - tileTopInLevel;
-        var maxXInTile =
-            codestreamPartParams.maxXExclusive - tileLeftInLevel;
-        var maxYInTile =
-            codestreamPartParams.maxYExclusive - tileTopInLevel;
-        
-        var codestreamPartLevelWidth = codestreamStructure.getLevelWidth(
-            minLevel);
-        var codestreamPartLevelHeight = codestreamStructure.getLevelHeight(
-            minLevel);
-
-        for (var component = 0; component < components; ++component) {
-            var componentStructure = componentStructures[component];
-            var levels = componentStructure.getNumResolutionLevels();
-            var levelsInCodestreamPart = levels - minLevel;
-            var numResolutionLevels = componentStructure.getNumResolutionLevels();
-            var perLevelResult = new Array(levels);
-        
-            for (var level = 0; level < levelsInCodestreamPart; ++level) {
-                var componentScaleX = componentStructure.getComponentScaleX();
-                var componentScaleY = componentStructure.getComponentScaleY();
-                var levelInCodestreamPart = levelsInCodestreamPart - level - 1;
-                var levelScaleX = componentScaleX << levelInCodestreamPart;
-                var levelScaleY = componentScaleY << levelInCodestreamPart;
-                
-                var redundant = 4; // Redundant pixels for wavelet 9-7 convolution
-                var minXInLevel = Math.floor(minXInTile / levelScaleX) - redundant;
-                var minYInLevel = Math.floor(minYInTile / levelScaleY) - redundant;
-                var maxXInLevel = Math.ceil(maxXInTile / levelScaleX) + redundant;
-                var maxYInLevel = Math.ceil(maxYInTile / levelScaleY) + redundant;
-                
-                var precinctWidth =
-                    componentStructure.getPrecinctWidth(level) * componentScaleX;
-                var precinctHeight =
-                    componentStructure.getPrecinctHeight(level) * componentScaleY;
-                
-                var minPrecinctX = Math.floor(minXInLevel / precinctWidth);
-                var minPrecinctY = Math.floor(minYInLevel / precinctHeight);
-                var maxPrecinctX = Math.ceil(maxXInLevel / precinctWidth);
-                var maxPrecinctY = Math.ceil(maxYInLevel / precinctHeight);
-                
-                var precinctsX = componentStructure.getNumPrecinctsX(level);
-                var precinctsY = componentStructure.getNumPrecinctsY(level);
-                
-                perLevelResult[level] = {
-                    minPrecinctX: Math.max(0, minPrecinctX),
-                    minPrecinctY: Math.max(0, minPrecinctY),
-                    maxPrecinctXExclusive: Math.min(maxPrecinctX, precinctsX),
-                    maxPrecinctYExclusive: Math.min(maxPrecinctY, precinctsY)
-                    };
-            }
-            
-            perComponentResult[component] = perLevelResult;
-        }
-        
-        return perComponentResult;
-    }
-    
-    function tryAdvancePrecinctIterator(
-        setableIterator,
-        level,
-        precinctsInCodestreamPartPerLevelPerComponent,
-        isIteratePrecinctsNotInCodestreamPart) {
-        
-        var needAdvanceNextMember = true;
-        var precinctsRangeHash = isIteratePrecinctsNotInCodestreamPart ?
-            null: precinctsInCodestreamPartPerLevelPerComponent;
-        
-        var needResetPrecinctToMinimalInCodestreamPart = false;
-        
-        for (var i = 2; i >= 0; --i) {
-            var newValue = advanceProgressionOrderMember(
-                setableIterator, i, level, precinctsRangeHash);
-            
-            needAdvanceNextMember = newValue === 0;
-            if (!needAdvanceNextMember) {
-                break;
-            }
-            
-            if (progressionOrder[i] === 'P' &&
-                !isIteratePrecinctsNotInCodestreamPart) {
-                
-                needResetPrecinctToMinimalInCodestreamPart = true;
-            }
-        }
-        
-        if (needAdvanceNextMember) {
-            // If we are here, the last precinct has been reached
-            return false;
-        }
-        
-        if (precinctsInCodestreamPartPerLevelPerComponent === null) {
-            setableIterator.isInCodestreamPart = true;
-            return true;
-        }
-        
-        var rangePerLevel =
-            precinctsInCodestreamPartPerLevelPerComponent[setableIterator.component];
-        var precinctsRange = rangePerLevel[setableIterator.resolutionLevel];
-        
-        if (needResetPrecinctToMinimalInCodestreamPart) {
-            setableIterator.precinctX = precinctsRange.minPrecinctX;
-                setableIterator.precinctY = precinctsRange.minPrecinctY;
-        }
-        
-        setableIterator.isInCodestreamPart =
-            setableIterator.precinctX >= precinctsRange.minPrecinctX &&
-            setableIterator.precinctY >= precinctsRange.minPrecinctY &&
-            setableIterator.precinctX < precinctsRange.maxPrecinctXExclusive &&
-            setableIterator.precinctY < precinctsRange.maxPrecinctYExclusive;
-        
-        return true;
-    }
-    
-    function advanceProgressionOrderMember(
-        precinctPosition,
-        memberIndex,
-        level,
-        precinctsRange) {
-        
-        var componentStructure = componentStructures[precinctPosition.component];
-        
-        switch (progressionOrder[memberIndex]) {
-            case 'R':
-                var numResolutionLevels =
-                    componentStructure.getNumResolutionLevels() -
-                    level;
-                
-                ++precinctPosition.resolutionLevel;
-                precinctPosition.resolutionLevel %= numResolutionLevels;
-                return precinctPosition.resolutionLevel;
-            
-            case 'C':
-                ++precinctPosition.component;
-                precinctPosition.component %= codestreamStructure.getNumComponents();
-                return precinctPosition.component;
-            
-            case 'P':
-                var minX, minY, maxX, maxY;
-                if (precinctsRange !== null) {
-                    var precinctsRangePerLevel = precinctsRange[
-                        precinctPosition.component];
-                    var precinctsRangeInLevelComponent = precinctsRangePerLevel[
-                        precinctPosition.resolutionLevel];
-                    
-                    minX = precinctsRangeInLevelComponent.minPrecinctX;
-                    minY = precinctsRangeInLevelComponent.minPrecinctY;
-                    maxX = precinctsRangeInLevelComponent.maxPrecinctXExclusive;
-                    maxY = precinctsRangeInLevelComponent.maxPrecinctYExclusive;
-                } else {
-                    minX = 0;
-                    minY = 0;
-                    maxX = componentStructure.getNumPrecinctsX(
-                        precinctPosition.resolutionLevel);
-                    maxY = componentStructure.getNumPrecinctsY(
-                        precinctPosition.resolutionLevel);
-                }
-                
-                precinctPosition.precinctX -= (minX - 1);
-                precinctPosition.precinctX %= (maxX - minX);
-                precinctPosition.precinctX += minX;
-                
-                if (precinctPosition.precinctX != minX) {
-                    return precinctPosition.precinctX - minX;
-                }
-                
-                precinctPosition.precinctY -= (minY - 1);
-                precinctPosition.precinctY %= (maxY - minY);
-                precinctPosition.precinctY += minY;
-
-                return precinctPosition.precinctY - minY;
-            
-            case 'L' :
-                throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'Advancing L is not supported in JPIP');
-            
-            default:
-                throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'Unexpected letter in progression order: ' +
-                    progressionOrder[memberIndex]);
-        }
     }
     
     defaultComponentStructure = jpipFactory.createComponentStructure(

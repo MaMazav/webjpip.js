@@ -8,7 +8,9 @@ var JpipTileStructureStub = function(
             return componentStructure;
         }
         
-        throw 'Unexpected call to JpipTileStructureStub.getComponentStructure(). Fix test stub implementation';
+        return mockFactoryForCodestreamStructureTest.createComponentStructure(
+            tileParams.paramsPerComponent[component],
+            this);
     };
     
     this.getDefaultComponentStructure = function() {
@@ -57,29 +59,15 @@ var JpipTileStructureStub = function(
         return tileParams.tileSize;
     };
     
-    this.getPrecinctIterator = function getPrecinctIterator(
-        tileIndex, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
-        
-        var dummyPos = 0;
-        
-        var iterator = {
-            tryAdvance: function tryAdvance() {
-                if (dummyPos === 2) {
-                    return false;
-                }
-                ++dummyPos;
-                return true;
-            },
-            
-            get dummyPos() { return dummyPos; },
-            
-            get isInCodestreamPart() { return true; }
-        };
-        
-        return iterator;
-    };
-    
     this.precinctPositionToInClassIndex = function(precinctPosition) {
         return precinctPosition.dummyPos;
+    };
+    
+    this.getMinNumResolutionLevelsOverComponents = function() {
+        var result = tileParams.paramsPerComponent[0].numResolutionLevels;
+        for (var i = 1; i < tileParams.paramsPerComponent.length; ++i) {
+            result = Math.min(result, tileParams.paramsPerComponent[i].numResolutionLevels);
+        }
+        return result;
     };
 };

@@ -22,11 +22,11 @@ function JpipImage(options) {
         codestreamStructure);
         
     var headerModifier = jpipFactory.createHeaderModifier(
-        codestreamStructure, offsetsCalculator, progressionOrder);
+        offsetsCalculator, progressionOrder);
     var reconstructor = jpipFactory.createCodestreamReconstructor(
-        codestreamStructure, databinsSaver, headerModifier, qualityLayersCache);
+        databinsSaver, headerModifier, qualityLayersCache);
     var packetsDataCollector = jpipFactory.createPacketsDataCollector(
-        codestreamStructure, databinsSaver, qualityLayersCache);
+        databinsSaver, qualityLayersCache);
     
     var jpipObjectsForRequestContext = {
         reconstructor: reconstructor,
@@ -82,16 +82,20 @@ function JpipImage(options) {
             pathToTransferablesInPromiseResult: [[]]
         };
     };
-
+    
     this.getKeyAsString = function getKeyAsString(key) {
         return JSON.stringify(key);
     };
-
+    
     this.taskStarted = function taskStarted(task) {
         var params = paramsModifier.modify(/*codestreamTaskParams=*/task.key);
+        var part = jpipFactory.createParamsCodestreamPart(
+            params.codestreamPartParams,
+            codestreamStructure);
+            
         var context = jpipFactory.createImageDataContext(
             jpipObjectsForRequestContext,
-            params.codestreamPartParams,
+            part,
             params.progressiveness);
         
         context.on('data', onData);

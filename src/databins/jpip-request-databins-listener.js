@@ -3,7 +3,7 @@
 var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = function JpipRequestDatabinsListener(
-    codestreamPartParams,
+    codestreamPart,
     qualityLayerReachedCallback,
     codestreamStructure,
     databinsSaver,
@@ -46,19 +46,24 @@ module.exports = function JpipRequestDatabinsListener(
     
     function register() {
         ++tileHeadersNotLoaded;
-        
-        var tileIterator = codestreamStructure.getTilesIterator(codestreamPartParams);
-        do {
+
+        var tileIterator = codestreamPart.getTileIterator();
+        while (tileIterator.tryAdvance()) {
             var tileIndex = tileIterator.tileIndex;
             var databin = databinsSaver.getTileHeaderDatabin(tileIndex);
             registeredTileHeaderDatabins.push(databin);
+            
+            var tileAccumulatedData = accumulatedDataPerDatabin.getObject(
+                databin);
+            tileAccumulatedData.precinctIterator =
+                tileIterator.createPrecinctIterator();
             
             databinsSaver.addEventListener(
                 databin, 'dataArrived', tileHeaderDataArrived);
                 
             ++tileHeadersNotLoaded;
             tileHeaderDataArrived(databin);
-        } while (tileIterator.tryAdvance());
+        }
         
         --tileHeadersNotLoaded;
         tryAdvanceQualityLayersReached();
@@ -83,19 +88,16 @@ module.exports = function JpipRequestDatabinsListener(
         var tileStructure = codestreamStructure.getTileStructure(tileIndex);
         var qualityInTile = tileStructure.getNumQualityLayers();
         
-        var precinctIterator = tileStructure.getPrecinctIterator(
-            tileIndex, codestreamPartParams);
+        var precinctIterator = tileAccumulatedData.precinctIterator;
 
-        do {
+        while (precinctIterator.tryAdvance()) {
             if (!precinctIterator.isInCodestreamPart) {
                 throw new jGlobals.jpipExceptions.InternalErrorException(
                     'Unexpected precinct not in codestream part');
             }
             
-            var inClassId = tileStructure.precinctPositionToInClassIndex(
-                precinctIterator);
-                
-            var precinctDatabin = databinsSaver.getPrecinctDatabin(inClassId);
+            var precinctDatabin = databinsSaver.getPrecinctDatabin(
+                precinctIterator.inClassIndex);
             registeredPrecinctDatabins.push(precinctDatabin);
             var accumulatedData = accumulatedDataPerDatabin.getObject(
                 precinctDatabin);
@@ -111,7 +113,7 @@ module.exports = function JpipRequestDatabinsListener(
             
             databinsSaver.addEventListener(
                 precinctDatabin, 'dataArrived', precinctDataArrived);
-        } while (precinctIterator.tryAdvance());
+        }
         
         tryAdvanceQualityLayersReached();
     }
@@ -140,7 +142,7 @@ module.exports = function JpipRequestDatabinsListener(
         
         var qualityLayers = qualityLayersCache.getQualityLayerOffset(
             precinctDatabin,
-            codestreamPartParams.quality,
+            codestreamPart.maxNumQualityLayers,
             precinctIteratorOptional);
 
         var numQualityLayersReached = qualityLayers.numQualityLayers;
@@ -205,7 +207,7 @@ module.exports = function JpipRequestDatabinsListener(
             
             var qualityLayers = qualityLayersCache.getQualityLayerOffset(
                 registeredPrecinctDatabins[i],
-                codestreamPartParams.quality);
+                codestreamPart.maxNumQualityLayers);
             
             if (qualityLayers.numQualityLayers === qualityInTile) {
                 continue;

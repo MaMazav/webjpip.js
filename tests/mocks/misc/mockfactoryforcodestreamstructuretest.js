@@ -31,3 +31,20 @@ mockFactoryForCodestreamStructureTest.createTileStructure =
         
         return result;
     };
+
+mockFactoryForCodestreamStructureTest.createComponentStructure =
+    function(componentParams, tileStructure) {
+        var result = new JpipComponentStructureStub(componentParams);
+        
+        var precinctsCount = calculatePrecinctsCount(componentParams);
+        
+        result.getNumPrecinctsX = function(resolutionLevel) {
+            return precinctsCount.x[resolutionLevel];
+        };
+        
+        result.getNumPrecinctsY = function(resolutionLevel) {
+            return precinctsCount.y[resolutionLevel];
+        };
+        
+        return result;
+    };

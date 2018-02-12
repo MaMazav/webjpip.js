@@ -4,13 +4,6 @@ var JpipCodestreamStructureStub = function JpipCodestreamStructureStub(
     defaultTileStructureStub, sizeOfPartResult, levelSizesResult) {
     
     var tileIndexToStructureMap = null;
-    var iteratedTileIndices = null;
-    
-    this.setIteratedTilesForTest = function setIteratedTilesForTest(
-        tileIndexArray) {
-        
-        iteratedTileIndices = tileIndexArray;
-    };
     
     this.overrideTilesForTest = function overrideTilesForTest(
         indexToStructureMap) {
@@ -95,34 +88,5 @@ var JpipCodestreamStructureStub = function JpipCodestreamStructureStub(
     
     this.getSizesParams = function getSizesParams() {
         return { sizes: 'Dummy sizes parameters' };
-    };
-    
-    this.getTilesIterator = function getTilesIterator(codestreamPartParams) {
-        if (iteratedTiles === null) {
-            throw 'No prior call to JpipCodestreamStructureStub.' +
-                'setIteratedTilesForTest. Fix test';
-        }
-        
-        var lastIndex = iteratedTileIndices.length - 1;
-        
-        var iterator = {
-            tilesIteratorIndexForTest: 0,
-            
-            tryAdvance: function tryAdvance() {
-                if (iterator.tilesIteratorIndexForTest >= lastIndex) {
-                    return false;
-                }
-                
-                ++iterator.tilesIteratorIndexForTest;
-                return true;
-            },
-            
-            tileIndex: function getTileIndex() {
-                var indexInArray = iterator.tilesIteratorIndexForTest;
-                return iteratedTileIndices[indexInArray];
-            }
-        };
-        
-        return iterator;
     };
 };

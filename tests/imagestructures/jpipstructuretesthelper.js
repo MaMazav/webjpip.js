@@ -1,5 +1,52 @@
 'use strict';
 
+var codestreamStructureStubForTileStructureTest = {
+    getTileWidth: function() { return 1024; },
+    getTileHeight: function() { return 512; },
+    getNumTilesX: function() { return 8; },
+    getNumTilesY: function() { return 3; },
+    getNumComponents: function() { return 3; },
+    getTileLeft: function() { return 252; },
+    getTileTop: function() { return 143; },
+    getImageWidth: function() { return 16384; },
+    getImageHeight: function() { return 65536; },
+    getLevelWidth: function getLevelWidth(level) {
+        var result = 16384;
+        if (level !== undefined) {
+            result /= (1 << level);
+        }
+        
+        return result;
+    },
+    getLevelHeight: function getLevelHeight(level) {
+        var result = 65536;
+        if (level !== undefined) {
+            result /= (1 << level);
+        }
+        
+        return result;
+    }
+};
+
+// Tile size of edge tile, just for fun
+var initTileSize = [
+    codestreamStructureStubForTileStructureTest.getTileWidth() - 3,
+    codestreamStructureStubForTileStructureTest.getTileHeight() - 4];
+
+var initNumResolutionLevels = 5;
+var initTileParams = createUniformPrecinctCountTileParams(
+    initTileSize,
+    /*numChannels=*/3,
+    initNumResolutionLevels,
+    /*precinctWidth=*/64,
+    /*precinctHeight=*/128,
+    /*numQualityLayers=*/19);
+
+var initProgressionOrder = 'RPCL';
+    
+var numPrecinctsX = 16;
+var numPrecinctsY = 4;
+
 function checkMultiplePositionsInOneAssert(
     positionToIterate,
     advancePositionFunction,
@@ -403,6 +450,269 @@ function createUniformPrecinctSizeTileParams(
         componentScaleY,
         function(betterLevelPrecinctSize) { return betterLevelPrecinctSize; }
         );
+    
+    return result;
+}
+
+function prepareCreationParamsForNonUniformTest(progressionOrder) {
+    var nonUniformParamsPerComponent = [
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [512, 512],
+            precinctHeightPerLevel: [128, 64]
+        },
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 3,
+            precinctWidthPerLevel: [64, 256, 64],
+            precinctHeightPerLevel: [64, 256, 128]
+        },
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 1,
+            precinctWidthPerLevel: [1024],
+            precinctHeightPerLevel: [512]
+        }];
+    
+    var nonUniformPrecinctWidthParamsPerComponent = [
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [512, 512],
+            precinctHeightPerLevel: [128, 64]
+        },
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [256, 64],
+            precinctHeightPerLevel: [128, 64]
+        },
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [512, 1024],
+            precinctHeightPerLevel: [128, 64]
+        }];
+        
+    var nonUniformPrecinctHeightParamsPerComponent = [
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [512, 512],
+            precinctHeightPerLevel: [128, 64]
+        },
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [512, 512],
+            precinctHeightPerLevel: [256, 128]
+        },
+        {
+            maxCodeblockWidth: 64,
+            maxCodeblockHeight: 64,
+            
+            numResolutionLevels: 2,
+            precinctWidthPerLevel: [512, 512],
+            precinctHeightPerLevel: [256, 512]
+        }];
+        
+    var numComponents = 3;
+    var numResolutionLevels = 2;
+
+    var uniformCountParams = createUniformPrecinctCountTileParams(
+        initTileSize,
+        numComponents,
+        numResolutionLevels,
+        /*precinctWidthLevel0=*/128,
+        /*precinctHeightLevel0=*/128,
+        /*numQualityLayers=*/13);
+    
+    var nonUniformCountParams = createUniformPrecinctSizeTileParams(
+        initTileSize,
+        numComponents,
+        numResolutionLevels,
+        /*precinctWidthLevel0=*/128,
+        /*precinctHeightLevel0=*/128,
+        /*numQualityLayers=*/12);
+    
+    var supportedNonUniformPrecinctsXParams = {
+        tileSize: initTileSize,
+        paramsPerComponent: new Array(numComponents)
+        };
+    var supportedNonUniformPrecinctsYParams = {
+        tileSize: initTileSize,
+        paramsPerComponent: new Array(numComponents)
+        };
+    
+    for (var c = 0; c < numComponents; ++c) {
+        supportedNonUniformPrecinctsXParams.paramsPerComponent[c] = {
+            maxCodeblockWidth: nonUniformCountParams.maxCodeblockWidth,
+            maxCodeblockHeight: nonUniformCountParams.maxCodeblockHeight,
+            
+            numResolutionLevels: numResolutionLevels,
+            precinctWidthPerLevel: new Array(numResolutionLevels),
+            precinctHeightPerLevel: new Array(numResolutionLevels)
+            };
+        
+        supportedNonUniformPrecinctsYParams.paramsPerComponent[c] = {
+            maxCodeblockWidth: nonUniformCountParams.maxCodeblockWidth,
+            maxCodeblockHeight: nonUniformCountParams.maxCodeblockHeight,
+            
+            numResolutionLevels: numResolutionLevels,
+            precinctWidthPerLevel: new Array(numResolutionLevels),
+            precinctHeightPerLevel: new Array(numResolutionLevels)
+            };
+        
+        for (var r = 0; r < numResolutionLevels; ++r) {
+            supportedNonUniformPrecinctsXParams.paramsPerComponent[c].precinctWidthPerLevel[r] =
+                nonUniformCountParams.paramsPerComponent[c].precinctWidthPerLevel[r];
+            supportedNonUniformPrecinctsXParams.paramsPerComponent[c].precinctHeightPerLevel[r] =
+                uniformCountParams.paramsPerComponent[c].precinctHeightPerLevel[r];
+
+            supportedNonUniformPrecinctsYParams.paramsPerComponent[c].precinctWidthPerLevel[r] =
+                uniformCountParams.paramsPerComponent[c].precinctWidthPerLevel[r];
+            supportedNonUniformPrecinctsYParams.paramsPerComponent[c].precinctHeightPerLevel[r] =
+                nonUniformCountParams.paramsPerComponent[c].precinctHeightPerLevel[r];
+        }
+    }
+    
+    supportedNonUniformPrecinctsXParams.defaultComponentParams = supportedNonUniformPrecinctsXParams.paramsPerComponent[0];
+    supportedNonUniformPrecinctsYParams.defaultComponentParams = supportedNonUniformPrecinctsYParams.paramsPerComponent[0];
+    
+    var isNonUniformLevelsSupported = progressionOrder === 'RPCL';
+
+    var paramsPerComponentArray = [
+        {
+            isSupported: false,
+            tileParams: {
+                isPacketHeadersNearData: true,
+                isStartOfPacketMarkerAllowed: false,
+                isEndPacketHeaderMarkerAllowed: false,
+
+                paramsPerComponent: nonUniformParamsPerComponent,
+                defaultComponentParams: nonUniformParamsPerComponent[0],
+                tileSize: initTileSize
+                },
+            description: 'totally different params per component and level'
+        },
+        {
+            isSupported: false,
+            tileParams: {
+                isPacketHeadersNearData: true,
+                isStartOfPacketMarkerAllowed: false,
+                isEndPacketHeaderMarkerAllowed: false,
+
+                paramsPerComponent: nonUniformPrecinctWidthParamsPerComponent,
+                defaultComponentParams: nonUniformPrecinctWidthParamsPerComponent[0],
+                tileSize: initTileSize
+                },
+            description: 'same number of resolution levels per component, different precinct width'
+        },
+        {
+            isSupported: false,
+            tileParams: {
+                isPacketHeadersNearData: true,
+                isStartOfPacketMarkerAllowed: false,
+                isEndPacketHeaderMarkerAllowed: false,
+
+                paramsPerComponent: nonUniformPrecinctHeightParamsPerComponent,
+                defaultComponentParams: nonUniformPrecinctHeightParamsPerComponent[0],
+                tileSize: initTileSize
+                },
+            description: 'same number of resolution levels per component, different precinct height'
+        },
+        {
+            isSupported: isNonUniformLevelsSupported,
+            tileParams: supportedNonUniformPrecinctsXParams,
+            description: 'non uniform precinct x count'
+        },
+        {
+            isSupported: isNonUniformLevelsSupported,
+            tileParams: supportedNonUniformPrecinctsYParams,
+            description: 'non uniform precinct y count'
+        }
+        ];
+    
+    return paramsPerComponentArray;
+}
+
+function calculateLevelsAndPrecinctCounts(paramsPerComponent) {
+    var numPrecinctsPerComponentPerLevel = [];
+    var maxNumResolutionLevels = 0;
+    var maxPrecinctsX = 0;
+    var maxPrecinctsY = 0;
+    for (var c = 0; c < paramsPerComponent.length; ++c) {
+        var componentParams = paramsPerComponent[c];
+        
+        maxNumResolutionLevels = Math.max(maxNumResolutionLevels, componentParams.numResolutionLevels);
+        
+        for (var r = componentParams.numResolutionLevels - 1; r >= 0; --r) {
+            maxPrecinctsX = Math.max(maxPrecinctsX, componentParams.precinctWidthPerLevel[r]);
+            maxPrecinctsY = Math.max(maxPrecinctsY, componentParams.precinctHeightPerLevel[r]);
+        }
+        
+        numPrecinctsPerComponentPerLevel[c] = calculatePrecinctsCount(componentParams);
+    }
+    
+    var result = {
+        numPrecinctsPerComponentPerLevel: numPrecinctsPerComponentPerLevel,
+        numComponents: paramsPerComponent.length,
+        maxNumResolutionLevels: maxNumResolutionLevels,
+        maxPrecinctsX: maxPrecinctsX,
+        maxPrecinctsY: maxPrecinctsY
+        };
+    return result;
+}
+
+function calculatePrecinctsCount(componentParams) {
+    var tileWidthInResolution = codestreamStructureStubForTileStructureTest.getTileWidth();
+    var tileHeightInResolution = codestreamStructureStubForTileStructureTest.getTileHeight();
+    
+    var numPrecinctsX = [];
+    var numPrecinctsY = [];
+    
+    for (var r = componentParams.numResolutionLevels - 1; r >= 0; --r) {
+        numPrecinctsX[r] = Math.ceil(tileWidthInResolution / componentParams.precinctWidthPerLevel[r]);
+        numPrecinctsY[r] = Math.ceil(tileHeightInResolution / componentParams.precinctHeightPerLevel[r]);
+        
+        tileWidthInResolution >>>= 1;
+        tileHeightInResolution >>>= 1;
+    }
+    
+    var result = {
+        x: numPrecinctsX,
+        y: numPrecinctsY
+    };
+    
+    return result;
+}
+
+function createEndPrecinctPosition() {
+    var result = {
+        tileIndex: codestreamStructureStubForTileStructureTest.getNumTilesX() * codestreamStructureStubForTileStructureTest.getNumTilesY(),
+        component: codestreamStructureStubForTileStructureTest.getNumComponents(),
+        
+        precinctX: numPrecinctsX,
+        precinctY: numPrecinctsY,
+        resolutionLevel: initNumResolutionLevels
+        };
     
     return result;
 }

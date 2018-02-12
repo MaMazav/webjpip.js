@@ -43,13 +43,15 @@ var JpipHeaderModifierStubForReconstructorTest =
             return 0;
         }
         
-        result[databinOffsetInResult + overrideInfo.offsetInDatabin] =
-            overrideInfo.byteValue;
-        
-        var startOffsetToRemove = databinOffsetInResult + overrideInfo.bytesToRemove.start;
-        var newLength = result.length - overrideInfo.bytesToRemove.length;
-        for (var target = startOffsetToRemove; target < newLength; ++target) {
-            result[target] = result[target + overrideInfo.bytesToRemove.length];
+        if (!result.isDummyBufferForLengthCalculation) {
+            result[databinOffsetInResult + overrideInfo.offsetInDatabin] =
+                overrideInfo.byteValue;
+            
+            var startOffsetToRemove = databinOffsetInResult + overrideInfo.bytesToRemove.start;
+            var newLength = result.length - overrideInfo.bytesToRemove.length;
+            for (var target = startOffsetToRemove; target < newLength; ++target) {
+                result[target] = result[target + overrideInfo.bytesToRemove.length];
+            }
         }
         
         var bytesAdded = -overrideInfo.bytesToRemove.length;
@@ -59,12 +61,17 @@ var JpipHeaderModifierStubForReconstructorTest =
     this.modifyImageSize = function modifyImageSize(
         result, codestreamPartParams) {
         
-        this.codestreamPartParamsArgumentForTest = codestreamPartParams;
-        
-        result[3] = 0xBB;
+        if (!result.isDummyBufferForLengthCalculation) {
+            this.codestreamPartParamsArgumentForTest = codestreamPartParams;
+            result[3] = 0xBB;
+        }
     };
     
     this.modifyInt32 = function modifyInt32(bytes, offset, newValue) {
+        if (bytes.isDummyBufferForLengthCalculation) {
+            return;
+        }
+        
         if (offset + 4 > bytes.length) {
             throw 'Not enough room for int32';
         }

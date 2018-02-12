@@ -3,6 +3,13 @@
 var jGlobals = require('j2k-jpip-globals.js');
 var LOG2 = Math.log(2);
 
+/* TODO: Need to separate this class into two functionalities:
+ * - Internal sizes calculator in jpip structure (refered as sizesCalculator)
+ * - Interface for image-decoder-framework.js (implements LevelCalculator)
+ * Also, some of the methods here are actually accessed from
+ * codestreamStructure, which only delegates the call to here.
+ */
+
 module.exports = function JpipLevelCalculator(
     params) {
     
@@ -13,8 +20,6 @@ module.exports = function JpipLevelCalculator(
     this.EDGE_TYPE_NO_EDGE = EDGE_TYPE_NO_EDGE;
     this.EDGE_TYPE_FIRST = EDGE_TYPE_FIRST;
     this.EDGE_TYPE_LAST = EDGE_TYPE_LAST;
-    
-    this.getSizeOfPart = getSizeOfPart;
     
     this.getTilesFromPixels = getTilesFromPixels;
     
@@ -88,15 +93,14 @@ module.exports = function JpipLevelCalculator(
         return params.highestQuality;
     };
     
+    this.getSizeOfTiles = getSizeOfTiles;
+    
     // Private methods
     
-    function getSizeOfPart(codestreamPartParams) {
-        var level =
-            codestreamPartParams.level;
+    function getSizeOfTiles(tileBounds) {
+        var level = tileBounds.level;
         var tileWidth = getTileWidth(level);
         var tileHeight = getTileHeight(level);
-        
-        var tileBounds = getTilesFromPixels(codestreamPartParams);
         
         var firstTileIndex =
             tileBounds.minTileX + tileBounds.minTileY * getNumTilesX();
@@ -127,14 +131,15 @@ module.exports = function JpipLevelCalculator(
         }
         
         return {
-            width: width,
-            height: height
-            };
+            regionWidth: width,
+            regionHeight: height,
+            tileWidth: tileWidth,
+            tileHeight: tileHeight
+        };
     }
     
-    function getTilesFromPixels(partParams) {
-        var level =
-            partParams.level;
+    function getTilesFromPixels(codestreamPartParams) {
+        var level = codestreamPartParams.level;
 
         var tileWidth = getTileWidth(level);
         var tileHeight = getTileHeight(level);
@@ -142,10 +147,14 @@ module.exports = function JpipLevelCalculator(
         var firstTileWidth = getFirstTileWidth(level);
         var firstTileHeight = getFirstTileHeight(level);
         
-        var startXNoFirst = (partParams.minX - firstTileWidth) / tileWidth;
-        var startYNoFirst = (partParams.minY - firstTileHeight) / tileHeight;
-        var endXNoFirst = (partParams.maxXExclusive - firstTileWidth) / tileWidth;
-        var endYNoFirst = (partParams.maxYExclusive - firstTileHeight) / tileHeight;
+        var minX = codestreamPartParams.minX;
+        var minY = codestreamPartParams.minY;
+        var maxX = codestreamPartParams.maxXExclusive;
+        var maxY = codestreamPartParams.maxYExclusive;
+        var startXNoFirst = (minX - firstTileWidth) / tileWidth;
+        var startYNoFirst = (minY - firstTileHeight) / tileHeight;
+        var endXNoFirst = (maxX - firstTileWidth) / tileWidth;
+        var endYNoFirst = (maxY - firstTileHeight) / tileHeight;
         
         var minTileX = Math.max(0, 1 + startXNoFirst);
         var minTileY = Math.max(0, 1 + startYNoFirst);
@@ -153,6 +162,7 @@ module.exports = function JpipLevelCalculator(
         var maxTileY = Math.min(getNumTilesY(), 1 + endYNoFirst);
 
         var bounds = {
+            level: level,
             minTileX: Math.floor(minTileX),
             minTileY: Math.floor(minTileY),
             maxTileXExclusive: Math.ceil(maxTileX),
@@ -261,15 +271,15 @@ module.exports = function JpipLevelCalculator(
             return params.imageWidth;
         }
         
-        var size = getSizeOfPart({
-            minX: 0,
-            maxXExclusive: params.imageWidth,
-            minY: 0,
-            maxYExclusive: params.imageHeight,
+        var size = getSizeOfTiles({
+            minTileX: 0,
+            maxTileXExclusive: getNumTilesX(),
+            minTileY: 0,
+            maxTileYExclusive: 1,
             level: level
             });
         
-        return size.width;
+        return size.regionWidth;
     }
     
     function getLevelHeight(level) {
@@ -277,15 +287,15 @@ module.exports = function JpipLevelCalculator(
             return params.imageHeight;
         }
         
-        var size = getSizeOfPart({
-            minX: 0,
-            maxXExclusive: params.imageWidth,
-            minY: 0,
-            maxYExclusive: params.imageHeight,
+        var size = getSizeOfTiles({
+            minTileX: 0,
+            maxTileXExclusive: 1,
+            minTileY: 0,
+            maxTileYExclusive: getNumTilesY(),
             level: level
             });
         
-        return size.height;
+        return size.regionHeight;
     }
 
     function getTileWidth(level) {

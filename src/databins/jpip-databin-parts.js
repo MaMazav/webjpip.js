@@ -91,16 +91,20 @@ module.exports = function JpipDatabinParts(
         
         var resultArrayOffsetInDatabin = params.databinStartOffset - params.resultStartOffset;
         
-        var maxLengthCopied = iterateRange(
-            params.databinStartOffset,
-            params.maxLengthToCopy,
+        var actualCopyBytes = resultArray.isDummyBufferForLengthCalculation ?
+            function() { } :
             function addPartToResultInCopyBytes(part, minOffsetInPart, maxOffsetInPart) {
                 part.copyToArray(
                     resultArray,
                     resultArrayOffsetInDatabin,
                     minOffsetInPart,
                     maxOffsetInPart);
-            });
+            };
+            
+        var maxLengthCopied = iterateRange(
+            params.databinStartOffset,
+            params.maxLengthToCopy,
+            actualCopyBytes);
         
         return maxLengthCopied;
     };
