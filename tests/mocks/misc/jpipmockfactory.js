@@ -8,7 +8,7 @@ var jpipMockFactory = {
     },
     
     createCodestreamReconstructor: function(
-        codestreamStructure, databinsSaver, headerModifier, qualityLayersCache) {
+        databinsSaver, headerModifier, qualityLayersCache) {
         
         throw 'Unexpected call to createCodestreamReconstructor. Fix test';
     },
@@ -43,9 +43,7 @@ var jpipMockFactory = {
         throw 'Unexpected call to createFetcher. Fix test';
     },
     
-    createHeaderModifier: function(
-        codestreamStructure, offsetsCalculator, progressionOrder) {
-        
+    createHeaderModifier: function(offsetsCalculator, progressionOrder) {
         throw 'Unexpected call to createHeaderModifier. Fix test';
     },
     
@@ -68,7 +66,7 @@ var jpipMockFactory = {
     },
     
     createPacketsDataCollector: function(
-        codestreamStructure, databinsSaver, qualityLayersCache) {
+        databinsSaver, qualityLayersCache) {
         
         throw 'Unexpected call to createPacketsDataCollector. Fix test';
     },

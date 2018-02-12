@@ -44,7 +44,9 @@ function getSingleTileReconstructedExpected() {
 function getFullReconstructedExpected() {
     var fullReconstructedExpected = [
         // Main header
-        0xEE, 0, 5, 10, 15, 20, 25,
+        0xEE, 0, 5,
+        0xBB, // Modified by modifier stub
+        15, 20, 25,
         0x12, // Modified by modifier stub
         35, 40, 45, 50,
         // Two bytes removed here by modifier stub
@@ -298,6 +300,10 @@ function createLayersManagerStubForReconstructorTest(codestreamStructure, databi
     return manager;
 }
 
+function createCodestreamPartMockForReconstructorTest() {
+    // TODO
+}
+
 function createReconstructorForTest(databinsSaver) {
     if (databinsSaver === undefined) {
         databinsSaver = createDatabinsSaverMockForReconstructorTest();
@@ -311,7 +317,6 @@ function createReconstructorForTest(databinsSaver) {
         codestreamStructureMock, databinsSaver);
     
     var reconstructor = new jpipExports.JpipCodestreamReconstructor(
-        codestreamStructureMock,
         databinsSaver,
         modifier,
         layersManagerStub);

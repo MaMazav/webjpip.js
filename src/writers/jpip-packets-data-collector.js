@@ -3,73 +3,57 @@
 var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = function JpipPacketsDataCollector(
-    codestreamStructure,
     databinsSaver,
     qualityLayersCache,
     jpipFactory) {
     
-    this.getAllCodeblocksData = function getCodeblocksData(
-        codestreamPartParams, minNumQualityLayers) {
-        
+    this.getAllCodeblocksData = function getAllCodeblocksData(codestreamPart) {
         var alreadyReturnedCodeblocks = jpipFactory.createObjectPoolByDatabin();
         var codeblocksData = getNewCodeblocksDataAndUpdateReturnedCodeblocks(
-            codestreamPartParams, minNumQualityLayers, alreadyReturnedCodeblocks);
+            codestreamPart, alreadyReturnedCodeblocks);
         
         return {
             codeblocksData: codeblocksData,
             alreadyReturnedCodeblocks: alreadyReturnedCodeblocks
             };
     };
-    
-    this.getNewCodeblocksDataAndUpdateReturnedCodeblocks =
-        getNewCodeblocksDataAndUpdateReturnedCodeblocks;
         
     function getNewCodeblocksDataAndUpdateReturnedCodeblocks(
-        codestreamPartParams, minNumQualityLayers, alreadyReturnedCodeblocks) {
-        
-        var tileIterator = codestreamStructure.getTilesIterator(
-            codestreamPartParams);
+        codestreamPart, alreadyReturnedCodeblocks) {
         
         var tileIndexInCodestreamPart = 0;
         var dummyOffset = 0;
+        var tileIterator = codestreamPart.getTileIterator();
         var result = {
             packetDataOffsets: [],
             data: jpipFactory.createCompositeArray(dummyOffset),
             allRelevantBytesLoaded: 0
             };
         
-        do {
-            var tileStructure = codestreamStructure.getTileStructure(
-                tileIterator.tileIndex);
+        while (tileIterator.tryAdvance()) {
+            var precinctIterator = tileIterator.createPrecinctIterator();
             
-            var precinctIterator = tileStructure.getPrecinctIterator(
-                tileIterator.tileIndex, codestreamPartParams);
+            var quality = tileIterator.tileStructure.getNumQualityLayers();
             
-            var quality = tileStructure.getNumQualityLayers();
-            
-            if (codestreamPartParams.quality !== undefined) {
-                quality = Math.min(
-                    quality, codestreamPartParams.quality);
+            if (codestreamPart.maxNumQualityLayers !== undefined) {
+                quality = Math.min(quality,codestreamPart.maxNumQualityLayers);
             }
             
-            if (minNumQualityLayers === 'max') {
-                minNumQualityLayers = quality;
-            } else if (minNumQualityLayers > quality) {
+            if (codestreamPart.minNumQualityLayers === 'max') {
+                codestreamPart.minNumQualityLayers = quality;
+            } else if (codestreamPart.minNumQualityLayers > quality) {
                 throw new jGlobals.jpipExceptions.InternalErrorException(
                     'minNumQualityLayers is larger than quality');
             }
             
-            do {
+            while (precinctIterator.tryAdvance()) {
                 if (!precinctIterator.isInCodestreamPart) {
                     throw new jGlobals.jpipExceptions.InternalErrorException(
                         'Unexpected precinct not in codestream part');
                 }
                 
-                var inClassIndex = tileStructure.precinctPositionToInClassIndex(
-                    precinctIterator);
-                    
                 var precinctDatabin = databinsSaver.getPrecinctDatabin(
-                    inClassIndex);
+                    precinctIterator.inClassIndex);
                 
                 var returnedInPrecinct =
                     alreadyReturnedCodeblocks.getObject(precinctDatabin);
@@ -85,7 +69,7 @@ module.exports = function JpipPacketsDataCollector(
                     returnedInPrecinct,
                     quality);
                 
-                if (layerReached < minNumQualityLayers) {
+                if (layerReached < codestreamPart.minNumQualityLayers) {
                     // NOTE: alreadyReturnedCodeblocks is wrong in this stage,
                     // because it was updated with a data which will not be
                     // returned. I don't care about it now because returning
@@ -98,10 +82,10 @@ module.exports = function JpipPacketsDataCollector(
                     
                     return null;
                 }
-            } while (precinctIterator.tryAdvance());
+            }
             
             ++tileIndexInCodestreamPart;
-        } while (tileIterator.tryAdvance());
+        }
         
         var dataAsUint8 = new Uint8Array(result.data.getLength());
         result.data.copyToTypedArray(dataAsUint8, 0, 0, result.data.getLength());

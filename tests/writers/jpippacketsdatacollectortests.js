@@ -16,3 +16,5 @@ function createPacketsDataCollectorForTest() {
     var tileStructureStub = new JpipTileStructureStub({ numQualityLayers: 3 });
     var codestreamStructureStub = new JpipCodestreamStructureStub();
 }
+
+// TODO

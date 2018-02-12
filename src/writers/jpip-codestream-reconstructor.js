@@ -3,75 +3,27 @@
 var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = function JpipCodestreamReconstructor(
-    codestreamStructure,
     databinsSaver,
     headerModifier,
     qualityLayersCache) {
         
-    var dummyBufferForLengthCalculation = { dummyBufferForLengthCalculation: true };
-    
-    this.reconstructCodestream = function reconstructCodestream(
-        minNumQualityLayers) {
-        
-        return getAsArrayBuffer(reconstructCodestreamInternal, minNumQualityLayers);
-    };
+    var dummyBufferForLengthCalculation = { isDummyBufferForLengthCalculation: true };
     
     this.createCodestreamForRegion = function createCodestreamForRegion(
-        params, minNumQualityLayers, isOnlyHeadersWithoutBitstream) {
-        
-        var codestream = getAsArrayBuffer(
-            createCodestreamForRegionInternal,
-            params,
-            minNumQualityLayers,
+        codestreamPart, isOnlyHeadersWithoutBitstream) {
+
+        var calculatedLength = createCodestreamForRegionInternal(
+            dummyBufferForLengthCalculation,
+            codestreamPart,
             isOnlyHeadersWithoutBitstream);
-        
-        if (codestream === null) {
-            return null;
-        }
-        
-        var tileIterator = codestreamStructure.getTilesIterator(params);
-        var firstTileId = tileIterator.tileIndex;
-        
-        var firstTileLeft = codestreamStructure.getTileLeft(
-            firstTileId, params.level);
-        var firstTileTop = codestreamStructure.getTileTop(
-            firstTileId, params.level);
-            
-        var offsetX = params.minX - firstTileLeft;
-        var offsetY = params.minY - firstTileTop;
-        
-        return {
-            codestream: codestream,
-            offsetX: offsetX,
-            offsetY: offsetY
-        };
-    };
-    
-    this.createCodestreamForTile = function createCodestreamForTile(
-        tileId,
-        level,
-        minNumQualityLayers,
-        quality) {
-        
-        return getAsArrayBuffer(
-            createCodestreamForTileInternal,
-            tileId,
-            level,
-            minNumQualityLayers,
-            quality);
-    };
-    
-    function getAsArrayBuffer(writerFunction, arg1, arg2, arg3, arg4) {
-        var calculatedLength = writerFunction(
-            dummyBufferForLengthCalculation, arg1, arg2, arg3, arg4);
         
         if (calculatedLength === null) {
             return null;
         }
         
         var result = new Uint8Array(calculatedLength);
-        var actualLength = writerFunction(
-            result, arg1, arg2, arg3, arg4);
+        var actualLength = createCodestreamForRegionInternal(
+            result, codestreamPart, isOnlyHeadersWithoutBitstream);
 
         if (actualLength === calculatedLength) {
             return result;
@@ -82,72 +34,30 @@ module.exports = function JpipCodestreamReconstructor(
         throw new jGlobals.jpipExceptions.InternalErrorException(
             'JpipCodestreamReconstructor: Unmatched actualLength ' + actualLength +
             ' and calculatedLength ' + calculatedLength);
-    }
+    };
 
-    function reconstructCodestreamInternal(
-        result, minNumQualityLayers) {
-        
-        var currentOffset = createMainHeader(result);
-        
-        if (currentOffset === null) {
-            return null;
-        }
-        
-        var numTiles =
-            codestreamStructure.getNumTilesX() * codestreamStructure.getNumTilesY();
-        
-        var codestreamPart;
-        
-        if (minNumQualityLayers === undefined) {
-            minNumQualityLayers = 'max';
-        }
-        
-        for (var tileId = 0; tileId < numTiles; ++tileId) {
-            var tileBytesCopied = createTile(
-                result,
-                currentOffset,
-                tileId,
-                tileId,
-                codestreamPart,
-                minNumQualityLayers);
-            
-            currentOffset += tileBytesCopied;
-            
-            if (tileBytesCopied === null) {
-                return null;
-            }
-        }
-        
-        var markerBytesCopied = copyBytes(
-            result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
-        currentOffset += markerBytesCopied;
-
-        return currentOffset;
-    }
-    
     function createCodestreamForRegionInternal(
-        result, params, minNumQualityLayers, isOnlyHeadersWithoutBitstream) {
+        result, codestreamPart, isOnlyHeadersWithoutBitstream) {
         
-        var currentOffset = createMainHeader(
-            result, params.level);
+        var currentOffset = createMainHeader(result, codestreamPart.level);
         
         if (currentOffset === null) {
             return null;
         }
         
         var tileIdToWrite = 0;
-        var tileIterator = codestreamStructure.getTilesIterator(params);
-        
-        do {
+        var tileIterator = codestreamPart.getTileIterator();
+        while (tileIterator.tryAdvance()) {
             var tileIdOriginal = tileIterator.tileIndex;
             
             var tileBytesCopied = createTile(
                 result,
                 currentOffset,
                 tileIdToWrite++,
-                tileIdOriginal,
-                params,
-                minNumQualityLayers,
+                tileIterator,
+                codestreamPart.level,
+                codestreamPart.minNumQualityLayers,
+                codestreamPart.maxNumQualityLayers,
                 isOnlyHeadersWithoutBitstream);
                 
             currentOffset += tileBytesCopied;
@@ -155,70 +65,17 @@ module.exports = function JpipCodestreamReconstructor(
             if (tileBytesCopied === null) {
                 return null;
             }
-        } while (tileIterator.tryAdvance());
+        }
         
         var markerBytesCopied = copyBytes(
             result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
         currentOffset += markerBytesCopied;
 
-        headerModifier.modifyImageSize(result, params);
+        headerModifier.modifyImageSize(result, codestreamPart.fullTilesSize);
         
         if (result === null) {
             return null;
         }
-        
-        return currentOffset;
-    }
-    
-    function createCodestreamForTileInternal(
-        result,
-        tileId,
-        level,
-        minNumQualityLayers,
-        quality) {
-        
-        var currentOffset = createMainHeader(result, level);
-        
-        if (currentOffset === null) {
-            return null;
-        }
-        
-        // TODO: Delete this function and test createCodestreamForRegion instead
-        
-        var codestreamPartParams = {
-            level: level,
-            quality: quality
-            };
-        
-        var tileBytesCopied = createTile(
-            result,
-            currentOffset,
-            /*tileIdToWrite=*/0,
-            /*tileIdOriginal=*/tileId,
-            codestreamPartParams,
-            minNumQualityLayers);
-            
-        currentOffset += tileBytesCopied;
-        
-        if (tileBytesCopied === null) {
-            return null;
-        }
-
-        var markerBytesCopied = copyBytes(
-            result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
-        currentOffset += markerBytesCopied;
-        
-        var numTilesX = codestreamStructure.getNumTilesX();
-        var tileX = tileId % numTilesX;
-        var tileY = Math.floor(tileId / numTilesX);
-        
-        headerModifier.modifyImageSize(result, {
-            level: level,
-            minTileX: tileX,
-            maxTileXExclusive: tileX + 1,
-            minTileY: tileY,
-            maxTileYExclusive: tileY + 1
-            });
         
         return currentOffset;
     }
@@ -253,22 +110,17 @@ module.exports = function JpipCodestreamReconstructor(
         result,
         currentOffset,
         tileIdToWrite,
-        tileIdOriginal,
-        codestreamPartParams,
+        tileIterator,
+        level,
         minNumQualityLayers,
+        maxNumQualityLayers,
         isOnlyHeadersWithoutBitstream) {
         
-        var tileStructure = codestreamStructure.getTileStructure(
-            tileIdOriginal);
+        var tileIdOriginal = tileIterator.tileIndex;
 
         var startTileOffset = currentOffset;
         var tileHeaderDatabin = databinsSaver.getTileHeaderDatabin(
             tileIdOriginal);
-        
-        var level;
-        if (codestreamPartParams !== undefined) {
-            level = codestreamPartParams.level;
-        }
         
         var tileHeaderOffsets = createTileHeaderAndGetOffsets(
             result,
@@ -287,10 +139,9 @@ module.exports = function JpipCodestreamReconstructor(
             var tileBytesCopied = createTileBitstream(
                 result,
                 currentOffset,
-                tileStructure,
-                tileIdOriginal,
-                codestreamPartParams,
-                minNumQualityLayers);
+                tileIterator,
+                minNumQualityLayers,
+                maxNumQualityLayers);
                 
             currentOffset += tileBytesCopied;
             
@@ -360,9 +211,15 @@ module.exports = function JpipCodestreamReconstructor(
             return null;
         }
         
+        var optionalMarker = new Array(2);
+        var databinLength = tileHeaderDatabin.getDatabinLengthIfKnown();
+        tileHeaderDatabin.copyBytes(optionalMarker, 0, {
+            databinStartOffset: databinLength - 2
+        });
+        
         var isEndedWithStartOfDataMarker =
-            result[currentOffset - 2] === jGlobals.j2kMarkers.StartOfData[0] &&
-            result[currentOffset - 1] === jGlobals.j2kMarkers.StartOfData[1];
+            optionalMarker[0] === jGlobals.j2kMarkers.StartOfData[0] &&
+            optionalMarker[1] === jGlobals.j2kMarkers.StartOfData[1];
             
         if (!isEndedWithStartOfDataMarker) {
             bytesCopied = copyBytes(
@@ -390,41 +247,34 @@ module.exports = function JpipCodestreamReconstructor(
     function createTileBitstream(
         result,
         currentOffset,
-        tileStructure,
-        tileIdOriginal,
-        codestreamPartParams,
-        minNumQualityLayers) {
+        tileIterator,
+        minNumQualityLayers,
+        maxNumQualityLayers) {
         
-        var numQualityLayersInTile = tileStructure.getNumQualityLayers();
-        var quality;
-        var iterator = tileStructure.getPrecinctIterator(
-            tileIdOriginal,
-            codestreamPartParams,
-            /*isIteratePrecinctsNotInCodestreamPart=*/true);
+        var numQualityLayersInTile =
+            tileIterator.tileStructure.getNumQualityLayers();
 
         var allBytesCopied = 0;
         var hasMorePackets;
-        
-        if (codestreamPartParams !== undefined) {
-            quality = codestreamPartParams.quality;
-        }
         
         if (minNumQualityLayers === 'max') {
             minNumQualityLayers = numQualityLayersInTile;
         }
         
-        do {
+        var precinctIterator = tileIterator.createPrecinctIterator(
+            /*isIteratePrecinctsNotInCodestreamPart=*/true);
+            
+        while (precinctIterator.tryAdvance()) {
             var emptyPacketsToPush = numQualityLayersInTile;
             
-            if (iterator.isInCodestreamPart) {
-                var inClassId =
-                    tileStructure.precinctPositionToInClassIndex(iterator);
-                var precinctDatabin = databinsSaver.getPrecinctDatabin(inClassId);
+            if (precinctIterator.isInCodestreamPart) {
+                var precinctDatabin = databinsSaver.getPrecinctDatabin(
+                    precinctIterator.inClassIndex);
                 
                 var qualityLayerOffset = qualityLayersCache.getQualityLayerOffset(
                     precinctDatabin,
-                    quality,
-                    iterator);
+                    maxNumQualityLayers,
+                    precinctIterator);
                 
                 var bytesToCopy = qualityLayerOffset.endOffset;
                 emptyPacketsToPush =
@@ -448,14 +298,13 @@ module.exports = function JpipCodestreamReconstructor(
                 currentOffset += bytesCopied;
             }
             
-            if (!result.dummyBufferForLengthCalculation) {
+            if (!result.isDummyBufferForLengthCalculation) {
                 for (var i = 0; i < emptyPacketsToPush; ++i) {
                     result[currentOffset++] = 0;
                 }
             }
             allBytesCopied += emptyPacketsToPush;
         }
-        while (iterator.tryAdvance());
         
         return allBytesCopied;
     }
@@ -480,7 +329,7 @@ module.exports = function JpipCodestreamReconstructor(
     }
         
     function copyBytes(result, resultStartOffset, bytesToCopy) {
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             for (var i = 0; i < bytesToCopy.length; ++i) {
                 result[i + resultStartOffset] = bytesToCopy[i];
             }
@@ -490,7 +339,7 @@ module.exports = function JpipCodestreamReconstructor(
     }
     
     function putByte(result, offset, value) {
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             result[offset] = value;
         }
     }

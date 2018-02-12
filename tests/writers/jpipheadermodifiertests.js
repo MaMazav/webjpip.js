@@ -26,7 +26,7 @@ function getModifiedImageSizeExpected() {
     return result;
 }
 
-function createModifierForTest(progressionOrder, mainHeaderDatabin, codestreamStructure) {
+function createModifierForTest(progressionOrder, mainHeaderDatabin) {
     if (progressionOrder === undefined) {
         progressionOrder = 'RPCL';
     }
@@ -38,7 +38,6 @@ function createModifierForTest(progressionOrder, mainHeaderDatabin, codestreamSt
     var offsetsCalculator = new JpipOffsetsCalculatorStub(mainHeaderDatabin);
 
     var result = new jpipExports.JpipHeaderModifier(
-        codestreamStructure,
         offsetsCalculator,
         progressionOrder);
     
@@ -182,82 +181,17 @@ QUnit.test('modifyImageSize', function(assert) {
     fictiveMainHeaderContent.markerOffsets.SIZ = 2;
     var fictiveMainHeaderDatabin = new DatabinPartsStub(fictiveMainHeaderContent);
 
-    var tileParams = { tileSize: [239, 0x56B] };
-    var tileStructure = new JpipTileStructureStub(
-        tileParams,
-        /*codestreamStructure=*/null,
-        /*progressionOrder=*/'RPCL');
-    
-    var sizeOfPartResult = {
-        width: 0x4F9,
-        height: 15
-        };
-    var codestreamStructure = new JpipCodestreamStructureStub(tileStructure, sizeOfPartResult);
-    
     var modifier = createModifierForTest(
-        'RPCL', fictiveMainHeaderDatabin, codestreamStructure);
+        'RPCL', fictiveMainHeaderDatabin);
     
     var modifiedHeaderExpected = getModifiedImageSizeExpected();
         
     var modifiedHeaderActual = getArrayOfLengthForModifierTest(50);
     modifier.modifyImageSize(modifiedHeaderActual, {
-        minTileX: 20,
-        maxTileXExclusive: 21,
-        minTileY: 0,
-        maxTileYExclusive: 1
-        });
-    
-    assert.deepEqual(
-        modifiedHeaderActual,
-        modifiedHeaderExpected,
-        'Image size changes correctness');
-    });
-
-QUnit.test('modifyImageSize (with resolution levels to cut)',
-    function(assert) {
-    
-    var fictiveMainHeaderContent = []; // No need for content, but only for offsets
-    fictiveMainHeaderContent.markerOffsets = {};
-    fictiveMainHeaderContent.markerOffsets.SIZ = 2;
-    var fictiveMainHeaderDatabin = new DatabinPartsStub(fictiveMainHeaderContent);
-
-    var tileParams = { tileSize: [239, 0x56B] };
-    var tileStructure = new JpipTileStructureStub(
-        tileParams,
-        /*codestreamStructure=*/null,
-        /*progressionOrder=*/'RPCL');
-
-    var sizeOfPartResult = {
-        width: 0x4F9,
-        height: 15
-        };
-
-    var codestreamStructure = new JpipCodestreamStructureStub(tileStructure, sizeOfPartResult);
-    
-    var modifier = createModifierForTest(
-        'RPCL', fictiveMainHeaderDatabin, codestreamStructure);
-    
-    var modifiedHeaderExpected = getModifiedImageSizeExpected();
-    
-    // NOTE: The functionality of scaling image size was moved to
-    // codestreamStructure.getSizeOfPart(). Should test it there
-    
-    //modifiedHeaderExpected[10] = 0x1; // Image width /= 4
-    //modifiedHeaderExpected[11] = 0x3F; // Image height /= 4
-    //modifiedHeaderExpected[15] = 4; // Image height /= 4
-    
-    modifiedHeaderExpected[27] = 60; // Image width /= 4
-    modifiedHeaderExpected[30] = 0x1; // Image height /= 4
-    modifiedHeaderExpected[31] = 0x5B; // Image height /= 4
-        
-    var level = 2;
-    var modifiedHeaderActual = getArrayOfLengthForModifierTest(50);
-    modifier.modifyImageSize(modifiedHeaderActual, {
-        minTileX: 12,
-        maxTileXExclusive: 13,
-        minTileY: 27,
-        maxTileYExclusive: 28,
-        level: level
+        regionWidth: 0x4F9,
+        regionHeight: 15,
+        tileWidth: 239,
+        tileHeight: 0x56B
         });
     
     assert.deepEqual(

@@ -82,15 +82,17 @@ var DatabinPartsStub = (function DatabinPartsStubClosure() {
             }
         }
         
-        for (var i = 0; i < bytesToCopy; ++i) {
-            if (this.skipOffset(databinStartOffset + i)) {
-                continue;
+        if (!result.isDummyBufferForLengthCalculation) {
+            for (var i = 0; i < bytesToCopy; ++i) {
+                if (this.skipOffset(databinStartOffset + i)) {
+                    continue;
+                }
+                result[resultStartOffset + i] = this.buffer[databinStartOffset + i];
             }
-            result[resultStartOffset + i] = this.buffer[databinStartOffset + i];
+            
+            result.sourceBuffer = this.buffer;
+            result.offsetInSourceBuffer = databinStartOffset - resultStartOffset;
         }
-        
-        result.sourceBuffer = this.buffer;
-        result.offsetInSourceBuffer = databinStartOffset - resultStartOffset;
         
         return bytesToCopy;
     };

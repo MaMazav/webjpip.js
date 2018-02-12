@@ -259,20 +259,22 @@ var JpipMarkersParser = __webpack_require__(19);
 var JpipObjectPoolByDatabin = __webpack_require__(20);
 var JpipOffsetsCalculator = __webpack_require__(21);
 var JpipPacketsDataCollector = __webpack_require__(22);
-var JpipRequestDatabinsListener = __webpack_require__(23);
-var JpipRequestParamsModifier = __webpack_require__(24);
-var JpipRequest = __webpack_require__(25);
-var JpipSessionHelper = __webpack_require__(26);
-var JpipSession = __webpack_require__(27);
-var JpipReconnectableRequester = __webpack_require__(28);
-var JpipStructureParser = __webpack_require__(29);
-var JpipTileStructure = __webpack_require__(30);
-var JpipBitstreamReader = __webpack_require__(31);
-var JpipTagTree = __webpack_require__(32);
-var JpipCodeblockLengthParser = __webpack_require__(33);
-var JpipSubbandLengthInPacketHeaderCalculator = __webpack_require__(34);
-var JpipPacketLengthCalculator = __webpack_require__(35);
-var JpipQualityLayersCache = __webpack_require__(36);
+var JpipParamsCodestreamPart = __webpack_require__(23);
+var JpipParamsPrecinctIterator = __webpack_require__(24);
+var JpipRequestDatabinsListener = __webpack_require__(25);
+var JpipRequestParamsModifier = __webpack_require__(26);
+var JpipRequest = __webpack_require__(27);
+var JpipSessionHelper = __webpack_require__(28);
+var JpipSession = __webpack_require__(29);
+var JpipReconnectableRequester = __webpack_require__(30);
+var JpipStructureParser = __webpack_require__(31);
+var JpipTileStructure = __webpack_require__(32);
+var JpipBitstreamReader = __webpack_require__(33);
+var JpipTagTree = __webpack_require__(34);
+var JpipCodeblockLengthParser = __webpack_require__(35);
+var JpipSubbandLengthInPacketHeaderCalculator = __webpack_require__(36);
+var JpipPacketLengthCalculator = __webpack_require__(37);
+var JpipQualityLayersCache = __webpack_require__(38);
 
 var JpipFetcher;
 
@@ -282,9 +284,9 @@ var jpipRuntimeFactory = {
         return new JpipChannel(maxRequestsWaitingForResponseInChannel, sessionHelper, jpipRuntimeFactory);
     },
 
-    createCodestreamReconstructor: function createCodestreamReconstructor(codestreamStructure, databinsSaver, headerModifier, qualityLayersCache) {
+    createCodestreamReconstructor: function createCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache) {
 
-        return new JpipCodestreamReconstructor(codestreamStructure, databinsSaver, headerModifier, qualityLayersCache);
+        return new JpipCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache);
     },
 
     createLevelCalculator: function createLevelCalculator(params) {
@@ -314,7 +316,7 @@ var jpipRuntimeFactory = {
     createFetcher: function createFetcher(databinsSaver, options) {
         if (!JpipFetcher) {
             // Avoid dependency - load only on runtime
-            JpipFetcher = __webpack_require__(37);
+            JpipFetcher = __webpack_require__(39);
         }
         return new JpipFetcher(databinsSaver, options);
     },
@@ -323,9 +325,9 @@ var jpipRuntimeFactory = {
         return new JpipFetch(fetchContext, requester, progressiveness);
     },
 
-    createHeaderModifier: function createHeaderModifier(codestreamStructure, offsetsCalculator, progressionOrder) {
+    createHeaderModifier: function createHeaderModifier(offsetsCalculator, progressionOrder) {
 
-        return new JpipHeaderModifier(codestreamStructure, offsetsCalculator, progressionOrder);
+        return new JpipHeaderModifier(offsetsCalculator, progressionOrder);
     },
 
     createImageDataContext: function createImageDataContext(jpipObjects, codestreamPartParams, progressiveness) {
@@ -345,14 +347,24 @@ var jpipRuntimeFactory = {
         return new JpipOffsetsCalculator(mainHeaderDatabin, markersParser);
     },
 
-    createPacketsDataCollector: function createPacketsDataCollector(codestreamStructure, databinsSaver, qualityLayersCache) {
+    createPacketsDataCollector: function createPacketsDataCollector(databinsSaver, qualityLayersCache) {
 
-        return new JpipPacketsDataCollector(codestreamStructure, databinsSaver, qualityLayersCache, jpipRuntimeFactory);
+        return new JpipPacketsDataCollector(databinsSaver, qualityLayersCache, jpipRuntimeFactory);
     },
 
-    createRequestDatabinsListener: function createRequestDatabinsListener(codestreamPartParams, qualityLayerReachedCallback, codestreamStructure, databinsSaver, qualityLayersCache) {
+    createParamsCodestreamPart: function createParamsCodestreamPart(codestreamPartParams, codestreamStructure) {
 
-        return new JpipRequestDatabinsListener(codestreamPartParams, qualityLayerReachedCallback, codestreamStructure, databinsSaver, qualityLayersCache, jpipRuntimeFactory);
+        return new JpipParamsCodestreamPart(codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
+    },
+
+    createJpipParamsPrecinctIterator: function createJpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
+
+        return new JpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart);
+    },
+
+    createRequestDatabinsListener: function createRequestDatabinsListener(codestreamPart, qualityLayerReachedCallback, codestreamStructure, databinsSaver, qualityLayersCache) {
+
+        return new JpipRequestDatabinsListener(codestreamPart, qualityLayerReachedCallback, codestreamStructure, databinsSaver, qualityLayersCache, jpipRuntimeFactory);
     },
 
     createRequestParamsModifier: function createRequestParamsModifier(codestreamStructure) {
@@ -429,7 +441,7 @@ module.exports = jpipRuntimeFactory;
 var jGlobals = __webpack_require__(0);
 
 module.exports.JpipImage = __webpack_require__(3);
-module.exports.PdfjsJpxDecoder = __webpack_require__(38);
+module.exports.PdfjsJpxDecoder = __webpack_require__(40);
 module.exports.j2kExceptions = jGlobals.j2kExceptions;
 module.exports.jpipExceptions = jGlobals.jpipExceptions;
 module.exports.Internals = {
@@ -461,9 +473,9 @@ function JpipImage(options) {
 
     var qualityLayersCache = jpipFactory.createQualityLayersCache(codestreamStructure);
 
-    var headerModifier = jpipFactory.createHeaderModifier(codestreamStructure, offsetsCalculator, progressionOrder);
-    var reconstructor = jpipFactory.createCodestreamReconstructor(codestreamStructure, databinsSaver, headerModifier, qualityLayersCache);
-    var packetsDataCollector = jpipFactory.createPacketsDataCollector(codestreamStructure, databinsSaver, qualityLayersCache);
+    var headerModifier = jpipFactory.createHeaderModifier(offsetsCalculator, progressionOrder);
+    var reconstructor = jpipFactory.createCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache);
+    var packetsDataCollector = jpipFactory.createPacketsDataCollector(databinsSaver, qualityLayersCache);
 
     var jpipObjectsForRequestContext = {
         reconstructor: reconstructor,
@@ -508,6 +520,42 @@ function JpipImage(options) {
         return fetcher;
     };
 
+    //this.getWorkerTypeOptions = function getWorkerTypeOptions(taskType) {
+    //    throw 'webjpip error: getWorkerTypeOptions not implemented';
+    //};
+    //
+    //this.getKeyAsString = function getKeyAsString(key) {
+    //    throw 'not implemented';
+    //    switch (key.taskType) {
+    //        case 'COEFFS':
+    //            break;
+    //        case 'PIXELS':
+    //            break;
+    //        default:
+    //            throw 'webjpip error: Unexpected task type in getKeyAsString '
+    //                + key.taskType;
+    //    }
+    //};
+    //
+    //this.taskStarted = function taskStarted(task) {
+    //    switch (key.taskType) {
+    //        case 'COEFFS':
+    //            jpipFactory.createRequestDatabinsListener(
+    //                tileIterator,
+    //                codestreamPartParams.quality,
+    //                this._qualityLayerReachedCallback.bind(this),
+    //                this._codestreamStructure,
+    //                this._databinsSaver,
+    //                this._qualityLayersCache);
+    //            break;
+    //        case 'PIXELS':
+    //            break;
+    //        default:
+    //            throw 'webjpip error: Unexpected task type in getKeyAsString '
+    //                + key.taskType;
+    //    }
+    //};
+
     this.getWorkerTypeOptions = function getWorkerTypeOptions(taskType) {
         var codestreamTransferable = [0, 'headersCodestream', 'codestream', 'buffer'];
         var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
@@ -526,7 +574,9 @@ function JpipImage(options) {
 
     this.taskStarted = function taskStarted(task) {
         var params = paramsModifier.modify( /*codestreamTaskParams=*/task.key);
-        var context = jpipFactory.createImageDataContext(jpipObjectsForRequestContext, params.codestreamPartParams, params.progressiveness);
+        var part = jpipFactory.createParamsCodestreamPart(params.codestreamPartParams, codestreamStructure);
+
+        var context = jpipFactory.createImageDataContext(jpipObjectsForRequestContext, part, params.progressiveness);
 
         context.on('data', onData);
         if (context.hasData()) {
@@ -1271,53 +1321,20 @@ module.exports = function JpipChannel(maxRequestsWaitingForResponseInChannel, se
 
 var jGlobals = __webpack_require__(0);
 
-module.exports = function JpipCodestreamReconstructor(codestreamStructure, databinsSaver, headerModifier, qualityLayersCache) {
+module.exports = function JpipCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache) {
 
-    var dummyBufferForLengthCalculation = { dummyBufferForLengthCalculation: true };
+    var dummyBufferForLengthCalculation = { isDummyBufferForLengthCalculation: true };
 
-    this.reconstructCodestream = function reconstructCodestream(minNumQualityLayers) {
+    this.createCodestreamForRegion = function createCodestreamForRegion(codestreamPart, isOnlyHeadersWithoutBitstream) {
 
-        return getAsArrayBuffer(reconstructCodestreamInternal, minNumQualityLayers);
-    };
-
-    this.createCodestreamForRegion = function createCodestreamForRegion(params, minNumQualityLayers, isOnlyHeadersWithoutBitstream) {
-
-        var codestream = getAsArrayBuffer(createCodestreamForRegionInternal, params, minNumQualityLayers, isOnlyHeadersWithoutBitstream);
-
-        if (codestream === null) {
-            return null;
-        }
-
-        var tileIterator = codestreamStructure.getTilesIterator(params);
-        var firstTileId = tileIterator.tileIndex;
-
-        var firstTileLeft = codestreamStructure.getTileLeft(firstTileId, params.level);
-        var firstTileTop = codestreamStructure.getTileTop(firstTileId, params.level);
-
-        var offsetX = params.minX - firstTileLeft;
-        var offsetY = params.minY - firstTileTop;
-
-        return {
-            codestream: codestream,
-            offsetX: offsetX,
-            offsetY: offsetY
-        };
-    };
-
-    this.createCodestreamForTile = function createCodestreamForTile(tileId, level, minNumQualityLayers, quality) {
-
-        return getAsArrayBuffer(createCodestreamForTileInternal, tileId, level, minNumQualityLayers, quality);
-    };
-
-    function getAsArrayBuffer(writerFunction, arg1, arg2, arg3, arg4) {
-        var calculatedLength = writerFunction(dummyBufferForLengthCalculation, arg1, arg2, arg3, arg4);
+        var calculatedLength = createCodestreamForRegionInternal(dummyBufferForLengthCalculation, codestreamPart, isOnlyHeadersWithoutBitstream);
 
         if (calculatedLength === null) {
             return null;
         }
 
         var result = new Uint8Array(calculatedLength);
-        var actualLength = writerFunction(result, arg1, arg2, arg3, arg4);
+        var actualLength = createCodestreamForRegionInternal(result, codestreamPart, isOnlyHeadersWithoutBitstream);
 
         if (actualLength === calculatedLength) {
             return result;
@@ -1326,114 +1343,38 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
         }
 
         throw new jGlobals.jpipExceptions.InternalErrorException('JpipCodestreamReconstructor: Unmatched actualLength ' + actualLength + ' and calculatedLength ' + calculatedLength);
-    }
+    };
 
-    function reconstructCodestreamInternal(result, minNumQualityLayers) {
+    function createCodestreamForRegionInternal(result, codestreamPart, isOnlyHeadersWithoutBitstream) {
 
-        var currentOffset = createMainHeader(result);
-
-        if (currentOffset === null) {
-            return null;
-        }
-
-        var numTiles = codestreamStructure.getNumTilesX() * codestreamStructure.getNumTilesY();
-
-        var codestreamPart;
-
-        if (minNumQualityLayers === undefined) {
-            minNumQualityLayers = 'max';
-        }
-
-        for (var tileId = 0; tileId < numTiles; ++tileId) {
-            var tileBytesCopied = createTile(result, currentOffset, tileId, tileId, codestreamPart, minNumQualityLayers);
-
-            currentOffset += tileBytesCopied;
-
-            if (tileBytesCopied === null) {
-                return null;
-            }
-        }
-
-        var markerBytesCopied = copyBytes(result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
-        currentOffset += markerBytesCopied;
-
-        return currentOffset;
-    }
-
-    function createCodestreamForRegionInternal(result, params, minNumQualityLayers, isOnlyHeadersWithoutBitstream) {
-
-        var currentOffset = createMainHeader(result, params.level);
+        var currentOffset = createMainHeader(result, codestreamPart.level);
 
         if (currentOffset === null) {
             return null;
         }
 
         var tileIdToWrite = 0;
-        var tileIterator = codestreamStructure.getTilesIterator(params);
-
-        do {
+        var tileIterator = codestreamPart.getTileIterator();
+        while (tileIterator.tryAdvance()) {
             var tileIdOriginal = tileIterator.tileIndex;
 
-            var tileBytesCopied = createTile(result, currentOffset, tileIdToWrite++, tileIdOriginal, params, minNumQualityLayers, isOnlyHeadersWithoutBitstream);
+            var tileBytesCopied = createTile(result, currentOffset, tileIdToWrite++, tileIterator, codestreamPart.level, codestreamPart.minNumQualityLayers, codestreamPart.maxNumQualityLayers, isOnlyHeadersWithoutBitstream);
 
             currentOffset += tileBytesCopied;
 
             if (tileBytesCopied === null) {
                 return null;
             }
-        } while (tileIterator.tryAdvance());
+        }
 
         var markerBytesCopied = copyBytes(result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
         currentOffset += markerBytesCopied;
 
-        headerModifier.modifyImageSize(result, params);
+        headerModifier.modifyImageSize(result, codestreamPart.fullTilesSize);
 
         if (result === null) {
             return null;
         }
-
-        return currentOffset;
-    }
-
-    function createCodestreamForTileInternal(result, tileId, level, minNumQualityLayers, quality) {
-
-        var currentOffset = createMainHeader(result, level);
-
-        if (currentOffset === null) {
-            return null;
-        }
-
-        // TODO: Delete this function and test createCodestreamForRegion instead
-
-        var codestreamPartParams = {
-            level: level,
-            quality: quality
-        };
-
-        var tileBytesCopied = createTile(result, currentOffset,
-        /*tileIdToWrite=*/0,
-        /*tileIdOriginal=*/tileId, codestreamPartParams, minNumQualityLayers);
-
-        currentOffset += tileBytesCopied;
-
-        if (tileBytesCopied === null) {
-            return null;
-        }
-
-        var markerBytesCopied = copyBytes(result, currentOffset, jGlobals.j2kMarkers.EndOfCodestream);
-        currentOffset += markerBytesCopied;
-
-        var numTilesX = codestreamStructure.getNumTilesX();
-        var tileX = tileId % numTilesX;
-        var tileY = Math.floor(tileId / numTilesX);
-
-        headerModifier.modifyImageSize(result, {
-            level: level,
-            minTileX: tileX,
-            maxTileXExclusive: tileX + 1,
-            minTileY: tileY,
-            maxTileYExclusive: tileY + 1
-        });
 
         return currentOffset;
     }
@@ -1462,17 +1403,12 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
         return currentOffset;
     }
 
-    function createTile(result, currentOffset, tileIdToWrite, tileIdOriginal, codestreamPartParams, minNumQualityLayers, isOnlyHeadersWithoutBitstream) {
+    function createTile(result, currentOffset, tileIdToWrite, tileIterator, level, minNumQualityLayers, maxNumQualityLayers, isOnlyHeadersWithoutBitstream) {
 
-        var tileStructure = codestreamStructure.getTileStructure(tileIdOriginal);
+        var tileIdOriginal = tileIterator.tileIndex;
 
         var startTileOffset = currentOffset;
         var tileHeaderDatabin = databinsSaver.getTileHeaderDatabin(tileIdOriginal);
-
-        var level;
-        if (codestreamPartParams !== undefined) {
-            level = codestreamPartParams.level;
-        }
 
         var tileHeaderOffsets = createTileHeaderAndGetOffsets(result, currentOffset, tileHeaderDatabin, tileIdToWrite, level);
 
@@ -1483,7 +1419,7 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
         currentOffset = tileHeaderOffsets.endTileHeaderOffset;
 
         if (!isOnlyHeadersWithoutBitstream) {
-            var tileBytesCopied = createTileBitstream(result, currentOffset, tileStructure, tileIdOriginal, codestreamPartParams, minNumQualityLayers);
+            var tileBytesCopied = createTileBitstream(result, currentOffset, tileIterator, minNumQualityLayers, maxNumQualityLayers);
 
             currentOffset += tileBytesCopied;
 
@@ -1543,7 +1479,13 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
             return null;
         }
 
-        var isEndedWithStartOfDataMarker = result[currentOffset - 2] === jGlobals.j2kMarkers.StartOfData[0] && result[currentOffset - 1] === jGlobals.j2kMarkers.StartOfData[1];
+        var optionalMarker = new Array(2);
+        var databinLength = tileHeaderDatabin.getDatabinLengthIfKnown();
+        tileHeaderDatabin.copyBytes(optionalMarker, 0, {
+            databinStartOffset: databinLength - 2
+        });
+
+        var isEndedWithStartOfDataMarker = optionalMarker[0] === jGlobals.j2kMarkers.StartOfData[0] && optionalMarker[1] === jGlobals.j2kMarkers.StartOfData[1];
 
         if (!isEndedWithStartOfDataMarker) {
             bytesCopied = copyBytes(result, currentOffset, jGlobals.j2kMarkers.StartOfData);
@@ -1563,32 +1505,27 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
         return offsets;
     }
 
-    function createTileBitstream(result, currentOffset, tileStructure, tileIdOriginal, codestreamPartParams, minNumQualityLayers) {
+    function createTileBitstream(result, currentOffset, tileIterator, minNumQualityLayers, maxNumQualityLayers) {
 
-        var numQualityLayersInTile = tileStructure.getNumQualityLayers();
-        var quality;
-        var iterator = tileStructure.getPrecinctIterator(tileIdOriginal, codestreamPartParams,
-        /*isIteratePrecinctsNotInCodestreamPart=*/true);
+        var numQualityLayersInTile = tileIterator.tileStructure.getNumQualityLayers();
 
         var allBytesCopied = 0;
         var hasMorePackets;
-
-        if (codestreamPartParams !== undefined) {
-            quality = codestreamPartParams.quality;
-        }
 
         if (minNumQualityLayers === 'max') {
             minNumQualityLayers = numQualityLayersInTile;
         }
 
-        do {
+        var precinctIterator = tileIterator.createPrecinctIterator(
+        /*isIteratePrecinctsNotInCodestreamPart=*/true);
+
+        while (precinctIterator.tryAdvance()) {
             var emptyPacketsToPush = numQualityLayersInTile;
 
-            if (iterator.isInCodestreamPart) {
-                var inClassId = tileStructure.precinctPositionToInClassIndex(iterator);
-                var precinctDatabin = databinsSaver.getPrecinctDatabin(inClassId);
+            if (precinctIterator.isInCodestreamPart) {
+                var precinctDatabin = databinsSaver.getPrecinctDatabin(precinctIterator.inClassIndex);
 
-                var qualityLayerOffset = qualityLayersCache.getQualityLayerOffset(precinctDatabin, quality, iterator);
+                var qualityLayerOffset = qualityLayersCache.getQualityLayerOffset(precinctDatabin, maxNumQualityLayers, precinctIterator);
 
                 var bytesToCopy = qualityLayerOffset.endOffset;
                 emptyPacketsToPush = numQualityLayersInTile - qualityLayerOffset.numQualityLayers;
@@ -1611,13 +1548,13 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
                 currentOffset += bytesCopied;
             }
 
-            if (!result.dummyBufferForLengthCalculation) {
+            if (!result.isDummyBufferForLengthCalculation) {
                 for (var i = 0; i < emptyPacketsToPush; ++i) {
                     result[currentOffset++] = 0;
                 }
             }
             allBytesCopied += emptyPacketsToPush;
-        } while (iterator.tryAdvance());
+        }
 
         return allBytesCopied;
     }
@@ -1642,7 +1579,7 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
     }
 
     function copyBytes(result, resultStartOffset, bytesToCopy) {
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             for (var i = 0; i < bytesToCopy.length; ++i) {
                 result[i + resultStartOffset] = bytesToCopy[i];
             }
@@ -1652,7 +1589,7 @@ module.exports = function JpipCodestreamReconstructor(codestreamStructure, datab
     }
 
     function putByte(result, offset, value) {
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             result[offset] = value;
         }
     }
@@ -1828,56 +1765,19 @@ module.exports = function JpipCodestreamStructure(jpipStructureParser, jpipFacto
         return result;
     };
 
-    this.getTilesIterator = function getTilesIterator(codestreamPartParams) {
+    this.getTilesFromPixels = function getTilesFromPixels(codestreamPartParams) {
+
         validateParams();
-        var bounds = sizesCalculator.getTilesFromPixels(codestreamPartParams);
 
-        var setableIterator = {
-            currentX: bounds.minTileX,
-            currentY: bounds.minTileY
-        };
-
-        var iterator = {
-            get tileIndex() {
-                var firstInRow = setableIterator.currentY * sizesCalculator.getNumTilesX();
-                var index = firstInRow + setableIterator.currentX;
-
-                return index;
-            },
-
-            tryAdvance: function tryAdvance() {
-                var result = tryAdvanceTileIterator(setableIterator, bounds);
-                return result;
-            }
-        };
-
-        return iterator;
+        return sizesCalculator.getTilesFromPixels(codestreamPartParams);
     };
 
-    this.getSizeOfPart = function getSizeOfPart(codestreamPartParams) {
+    this.getSizeOfTiles = function getSizeOfTiles(tileBounds) {
         validateParams();
 
-        var size = sizesCalculator.getSizeOfPart(codestreamPartParams);
+        var size = sizesCalculator.getSizeOfTiles(tileBounds);
         return size;
     };
-
-    function tryAdvanceTileIterator(setableIterator, bounds) {
-        if (setableIterator.currentY >= bounds.maxTileYExclusive) {
-            throw new jGlobals.jpipExceptions.InternalErrorException('Cannot advance tile iterator after end');
-        }
-
-        ++setableIterator.currentX;
-        if (setableIterator.currentX < bounds.maxTileXExclusive) {
-            return true;
-        }
-
-        setableIterator.currentX = bounds.minTileX;
-        ++setableIterator.currentY;
-
-        var isMoreTilesAvailable = setableIterator.currentY < bounds.maxTileYExclusive;
-
-        return isMoreTilesAvailable;
-    }
 
     function getTileStructure(tileId) {
         validateParams();
@@ -2394,9 +2294,11 @@ module.exports = function JpipDatabinParts(classId, inClassId, jpipFactory) {
 
         var resultArrayOffsetInDatabin = params.databinStartOffset - params.resultStartOffset;
 
-        var maxLengthCopied = iterateRange(params.databinStartOffset, params.maxLengthToCopy, function addPartToResultInCopyBytes(part, minOffsetInPart, maxOffsetInPart) {
+        var actualCopyBytes = resultArray.isDummyBufferForLengthCalculation ? function () {} : function addPartToResultInCopyBytes(part, minOffsetInPart, maxOffsetInPart) {
             part.copyToArray(resultArray, resultArrayOffsetInDatabin, minOffsetInPart, maxOffsetInPart);
-        });
+        };
+
+        var maxLengthCopied = iterateRange(params.databinStartOffset, params.maxLengthToCopy, actualCopyBytes);
 
         return maxLengthCopied;
     };
@@ -3170,13 +3072,13 @@ function JpipFetch(fetchContext, requester, progressiveness) {
 
 var jGlobals = __webpack_require__(0);
 
-module.exports = function JpipHeaderModifier(codestreamStructure, offsetsCalculator, progressionOrder) {
+module.exports = function JpipHeaderModifier(offsetsCalculator, progressionOrder) {
 
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);
 
     this.modifyMainOrTileHeader = function modifyMainOrTileHeader(result, originalDatabin, databinOffsetInResult, level) {
 
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             modifyProgressionOrder(result, originalDatabin, databinOffsetInResult);
         }
 
@@ -3186,7 +3088,7 @@ module.exports = function JpipHeaderModifier(codestreamStructure, offsetsCalcula
 
         var bestResolutionLevelsRanges = offsetsCalculator.getRangesOfBestResolutionLevelsData(originalDatabin, level);
 
-        if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null && !result.dummyBufferForLengthCalculation) {
+        if (bestResolutionLevelsRanges.numDecompositionLevelsOffset !== null && !result.isDummyBufferForLengthCalculation) {
             var offset = databinOffsetInResult + bestResolutionLevelsRanges.numDecompositionLevelsOffset;
 
             result[offset] -= level;
@@ -3198,15 +3100,11 @@ module.exports = function JpipHeaderModifier(codestreamStructure, offsetsCalcula
         return bytesAdded;
     };
 
-    this.modifyImageSize = function modifyImageSize(result, codestreamPartParams) {
-        if (result.dummyBufferForLengthCalculation) {
+    this.modifyImageSize = function modifyImageSize(result, newReferenceGridSize) {
+
+        if (result.isDummyBufferForLengthCalculation) {
             return;
         }
-
-        var newTileWidth = codestreamStructure.getTileWidth(codestreamPartParams.level);
-        var newTileHeight = codestreamStructure.getTileHeight(codestreamPartParams.level);
-
-        var newReferenceGridSize = codestreamStructure.getSizeOfPart(codestreamPartParams);
 
         var sizMarkerOffset = offsetsCalculator.getImageAndTileSizeOffset();
 
@@ -3216,11 +3114,11 @@ module.exports = function JpipHeaderModifier(codestreamStructure, offsetsCalcula
         var tileSizeBytesOffset = referenceGridSizeOffset + 16;
         var firstTileOffsetBytesOffset = referenceGridSizeOffset + 24;
 
-        modifyInt32(result, referenceGridSizeOffset, newReferenceGridSize.width);
-        modifyInt32(result, referenceGridSizeOffset + 4, newReferenceGridSize.height);
+        modifyInt32(result, referenceGridSizeOffset, newReferenceGridSize.regionWidth);
+        modifyInt32(result, referenceGridSizeOffset + 4, newReferenceGridSize.regionHeight);
 
-        modifyInt32(result, tileSizeBytesOffset, newTileWidth);
-        modifyInt32(result, tileSizeBytesOffset + 4, newTileHeight);
+        modifyInt32(result, tileSizeBytesOffset, newReferenceGridSize.tileWidth);
+        modifyInt32(result, tileSizeBytesOffset + 4, newReferenceGridSize.tileHeight);
 
         modifyInt32(result, imageOffsetBytesOffset, 0);
         modifyInt32(result, imageOffsetBytesOffset + 4, 0);
@@ -3246,7 +3144,7 @@ module.exports = function JpipHeaderModifier(codestreamStructure, offsetsCalcula
             return 0; // zero bytes removed
         }
 
-        if (!result.dummyBufferForLengthCalculation) {
+        if (!result.isDummyBufferForLengthCalculation) {
             for (var i = 0; i < rangesToRemove.length; ++i) {
                 var offset = addOffset + rangesToRemove[i].markerSegmentLengthOffset;
 
@@ -3278,7 +3176,7 @@ module.exports = function JpipHeaderModifier(codestreamStructure, offsetsCalcula
     }
 
     function modifyInt32(bytes, offset, newValue) {
-        if (bytes.dummyBufferForLengthCalculation) {
+        if (bytes.isDummyBufferForLengthCalculation) {
             return;
         }
 
@@ -3326,8 +3224,8 @@ var jGlobals = __webpack_require__(0);
 
 module.exports = JpipImageDataContext;
 
-function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness) {
-    this._codestreamPartParams = codestreamPartParams;
+function JpipImageDataContext(jpipObjects, codestreamPart, progressiveness) {
+    this._codestreamPart = codestreamPart;
     this._progressiveness = progressiveness;
     this._reconstructor = jpipObjects.reconstructor;
     this._packetsDataCollector = jpipObjects.packetsDataCollector;
@@ -3339,8 +3237,10 @@ function JpipImageDataContext(jpipObjects, codestreamPartParams, progressiveness
     this._progressiveStagesFinished = 0;
     this._qualityLayersReached = 0;
     this._dataListeners = [];
+    this._offsetX = -1;
+    this._offsetY = -1;
 
-    this._listener = this._jpipFactory.createRequestDatabinsListener(codestreamPartParams, this._qualityLayerReachedCallback.bind(this), this._codestreamStructure, this._databinsSaver, this._qualityLayersCache);
+    this._listener = this._jpipFactory.createRequestDatabinsListener(this._codestreamPart, this._qualityLayerReachedCallback.bind(this), this._codestreamStructure, this._databinsSaver, this._qualityLayersCache);
 }
 
 JpipImageDataContext.prototype.hasData = function hasData() {
@@ -3356,11 +3256,10 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality)
     }
 
     //ensureNoFailure();
-    var params = this._getParamsForDataWriter(quality);
-    var codeblocks = this._packetsDataCollector.getAllCodeblocksData(params.codestreamPartParams, params.minNumQualityLayers);
+    var part = this._getPartForDataWriter(quality);
+    var codeblocks = this._packetsDataCollector.getAllCodeblocksData(part);
 
-    var headersCodestream = this._reconstructor.createCodestreamForRegion(params.codestreamPartParams, params.minNumQualityLayers,
-    /*isOnlyHeadersWithoutBitstream=*/true);
+    var headersCodestream = this._getCodestream(quality, /*isOnlyHeadersWithoutBitstream=*/true);
 
     if (codeblocks.codeblocksData === null) {
         throw new jGlobals.jpipExceptions.InternalErrorException('Could not collect codeblocks although progressiveness ' + 'stage has been reached');
@@ -3374,23 +3273,13 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality)
     return {
         headersCodestream: headersCodestream,
         codeblocksData: codeblocks.codeblocksData,
-        codestreamPartParams: this._codestreamPartParams
+        width: this._codestreamPart.width,
+        height: this._codestreamPart.height
     };
 };
 
 JpipImageDataContext.prototype.getFetchedDataAsCodestream = function getFetchedDataAsCodestream(quality) {
-    this._ensureNotDisposed();
-    //ensureNoFailure();
-
-    var params = this._getParamsForDataWriter(quality);
-
-    var codestream = this._reconstructor.createCodestreamForRegion(params.codestreamPartParams, params.minNumQualityLayers);
-
-    if (codestream === null) {
-        throw new jGlobals.jpipExceptions.InternalErrorException('Could not reconstruct codestream although ' + 'progressiveness stage has been reached');
-    }
-
-    return codestream;
+    return this._getCodestream(quality, /*isOnlyHeadersWithoutBitstream=*/false);
 };
 
 JpipImageDataContext.prototype.on = function on(event, listener) {
@@ -3430,17 +3319,46 @@ JpipImageDataContext.prototype.isDisposed = function isDisposed() {
     return !this._listener;
 };
 
-JpipImageDataContext.prototype.getCodestreamPartParams = function getCodestreamPartParams() {
-
-    return this._codestreamPartParams;
-};
-
 JpipImageDataContext.prototype.getNextQualityLayer = function getNextQualityLayer() {
 
     return this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;
 };
 
 // Private methods
+
+JpipImageDataContext.prototype._getCodestream = function getCodestream(quality, isOnlyHeadersWithoutBitstream) {
+
+    this._ensureNotDisposed();
+    //ensureNoFailure();
+
+    var codestreamPart = this._getPartForDataWriter(quality);
+
+    var codestream = this._reconstructor.createCodestreamForRegion(codestreamPart, isOnlyHeadersWithoutBitstream);
+
+    if (codestream === null) {
+        throw new jGlobals.jpipExceptions.InternalErrorException('Could not reconstruct codestream although ' + 'progressiveness stage has been reached');
+    }
+
+    if (this._offsetX < 0) {
+        var tileIterator = codestreamPart.getTileIterator();
+        if (!tileIterator.tryAdvance()) {
+            throw new jGlobals.jpipExceptions.InternalErrorException('Empty codestreamPart in JpipImageDataContext');
+        }
+        var firstTileId = tileIterator.tileIndex;
+
+        var firstTileLeft = this._codestreamStructure.getTileLeft(firstTileId, codestreamPart.level);
+        var firstTileTop = this._codestreamStructure.getTileTop(firstTileId, codestreamPart.level);
+
+        this._offsetX = codestreamPart.minX - firstTileLeft;
+        this._offsetY = codestreamPart.minY - firstTileTop;
+    }
+
+    return {
+        codestream: codestream,
+        offsetX: this._offsetX,
+        offsetY: this._offsetY
+    };
+};
 
 JpipImageDataContext.prototype._tryAdvanceProgressiveStage = function tryAdvanceProgressiveStage() {
     var numQualityLayersToWait = this._progressiveness[this._progressiveStagesFinished].minNumQualityLayers;
@@ -3489,7 +3407,7 @@ JpipImageDataContext.prototype._qualityLayerReachedCallback = function qualityLa
     }
 };
 
-JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDataWriter(quality) {
+JpipImageDataContext.prototype._getPartForDataWriter = function getPartForDataWriter(quality) {
     //ensureNotEnded(status, /*allowZombie=*/true);
 
     //if (codestreamPartParams === null) {
@@ -3506,22 +3424,14 @@ JpipImageDataContext.prototype._getParamsForDataWriter = function getParamsForDa
         throw new jGlobals.jpipExceptions.IllegalOperationException('Cannot create codestream before first progressiveness ' + 'stage has been reached');
     }
 
-    var minNumQualityLayers = this._progressiveness[this._progressiveStagesFinished - 1].minNumQualityLayers;
+    var qualityReached = this._progressiveness[this._progressiveStagesFinished - 1].minNumQualityLayers;
 
-    var newParams = this._codestreamPartParams;
-    if (quality !== undefined) {
-        newParams = Object.create(this._codestreamPartParams);
-        newParams.quality = quality;
+    var minNumQualityLayers = qualityReached === 'max' ? quality : quality === 'max' || quality === undefined ? qualityReached : Math.min(qualityReached, quality);
 
-        if (minNumQualityLayers !== 'max') {
-            minNumQualityLayers = Math.min(minNumQualityLayers, quality);
-        }
-    }
+    this._codestreamPart.setMinNumQualityLayers(minNumQualityLayers);
+    this._codestreamPart.setMaxNumQualityLayersLimit(quality);
 
-    return {
-        codestreamPartParams: newParams,
-        minNumQualityLayers: minNumQualityLayers
-    };
+    return this._codestreamPart;
 };
 
 JpipImageDataContext.prototype._ensureNotDisposed = function ensureNotDisposed() {
@@ -3540,6 +3450,13 @@ JpipImageDataContext.prototype._ensureNotDisposed = function ensureNotDisposed()
 var jGlobals = __webpack_require__(0);
 var LOG2 = Math.log(2);
 
+/* TODO: Need to separate this class into two functionalities:
+ * - Internal sizes calculator in jpip structure (refered as sizesCalculator)
+ * - Interface for image-decoder-framework.js (implements LevelCalculator)
+ * Also, some of the methods here are actually accessed from
+ * codestreamStructure, which only delegates the call to here.
+ */
+
 module.exports = function JpipLevelCalculator(params) {
 
     var EDGE_TYPE_NO_EDGE = 0;
@@ -3549,8 +3466,6 @@ module.exports = function JpipLevelCalculator(params) {
     this.EDGE_TYPE_NO_EDGE = EDGE_TYPE_NO_EDGE;
     this.EDGE_TYPE_FIRST = EDGE_TYPE_FIRST;
     this.EDGE_TYPE_LAST = EDGE_TYPE_LAST;
-
-    this.getSizeOfPart = getSizeOfPart;
 
     this.getTilesFromPixels = getTilesFromPixels;
 
@@ -3617,14 +3532,14 @@ module.exports = function JpipLevelCalculator(params) {
         return params.highestQuality;
     };
 
+    this.getSizeOfTiles = getSizeOfTiles;
+
     // Private methods
 
-    function getSizeOfPart(codestreamPartParams) {
-        var level = codestreamPartParams.level;
+    function getSizeOfTiles(tileBounds) {
+        var level = tileBounds.level;
         var tileWidth = getTileWidth(level);
         var tileHeight = getTileHeight(level);
-
-        var tileBounds = getTilesFromPixels(codestreamPartParams);
 
         var firstTileIndex = tileBounds.minTileX + tileBounds.minTileY * getNumTilesX();
 
@@ -3652,13 +3567,15 @@ module.exports = function JpipLevelCalculator(params) {
         }
 
         return {
-            width: width,
-            height: height
+            regionWidth: width,
+            regionHeight: height,
+            tileWidth: tileWidth,
+            tileHeight: tileHeight
         };
     }
 
-    function getTilesFromPixels(partParams) {
-        var level = partParams.level;
+    function getTilesFromPixels(codestreamPartParams) {
+        var level = codestreamPartParams.level;
 
         var tileWidth = getTileWidth(level);
         var tileHeight = getTileHeight(level);
@@ -3666,10 +3583,14 @@ module.exports = function JpipLevelCalculator(params) {
         var firstTileWidth = getFirstTileWidth(level);
         var firstTileHeight = getFirstTileHeight(level);
 
-        var startXNoFirst = (partParams.minX - firstTileWidth) / tileWidth;
-        var startYNoFirst = (partParams.minY - firstTileHeight) / tileHeight;
-        var endXNoFirst = (partParams.maxXExclusive - firstTileWidth) / tileWidth;
-        var endYNoFirst = (partParams.maxYExclusive - firstTileHeight) / tileHeight;
+        var minX = codestreamPartParams.minX;
+        var minY = codestreamPartParams.minY;
+        var maxX = codestreamPartParams.maxXExclusive;
+        var maxY = codestreamPartParams.maxYExclusive;
+        var startXNoFirst = (minX - firstTileWidth) / tileWidth;
+        var startYNoFirst = (minY - firstTileHeight) / tileHeight;
+        var endXNoFirst = (maxX - firstTileWidth) / tileWidth;
+        var endYNoFirst = (maxY - firstTileHeight) / tileHeight;
 
         var minTileX = Math.max(0, 1 + startXNoFirst);
         var minTileY = Math.max(0, 1 + startYNoFirst);
@@ -3677,6 +3598,7 @@ module.exports = function JpipLevelCalculator(params) {
         var maxTileY = Math.min(getNumTilesY(), 1 + endYNoFirst);
 
         var bounds = {
+            level: level,
             minTileX: Math.floor(minTileX),
             minTileY: Math.floor(minTileY),
             maxTileXExclusive: Math.ceil(maxTileX),
@@ -3768,15 +3690,15 @@ module.exports = function JpipLevelCalculator(params) {
             return params.imageWidth;
         }
 
-        var size = getSizeOfPart({
-            minX: 0,
-            maxXExclusive: params.imageWidth,
-            minY: 0,
-            maxYExclusive: params.imageHeight,
+        var size = getSizeOfTiles({
+            minTileX: 0,
+            maxTileXExclusive: getNumTilesX(),
+            minTileY: 0,
+            maxTileYExclusive: 1,
             level: level
         });
 
-        return size.width;
+        return size.regionWidth;
     }
 
     function getLevelHeight(level) {
@@ -3784,15 +3706,15 @@ module.exports = function JpipLevelCalculator(params) {
             return params.imageHeight;
         }
 
-        var size = getSizeOfPart({
-            minX: 0,
-            maxXExclusive: params.imageWidth,
-            minY: 0,
-            maxYExclusive: params.imageHeight,
+        var size = getSizeOfTiles({
+            minTileX: 0,
+            maxTileXExclusive: 1,
+            minTileY: 0,
+            maxTileYExclusive: getNumTilesY(),
             level: level
         });
 
-        return size.height;
+        return size.regionHeight;
     }
 
     function getTileWidth(level) {
@@ -4291,12 +4213,11 @@ module.exports = function JpipOffsetsCalculator(mainHeaderDatabin, markersParser
 
 var jGlobals = __webpack_require__(0);
 
-module.exports = function JpipPacketsDataCollector(codestreamStructure, databinsSaver, qualityLayersCache, jpipFactory) {
+module.exports = function JpipPacketsDataCollector(databinsSaver, qualityLayersCache, jpipFactory) {
 
-    this.getAllCodeblocksData = function getCodeblocksData(codestreamPartParams, minNumQualityLayers) {
-
+    this.getAllCodeblocksData = function getAllCodeblocksData(codestreamPart) {
         var alreadyReturnedCodeblocks = jpipFactory.createObjectPoolByDatabin();
-        var codeblocksData = getNewCodeblocksDataAndUpdateReturnedCodeblocks(codestreamPartParams, minNumQualityLayers, alreadyReturnedCodeblocks);
+        var codeblocksData = getNewCodeblocksDataAndUpdateReturnedCodeblocks(codestreamPart, alreadyReturnedCodeblocks);
 
         return {
             codeblocksData: codeblocksData,
@@ -4304,45 +4225,38 @@ module.exports = function JpipPacketsDataCollector(codestreamStructure, databins
         };
     };
 
-    this.getNewCodeblocksDataAndUpdateReturnedCodeblocks = getNewCodeblocksDataAndUpdateReturnedCodeblocks;
-
-    function getNewCodeblocksDataAndUpdateReturnedCodeblocks(codestreamPartParams, minNumQualityLayers, alreadyReturnedCodeblocks) {
-
-        var tileIterator = codestreamStructure.getTilesIterator(codestreamPartParams);
+    function getNewCodeblocksDataAndUpdateReturnedCodeblocks(codestreamPart, alreadyReturnedCodeblocks) {
 
         var tileIndexInCodestreamPart = 0;
         var dummyOffset = 0;
+        var tileIterator = codestreamPart.getTileIterator();
         var result = {
             packetDataOffsets: [],
             data: jpipFactory.createCompositeArray(dummyOffset),
             allRelevantBytesLoaded: 0
         };
 
-        do {
-            var tileStructure = codestreamStructure.getTileStructure(tileIterator.tileIndex);
+        while (tileIterator.tryAdvance()) {
+            var precinctIterator = tileIterator.createPrecinctIterator();
 
-            var precinctIterator = tileStructure.getPrecinctIterator(tileIterator.tileIndex, codestreamPartParams);
+            var quality = tileIterator.tileStructure.getNumQualityLayers();
 
-            var quality = tileStructure.getNumQualityLayers();
-
-            if (codestreamPartParams.quality !== undefined) {
-                quality = Math.min(quality, codestreamPartParams.quality);
+            if (codestreamPart.maxNumQualityLayers !== undefined) {
+                quality = Math.min(quality, codestreamPart.maxNumQualityLayers);
             }
 
-            if (minNumQualityLayers === 'max') {
-                minNumQualityLayers = quality;
-            } else if (minNumQualityLayers > quality) {
+            if (codestreamPart.minNumQualityLayers === 'max') {
+                codestreamPart.minNumQualityLayers = quality;
+            } else if (codestreamPart.minNumQualityLayers > quality) {
                 throw new jGlobals.jpipExceptions.InternalErrorException('minNumQualityLayers is larger than quality');
             }
 
-            do {
+            while (precinctIterator.tryAdvance()) {
                 if (!precinctIterator.isInCodestreamPart) {
                     throw new jGlobals.jpipExceptions.InternalErrorException('Unexpected precinct not in codestream part');
                 }
 
-                var inClassIndex = tileStructure.precinctPositionToInClassIndex(precinctIterator);
-
-                var precinctDatabin = databinsSaver.getPrecinctDatabin(inClassIndex);
+                var precinctDatabin = databinsSaver.getPrecinctDatabin(precinctIterator.inClassIndex);
 
                 var returnedInPrecinct = alreadyReturnedCodeblocks.getObject(precinctDatabin);
                 if (returnedInPrecinct.layerPerCodeblock === undefined) {
@@ -4351,7 +4265,7 @@ module.exports = function JpipPacketsDataCollector(codestreamStructure, databins
 
                 var layerReached = pushPackets(result, tileIndexInCodestreamPart, precinctIterator, precinctDatabin, returnedInPrecinct, quality);
 
-                if (layerReached < minNumQualityLayers) {
+                if (layerReached < codestreamPart.minNumQualityLayers) {
                     // NOTE: alreadyReturnedCodeblocks is wrong in this stage,
                     // because it was updated with a data which will not be
                     // returned. I don't care about it now because returning
@@ -4364,10 +4278,10 @@ module.exports = function JpipPacketsDataCollector(codestreamStructure, databins
 
                     return null;
                 }
-            } while (precinctIterator.tryAdvance());
+            }
 
             ++tileIndexInCodestreamPart;
-        } while (tileIterator.tryAdvance());
+        }
 
         var dataAsUint8 = new Uint8Array(result.data.getLength());
         result.data.copyToTypedArray(dataAsUint8, 0, 0, result.data.getLength());
@@ -4461,7 +4375,448 @@ module.exports = function JpipPacketsDataCollector(codestreamStructure, databins
 
 var jGlobals = __webpack_require__(0);
 
-module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qualityLayerReachedCallback, codestreamStructure, databinsSaver, qualityLayersCache, jpipFactory) {
+module.exports = function JpipParamsCodestreamPart(codestreamPartParams, codestreamStructure, jpipFactory) {
+
+    var minNumQualityLayers = 'max';
+    var maxNumQualityLayersLimit = 'max';
+    var tilesBounds = null;
+    var fullTilesSize = null;
+
+    // TODO: Ensure that strings property name doesn't break on uglify
+
+    Object.defineProperty(this, 'level', { get: function get() {
+            return codestreamPartParams ? codestreamPartParams.level : 0;
+        } });
+
+    Object.defineProperty(this, 'minX', { get: function get() {
+            if (codestreamPartParams) {
+                return codestreamPartParams.minX;
+            } else {
+                return 0;
+            }
+        } });
+
+    Object.defineProperty(this, 'minY', { get: function get() {
+            if (codestreamPartParams) {
+                return codestreamPartParams.minY;
+            } else {
+                return 0;
+            }
+        } });
+
+    Object.defineProperty(this, 'width', { get: function get() {
+            if (codestreamPartParams) {
+                return codestreamPartParams.maxXExclusive - codestreamPartParams.minX;
+            } else {
+                return codestreamStructure.getImageWidth();
+            }
+        } });
+
+    Object.defineProperty(this, 'height', { get: function get() {
+            if (codestreamPartParams) {
+                return codestreamPartParams.maxYExclusive - codestreamPartParams.minY;
+            } else {
+                return codestreamStructure.getImageHeight();
+            }
+        } });
+
+    Object.defineProperty(this, 'minNumQualityLayers', { get: function get() {
+            return minNumQualityLayers;
+        } });
+
+    Object.defineProperty(this, 'maxNumQualityLayers', { get: function get() {
+            if (!codestreamPartParams || codestreamPartParams.quality === 'max') {
+                return maxNumQualityLayersLimit;
+            } else if (maxNumQualityLayersLimit == 'max') {
+                return codestreamPartParams.quality;
+            } else {
+                return Math.min(codestreamPartParams.quality, maxNumQualityLayersLimit);
+            }
+        } });
+
+    Object.defineProperty(this, 'fullTilesSize', { get: function get() {
+            if (fullTilesSize === null) {
+                validateTilesBounds();
+                fullTilesSize = codestreamStructure.getSizeOfTiles(tilesBounds);
+            }
+            return fullTilesSize;
+        } });
+
+    this.setMinNumQualityLayers = function (quality) {
+        minNumQualityLayers = quality;
+    };
+
+    this.setMaxNumQualityLayersLimit = function (quality) {
+        maxNumQualityLayersLimit = quality || 'max';
+    };
+
+    this.getTileIterator = function () {
+        var setableIterator = {
+            isStarted: false,
+            currentX: -1,
+            currentY: -1
+        };
+
+        var iterator = {
+            get tileIndex() {
+                if (!setableIterator.isStarted) {
+                    throw new jGlobals.jpipExceptions.InternalErrorException('iterator.tileIndex accessed before tryAdvance()');
+                }
+
+                var tilesInRow = codestreamStructure.getNumTilesX();
+                var firstInRow = setableIterator.currentY * tilesInRow;
+                var index = firstInRow + setableIterator.currentX;
+
+                return index;
+            },
+
+            get tileStructure() {
+                if (!setableIterator.isStarted) {
+                    throw new jGlobals.jpipExceptions.InternalErrorException('iterator.tileIndex accessed before tryAdvance()');
+                }
+                var idx = iterator.tileIndex;
+                var tileStructure = codestreamStructure.getTileStructure(idx);
+                return tileStructure;
+            },
+
+            createPrecinctIterator: function createPrecinctIterator(isIteratePrecinctsNotInCodestreamPart) {
+
+                if (!setableIterator.isStarted) {
+                    throw new jGlobals.jpipExceptions.InternalErrorException('iterator.tileIndex accessed before tryAdvance()');
+                }
+                var idx = iterator.tileIndex;
+                return jpipFactory.createJpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart);
+            },
+
+            tryAdvance: function tryAdvance() {
+                var result = tryAdvanceTileIterator(setableIterator);
+                return result;
+            }
+        };
+
+        return iterator;
+    };
+
+    function tryAdvanceTileIterator(setableIterator) {
+        if (!setableIterator.isStarted) {
+            validateTilesBounds();
+            setableIterator.isStarted = true;
+            setableIterator.currentX = tilesBounds.minTileX;
+            setableIterator.currentY = tilesBounds.minTileY;
+
+            return true;
+        }
+
+        if (setableIterator.currentY >= tilesBounds.maxTileYExclusive) {
+            throw new jGlobals.jpipExceptions.InternalErrorException('Cannot advance tile iterator after end');
+        }
+
+        ++setableIterator.currentX;
+        if (setableIterator.currentX < tilesBounds.maxTileXExclusive) {
+            return true;
+        }
+
+        setableIterator.currentX = tilesBounds.minTileX;
+        ++setableIterator.currentY;
+
+        var isMoreTilesAvailable = setableIterator.currentY < tilesBounds.maxTileYExclusive;
+
+        return isMoreTilesAvailable;
+    }
+
+    function validateTilesBounds() {
+        if (tilesBounds !== null) {
+            return;
+        }
+        if (!codestreamPartParams) {
+            tilesBounds = {
+                level: 0,
+                minTileX: 0,
+                minTileY: 0,
+                maxTileXExclusive: codestreamStructure.getNumTilesX(),
+                maxTileYExclusive: codestreamStructure.getNumTilesY()
+            };
+        } else {
+            tilesBounds = codestreamStructure.getTilesFromPixels(codestreamPartParams);
+        }
+    }
+};
+
+/***/ }),
+/* 24 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var jGlobals = __webpack_require__(0);
+
+module.exports = function JpipParamsPrecinctIterator(codestreamStructure, tileIndex, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
+
+    var isInitialized = false;
+    var component = 0;
+    var precinctX = precinctX;
+    var precinctY = precinctY;
+    var resolutionLevel = 0;
+    var isInCodestreamPart = true;
+    var precinctIndexInComponentResolution = -1;
+    var inClassIndex = -1;
+    var progressionOrder;
+    var precinctsInCodestreamPartPerLevelPerComponent = null;
+    var tileStructure;
+
+    // TODO: Ensure that strings property name doesn't break on uglify
+
+    // A.6.1 in part 1: Core Coding System
+
+    Object.defineProperty(this, 'tileIndex', { get: function get() {
+            return tileIndex;
+        } });
+    Object.defineProperty(this, 'component', { get: function get() {
+            return component;
+        } });
+    Object.defineProperty(this, 'precinctX', { get: function get() {
+            return precinctX;
+        } });
+    Object.defineProperty(this, 'precinctY', { get: function get() {
+            return precinctY;
+        } });
+    Object.defineProperty(this, 'resolutionLevel', { get: function get() {
+            return resolutionLevel;
+        } });
+    Object.defineProperty(this, 'isInCodestreamPart', { get: function get() {
+            return isInCodestreamPart;
+        } });
+
+    this.tryAdvance = function tryAdvance() {
+        if (!isInitialized) {
+            initialize();
+            isInitialized = true;
+            return true;
+        }
+
+        var needAdvanceNextMember = true;
+        var precinctsRangeHash = isIteratePrecinctsNotInCodestreamPart ? null : precinctsInCodestreamPartPerLevelPerComponent;
+
+        var needResetPrecinctToMinimalInCodestreamPart = false;
+
+        precinctIndexInComponentResolution = -1;
+        inClassIndex = -1;
+
+        for (var i = 2; i >= 0; --i) {
+            var newValue = advanceProgressionOrderMember(i, precinctsRangeHash);
+
+            needAdvanceNextMember = newValue === 0;
+            if (!needAdvanceNextMember) {
+                break;
+            }
+
+            if (progressionOrder[i] === 'P' && !isIteratePrecinctsNotInCodestreamPart) {
+
+                needResetPrecinctToMinimalInCodestreamPart = true;
+            }
+        }
+
+        if (needAdvanceNextMember) {
+            // If we are here, the last precinct has been reached
+            return false;
+        }
+
+        if (precinctsInCodestreamPartPerLevelPerComponent === null) {
+            isInCodestreamPart = true;
+            return true;
+        }
+
+        var rangePerLevel = precinctsInCodestreamPartPerLevelPerComponent[component];
+        var precinctsRange = rangePerLevel[resolutionLevel];
+
+        if (needResetPrecinctToMinimalInCodestreamPart) {
+            precinctX = precinctsRange.minPrecinctX;
+            precinctY = precinctsRange.minPrecinctY;
+        }
+
+        isInCodestreamPart = precinctX >= precinctsRange.minPrecinctX && precinctY >= precinctsRange.minPrecinctY && precinctX < precinctsRange.maxPrecinctXExclusive && precinctY < precinctsRange.maxPrecinctYExclusive;
+
+        return true;
+    };
+
+    Object.defineProperty(this, 'precinctIndexInComponentResolution', {
+        get: function get() {
+            if (precinctIndexInComponentResolution < 0) {
+                precinctIndexInComponentResolution = tileStructure.precinctPositionToIndexInComponentResolution(this);
+            }
+
+            return precinctIndexInComponentResolution;
+        }
+    });
+
+    Object.defineProperty(this, 'inClassIndex', {
+        get: function get() {
+            if (inClassIndex < 0) {
+                inClassIndex = tileStructure.precinctPositionToInClassIndex(this);
+            }
+
+            return inClassIndex;
+        }
+    });
+
+    function initialize() {
+        tileStructure = codestreamStructure.getTileStructure(tileIndex);
+
+        if (!!codestreamPartParams && codestreamPartParams.level !== undefined) {
+
+            var minNumResolutionLevels = tileStructure.getMinNumResolutionLevelsOverComponents();
+
+            if (minNumResolutionLevels <= codestreamPartParams.level) {
+                throw new jGlobals.jpipExceptions.InternalErrorException('Cannot advance resolution: level=' + codestreamPartParams.level + ' but should be smaller than ' + minNumResolutionLevels);
+            }
+        }
+
+        precinctsInCodestreamPartPerLevelPerComponent = getPrecinctsInCodestreamPartPerLevelPerComponent();
+
+        if (!isIteratePrecinctsNotInCodestreamPart && precinctsInCodestreamPartPerLevelPerComponent !== null) {
+
+            var firstPrecinctsRange = precinctsInCodestreamPartPerLevelPerComponent[0][0];
+            precinctX = firstPrecinctsRange.minPrecinctX;
+            precinctY = firstPrecinctsRange.minPrecinctY;
+        }
+
+        progressionOrder = tileStructure.getProgressionOrder();
+    }
+
+    function getPrecinctsInCodestreamPartPerLevelPerComponent() {
+        if (!codestreamPartParams) {
+            return null;
+        }
+
+        var components = codestreamStructure.getNumComponents();
+        var perComponentResult = new Array(components);
+        var minLevel = codestreamPartParams.level || 0;
+
+        var tileLeftInLevel = codestreamStructure.getTileLeft(tileIndex, minLevel);
+        var tileTopInLevel = codestreamStructure.getTileTop(tileIndex, minLevel);
+
+        var minXInTile = codestreamPartParams.minX - tileLeftInLevel;
+        var minYInTile = codestreamPartParams.minY - tileTopInLevel;
+        var maxXInTile = codestreamPartParams.maxXExclusive - tileLeftInLevel;
+        var maxYInTile = codestreamPartParams.maxYExclusive - tileTopInLevel;
+
+        for (var component = 0; component < components; ++component) {
+            var componentStructure = tileStructure.getComponentStructure(component);
+            var levels = componentStructure.getNumResolutionLevels();
+            var levelsInCodestreamPart = levels - minLevel;
+            var numResolutionLevels = componentStructure.getNumResolutionLevels();
+            var perLevelResult = new Array(levels);
+
+            for (var level = 0; level < levelsInCodestreamPart; ++level) {
+                var componentScaleX = componentStructure.getComponentScaleX();
+                var componentScaleY = componentStructure.getComponentScaleY();
+                var levelInCodestreamPart = levelsInCodestreamPart - level - 1;
+                var levelScaleX = componentScaleX << levelInCodestreamPart;
+                var levelScaleY = componentScaleY << levelInCodestreamPart;
+
+                var redundant = 4; // Redundant pixels for wavelet 9-7 convolution
+                var minXInLevel = Math.floor(minXInTile / levelScaleX) - redundant;
+                var minYInLevel = Math.floor(minYInTile / levelScaleY) - redundant;
+                var maxXInLevel = Math.ceil(maxXInTile / levelScaleX) + redundant;
+                var maxYInLevel = Math.ceil(maxYInTile / levelScaleY) + redundant;
+
+                var precinctWidth = componentStructure.getPrecinctWidth(level) * componentScaleX;
+                var precinctHeight = componentStructure.getPrecinctHeight(level) * componentScaleY;
+
+                var minPrecinctX = Math.floor(minXInLevel / precinctWidth);
+                var minPrecinctY = Math.floor(minYInLevel / precinctHeight);
+                var maxPrecinctX = Math.ceil(maxXInLevel / precinctWidth);
+                var maxPrecinctY = Math.ceil(maxYInLevel / precinctHeight);
+
+                var precinctsX = componentStructure.getNumPrecinctsX(level);
+                var precinctsY = componentStructure.getNumPrecinctsY(level);
+
+                perLevelResult[level] = {
+                    minPrecinctX: Math.max(0, minPrecinctX),
+                    minPrecinctY: Math.max(0, minPrecinctY),
+                    maxPrecinctXExclusive: Math.min(maxPrecinctX, precinctsX),
+                    maxPrecinctYExclusive: Math.min(maxPrecinctY, precinctsY)
+                };
+            }
+
+            perComponentResult[component] = perLevelResult;
+        }
+
+        return perComponentResult;
+    }
+
+    function advanceProgressionOrderMember(memberIndex, precinctsRange) {
+        var componentStructure = tileStructure.getComponentStructure(component);
+
+        switch (progressionOrder[memberIndex]) {
+            case 'R':
+                var numResolutionLevels = componentStructure.getNumResolutionLevels();
+                if (!!codestreamPartParams && codestreamPartParams.level) {
+                    numResolutionLevels -= codestreamPartParams.level;
+                }
+
+                ++resolutionLevel;
+                resolutionLevel %= numResolutionLevels;
+                return resolutionLevel;
+
+            case 'C':
+                ++component;
+                component %= codestreamStructure.getNumComponents();
+                return component;
+
+            case 'P':
+                var minX, minY, maxX, maxY;
+                if (precinctsRange !== null) {
+                    var precinctsRangePerLevel = precinctsRange[component];
+                    var precinctsRangeInLevelComponent = precinctsRangePerLevel[resolutionLevel];
+
+                    minX = precinctsRangeInLevelComponent.minPrecinctX;
+                    minY = precinctsRangeInLevelComponent.minPrecinctY;
+                    maxX = precinctsRangeInLevelComponent.maxPrecinctXExclusive;
+                    maxY = precinctsRangeInLevelComponent.maxPrecinctYExclusive;
+                } else {
+                    minX = 0;
+                    minY = 0;
+                    maxX = componentStructure.getNumPrecinctsX(resolutionLevel);
+                    maxY = componentStructure.getNumPrecinctsY(resolutionLevel);
+                }
+
+                precinctX -= minX - 1;
+                precinctX %= maxX - minX;
+                precinctX += minX;
+
+                if (precinctX != minX) {
+                    return precinctX - minX;
+                }
+
+                precinctY -= minY - 1;
+                precinctY %= maxY - minY;
+                precinctY += minY;
+
+                return precinctY - minY;
+
+            case 'L':
+                throw new jGlobals.jpipExceptions.InternalErrorException('Advancing L is not supported in JPIP');
+
+            default:
+                throw new jGlobals.jpipExceptions.InternalErrorException('Unexpected letter in progression order: ' + progressionOrder[memberIndex]);
+        }
+    }
+
+    return this;
+};
+
+/***/ }),
+/* 25 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var jGlobals = __webpack_require__(0);
+
+module.exports = function JpipRequestDatabinsListener(codestreamPart, qualityLayerReachedCallback, codestreamStructure, databinsSaver, qualityLayersCache, jpipFactory) {
 
     var numQualityLayersToWaitFor;
     var tileHeadersNotLoaded = 0;
@@ -4494,17 +4849,20 @@ module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qual
     function register() {
         ++tileHeadersNotLoaded;
 
-        var tileIterator = codestreamStructure.getTilesIterator(codestreamPartParams);
-        do {
+        var tileIterator = codestreamPart.getTileIterator();
+        while (tileIterator.tryAdvance()) {
             var tileIndex = tileIterator.tileIndex;
             var databin = databinsSaver.getTileHeaderDatabin(tileIndex);
             registeredTileHeaderDatabins.push(databin);
+
+            var tileAccumulatedData = accumulatedDataPerDatabin.getObject(databin);
+            tileAccumulatedData.precinctIterator = tileIterator.createPrecinctIterator();
 
             databinsSaver.addEventListener(databin, 'dataArrived', tileHeaderDataArrived);
 
             ++tileHeadersNotLoaded;
             tileHeaderDataArrived(databin);
-        } while (tileIterator.tryAdvance());
+        }
 
         --tileHeadersNotLoaded;
         tryAdvanceQualityLayersReached();
@@ -4528,16 +4886,14 @@ module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qual
         var tileStructure = codestreamStructure.getTileStructure(tileIndex);
         var qualityInTile = tileStructure.getNumQualityLayers();
 
-        var precinctIterator = tileStructure.getPrecinctIterator(tileIndex, codestreamPartParams);
+        var precinctIterator = tileAccumulatedData.precinctIterator;
 
-        do {
+        while (precinctIterator.tryAdvance()) {
             if (!precinctIterator.isInCodestreamPart) {
                 throw new jGlobals.jpipExceptions.InternalErrorException('Unexpected precinct not in codestream part');
             }
 
-            var inClassId = tileStructure.precinctPositionToInClassIndex(precinctIterator);
-
-            var precinctDatabin = databinsSaver.getPrecinctDatabin(inClassId);
+            var precinctDatabin = databinsSaver.getPrecinctDatabin(precinctIterator.inClassIndex);
             registeredPrecinctDatabins.push(precinctDatabin);
             var accumulatedData = accumulatedDataPerDatabin.getObject(precinctDatabin);
 
@@ -4549,7 +4905,7 @@ module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qual
             incrementPrecinctQualityLayers(precinctDatabin, accumulatedData, precinctIterator);
 
             databinsSaver.addEventListener(precinctDatabin, 'dataArrived', precinctDataArrived);
-        } while (precinctIterator.tryAdvance());
+        }
 
         tryAdvanceQualityLayersReached();
     }
@@ -4573,7 +4929,7 @@ module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qual
 
     function incrementPrecinctQualityLayers(precinctDatabin, accumulatedData, precinctIteratorOptional) {
 
-        var qualityLayers = qualityLayersCache.getQualityLayerOffset(precinctDatabin, codestreamPartParams.quality, precinctIteratorOptional);
+        var qualityLayers = qualityLayersCache.getQualityLayerOffset(precinctDatabin, codestreamPart.maxNumQualityLayers, precinctIteratorOptional);
 
         var numQualityLayersReached = qualityLayers.numQualityLayers;
         accumulatedData.numQualityLayersReached = numQualityLayersReached;
@@ -4624,7 +4980,7 @@ module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qual
                 throw new jGlobals.jpipExceptions.InternalErrorException('No information of qualityInTile in ' + 'JpipRequestDatabinsListener');
             }
 
-            var qualityLayers = qualityLayersCache.getQualityLayerOffset(registeredPrecinctDatabins[i], codestreamPartParams.quality);
+            var qualityLayers = qualityLayersCache.getQualityLayerOffset(registeredPrecinctDatabins[i], codestreamPart.maxNumQualityLayers);
 
             if (qualityLayers.numQualityLayers === qualityInTile) {
                 continue;
@@ -4668,7 +5024,7 @@ module.exports = function JpipRequestDatabinsListener(codestreamPartParams, qual
 };
 
 /***/ }),
-/* 24 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -4819,7 +5175,7 @@ function JpipRequestParamsModifier(codestreamStructure) {
 }
 
 /***/ }),
-/* 25 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5048,7 +5404,7 @@ module.exports = function JpipRequest(sessionHelper, messageHeaderParser, channe
 };
 
 /***/ }),
-/* 26 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5260,7 +5616,7 @@ module.exports = function JpipSessionHelper(dataRequestUrl, knownTargetId, codes
 };
 
 /***/ }),
-/* 27 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5478,7 +5834,7 @@ module.exports = function JpipSession(maxChannelsInSession, maxRequestsWaitingFo
 };
 
 /***/ }),
-/* 28 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5756,7 +6112,7 @@ maxJpipCacheSizeConfig) {
 };
 
 /***/ }),
-/* 29 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5963,7 +6319,7 @@ module.exports = function JpipStructureParser(databinsSaver, markersParser, mess
 };
 
 /***/ }),
-/* 30 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6013,6 +6369,10 @@ module.exports = function JpipTileStructure(sizeParams, codestreamStructure, jpi
     this.getIsEndPacketHeaderMarkerAllowed = function getIsEndPacketHeaderMarkerAllowed() {
 
         return sizeParams.isEndPacketHeaderMarkerAllowed;
+    };
+
+    this.getMinNumResolutionLevelsOverComponents = function () {
+        return minNumResolutionLevels;
     };
 
     this.precinctInClassIndexToPosition = function (inClassIndex) {
@@ -6103,75 +6463,13 @@ module.exports = function JpipTileStructure(sizeParams, codestreamStructure, jpi
         return inClassIndex;
     };
 
-    this.getPrecinctIterator = function getPrecinctIterator(tileIndex, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
+    this.precinctPositionToIndexInComponentResolution = function (precinctPosition) {
+        var componentStructure = componentStructures[precinctPosition.component];
 
-        var level = 0;
-        if (codestreamPartParams !== undefined && codestreamPartParams.level !== undefined) {
+        var precinctsX = componentStructure.getNumPrecinctsX(precinctPosition.resolutionLevel);
+        var precinctIndexInComponentResolution = precinctPosition.precinctX + precinctPosition.precinctY * precinctsX;
 
-            level = codestreamPartParams.level;
-
-            if (minNumResolutionLevels <= level) {
-                throw new jGlobals.jpipExceptions.InternalErrorException('Cannot advance resolution: level=' + codestreamPartParams.level + ' but should ' + 'be smaller than ' + minNumResolutionLevels);
-            }
-        }
-
-        var precinctsInCodestreamPartPerLevelPerComponent = getPrecinctsInCodestreamPartPerLevelPerComponent(tileIndex, codestreamPartParams);
-
-        var precinctX = 0;
-        var precinctY = 0;
-        if (!isIteratePrecinctsNotInCodestreamPart && precinctsInCodestreamPartPerLevelPerComponent !== null) {
-
-            var firstPrecinctsRange = precinctsInCodestreamPartPerLevelPerComponent[0][0];
-            precinctX = firstPrecinctsRange.minPrecinctX;
-            precinctY = firstPrecinctsRange.minPrecinctY;
-        }
-
-        // A.6.1 in part 1: Core Coding System
-
-        var setableIterator = {
-            component: 0,
-            precinctX: precinctX,
-            precinctY: precinctY,
-            resolutionLevel: 0,
-            isInCodestreamPart: true
-        };
-
-        var iterator = {
-            get tileIndex() {
-                return tileIndex;
-            },
-            get component() {
-                return setableIterator.component;
-            },
-            get precinctIndexInComponentResolution() {
-                var componentStructure = componentStructures[setableIterator.component];
-                var precinctsX = componentStructure.getNumPrecinctsX(setableIterator.resolutionLevel);
-                setableIterator.precinctIndexInComponentResolution = setableIterator.precinctX + setableIterator.precinctY * precinctsX;
-
-                return setableIterator.precinctIndexInComponentResolution;
-            },
-
-            get precinctX() {
-                return setableIterator.precinctX;
-            },
-            get precinctY() {
-                return setableIterator.precinctY;
-            },
-            get resolutionLevel() {
-                return setableIterator.resolutionLevel;
-            },
-            get isInCodestreamPart() {
-                return setableIterator.isInCodestreamPart;
-            }
-        };
-
-        iterator.tryAdvance = function tryAdvance() {
-            var isSucceeded = tryAdvancePrecinctIterator(setableIterator, level, precinctsInCodestreamPartPerLevelPerComponent, isIteratePrecinctsNotInCodestreamPart);
-
-            return isSucceeded;
-        };
-
-        return iterator;
+        return precinctIndexInComponentResolution;
     };
 
     function validateArgumentInRange(paramName, paramValue, suprimumParamValue) {
@@ -6280,172 +6578,6 @@ module.exports = function JpipTileStructure(sizeParams, codestreamStructure, jpi
         return isPrecinctPartitionFitsToTilePartition;
     }
 
-    function getPrecinctsInCodestreamPartPerLevelPerComponent(tileIndex, codestreamPartParams) {
-
-        if (codestreamPartParams === undefined) {
-            return null;
-        }
-
-        var components = codestreamStructure.getNumComponents();
-        var perComponentResult = new Array(components);
-        var minLevel = codestreamPartParams.level || 0;
-
-        var tileLeftInLevel = codestreamStructure.getTileLeft(tileIndex, minLevel);
-        var tileTopInLevel = codestreamStructure.getTileTop(tileIndex, minLevel);
-
-        var minXInTile = codestreamPartParams.minX - tileLeftInLevel;
-        var minYInTile = codestreamPartParams.minY - tileTopInLevel;
-        var maxXInTile = codestreamPartParams.maxXExclusive - tileLeftInLevel;
-        var maxYInTile = codestreamPartParams.maxYExclusive - tileTopInLevel;
-
-        var codestreamPartLevelWidth = codestreamStructure.getLevelWidth(minLevel);
-        var codestreamPartLevelHeight = codestreamStructure.getLevelHeight(minLevel);
-
-        for (var component = 0; component < components; ++component) {
-            var componentStructure = componentStructures[component];
-            var levels = componentStructure.getNumResolutionLevels();
-            var levelsInCodestreamPart = levels - minLevel;
-            var numResolutionLevels = componentStructure.getNumResolutionLevels();
-            var perLevelResult = new Array(levels);
-
-            for (var level = 0; level < levelsInCodestreamPart; ++level) {
-                var componentScaleX = componentStructure.getComponentScaleX();
-                var componentScaleY = componentStructure.getComponentScaleY();
-                var levelInCodestreamPart = levelsInCodestreamPart - level - 1;
-                var levelScaleX = componentScaleX << levelInCodestreamPart;
-                var levelScaleY = componentScaleY << levelInCodestreamPart;
-
-                var redundant = 4; // Redundant pixels for wavelet 9-7 convolution
-                var minXInLevel = Math.floor(minXInTile / levelScaleX) - redundant;
-                var minYInLevel = Math.floor(minYInTile / levelScaleY) - redundant;
-                var maxXInLevel = Math.ceil(maxXInTile / levelScaleX) + redundant;
-                var maxYInLevel = Math.ceil(maxYInTile / levelScaleY) + redundant;
-
-                var precinctWidth = componentStructure.getPrecinctWidth(level) * componentScaleX;
-                var precinctHeight = componentStructure.getPrecinctHeight(level) * componentScaleY;
-
-                var minPrecinctX = Math.floor(minXInLevel / precinctWidth);
-                var minPrecinctY = Math.floor(minYInLevel / precinctHeight);
-                var maxPrecinctX = Math.ceil(maxXInLevel / precinctWidth);
-                var maxPrecinctY = Math.ceil(maxYInLevel / precinctHeight);
-
-                var precinctsX = componentStructure.getNumPrecinctsX(level);
-                var precinctsY = componentStructure.getNumPrecinctsY(level);
-
-                perLevelResult[level] = {
-                    minPrecinctX: Math.max(0, minPrecinctX),
-                    minPrecinctY: Math.max(0, minPrecinctY),
-                    maxPrecinctXExclusive: Math.min(maxPrecinctX, precinctsX),
-                    maxPrecinctYExclusive: Math.min(maxPrecinctY, precinctsY)
-                };
-            }
-
-            perComponentResult[component] = perLevelResult;
-        }
-
-        return perComponentResult;
-    }
-
-    function tryAdvancePrecinctIterator(setableIterator, level, precinctsInCodestreamPartPerLevelPerComponent, isIteratePrecinctsNotInCodestreamPart) {
-
-        var needAdvanceNextMember = true;
-        var precinctsRangeHash = isIteratePrecinctsNotInCodestreamPart ? null : precinctsInCodestreamPartPerLevelPerComponent;
-
-        var needResetPrecinctToMinimalInCodestreamPart = false;
-
-        for (var i = 2; i >= 0; --i) {
-            var newValue = advanceProgressionOrderMember(setableIterator, i, level, precinctsRangeHash);
-
-            needAdvanceNextMember = newValue === 0;
-            if (!needAdvanceNextMember) {
-                break;
-            }
-
-            if (progressionOrder[i] === 'P' && !isIteratePrecinctsNotInCodestreamPart) {
-
-                needResetPrecinctToMinimalInCodestreamPart = true;
-            }
-        }
-
-        if (needAdvanceNextMember) {
-            // If we are here, the last precinct has been reached
-            return false;
-        }
-
-        if (precinctsInCodestreamPartPerLevelPerComponent === null) {
-            setableIterator.isInCodestreamPart = true;
-            return true;
-        }
-
-        var rangePerLevel = precinctsInCodestreamPartPerLevelPerComponent[setableIterator.component];
-        var precinctsRange = rangePerLevel[setableIterator.resolutionLevel];
-
-        if (needResetPrecinctToMinimalInCodestreamPart) {
-            setableIterator.precinctX = precinctsRange.minPrecinctX;
-            setableIterator.precinctY = precinctsRange.minPrecinctY;
-        }
-
-        setableIterator.isInCodestreamPart = setableIterator.precinctX >= precinctsRange.minPrecinctX && setableIterator.precinctY >= precinctsRange.minPrecinctY && setableIterator.precinctX < precinctsRange.maxPrecinctXExclusive && setableIterator.precinctY < precinctsRange.maxPrecinctYExclusive;
-
-        return true;
-    }
-
-    function advanceProgressionOrderMember(precinctPosition, memberIndex, level, precinctsRange) {
-
-        var componentStructure = componentStructures[precinctPosition.component];
-
-        switch (progressionOrder[memberIndex]) {
-            case 'R':
-                var numResolutionLevels = componentStructure.getNumResolutionLevels() - level;
-
-                ++precinctPosition.resolutionLevel;
-                precinctPosition.resolutionLevel %= numResolutionLevels;
-                return precinctPosition.resolutionLevel;
-
-            case 'C':
-                ++precinctPosition.component;
-                precinctPosition.component %= codestreamStructure.getNumComponents();
-                return precinctPosition.component;
-
-            case 'P':
-                var minX, minY, maxX, maxY;
-                if (precinctsRange !== null) {
-                    var precinctsRangePerLevel = precinctsRange[precinctPosition.component];
-                    var precinctsRangeInLevelComponent = precinctsRangePerLevel[precinctPosition.resolutionLevel];
-
-                    minX = precinctsRangeInLevelComponent.minPrecinctX;
-                    minY = precinctsRangeInLevelComponent.minPrecinctY;
-                    maxX = precinctsRangeInLevelComponent.maxPrecinctXExclusive;
-                    maxY = precinctsRangeInLevelComponent.maxPrecinctYExclusive;
-                } else {
-                    minX = 0;
-                    minY = 0;
-                    maxX = componentStructure.getNumPrecinctsX(precinctPosition.resolutionLevel);
-                    maxY = componentStructure.getNumPrecinctsY(precinctPosition.resolutionLevel);
-                }
-
-                precinctPosition.precinctX -= minX - 1;
-                precinctPosition.precinctX %= maxX - minX;
-                precinctPosition.precinctX += minX;
-
-                if (precinctPosition.precinctX != minX) {
-                    return precinctPosition.precinctX - minX;
-                }
-
-                precinctPosition.precinctY -= minY - 1;
-                precinctPosition.precinctY %= maxY - minY;
-                precinctPosition.precinctY += minY;
-
-                return precinctPosition.precinctY - minY;
-
-            case 'L':
-                throw new jGlobals.jpipExceptions.InternalErrorException('Advancing L is not supported in JPIP');
-
-            default:
-                throw new jGlobals.jpipExceptions.InternalErrorException('Unexpected letter in progression order: ' + progressionOrder[memberIndex]);
-        }
-    }
-
     defaultComponentStructure = jpipFactory.createComponentStructure(sizeParams.defaultComponentParams, this);
 
     componentStructures = new Array(codestreamStructure.getNumComponents());
@@ -6461,7 +6593,7 @@ module.exports = function JpipTileStructure(sizeParams, codestreamStructure, jpi
 };
 
 /***/ }),
-/* 31 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6731,7 +6863,7 @@ module.exports = function JpipBitstreamReaderClosure() {
 }();
 
 /***/ }),
-/* 32 */
+/* 34 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6912,7 +7044,7 @@ module.exports = function JpipTagTree(bitstreamReader, width, height, transactio
 };
 
 /***/ }),
-/* 33 */
+/* 35 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6976,7 +7108,7 @@ module.exports = function JpipCodeblockLengthParserClosure() {
 }();
 
 /***/ }),
-/* 34 */
+/* 36 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7109,7 +7241,7 @@ module.exports = function JpipSubbandLengthInPacketHeaderCalculator(bitstreamRea
 };
 
 /***/ }),
-/* 35 */
+/* 37 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7378,7 +7510,7 @@ module.exports = function JpipPacketLengthCalculator(tileStructure, componentStr
 };
 
 /***/ }),
-/* 36 */
+/* 38 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7446,7 +7578,7 @@ module.exports = function JpipQualityLayersCache(codestreamStructure, jpipFactor
 };
 
 /***/ }),
-/* 37 */
+/* 39 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7606,13 +7738,13 @@ function JpipFetcher(databinsSaver, options) {
 }
 
 /***/ }),
-/* 38 */
+/* 40 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _jpx = __webpack_require__(39);
+var _jpx = __webpack_require__(41);
 
 module.exports = PdfjsJpxDecoder;
 
@@ -7628,8 +7760,8 @@ PdfjsJpxDecoder.prototype.start = function start(data) {
         var regionToParse = {
             left: data.headersCodestream.offsetX,
             top: data.headersCodestream.offsetY,
-            right: data.headersCodestream.offsetX + data.codestreamPartParams.maxXExclusive - data.codestreamPartParams.minX,
-            bottom: data.headersCodestream.offsetY + data.codestreamPartParams.maxYExclusive - data.codestreamPartParams.minY
+            right: data.headersCodestream.offsetX + data.width,
+            bottom: data.headersCodestream.offsetY + data.height
         };
 
         var currentContext = self._image.parseCodestream(data.headersCodestream.codestream, 0, data.headersCodestream.codestream.length, { isOnlyParseHeaders: true });
@@ -7746,7 +7878,7 @@ PdfjsJpxDecoder.prototype._copyTile = function copyTile(targetImage, tile, targe
 };
 
 /***/ }),
-/* 39 */
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7757,24 +7889,24 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.JpxImage = undefined;
 
-var _util = __webpack_require__(40);
+var _util = __webpack_require__(42);
 
-var _arithmetic_decoder = __webpack_require__(42);
+var _arithmetic_decoder = __webpack_require__(44);
 
 /* Copyright 2012 Mozilla Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 var JpxError = function JpxErrorClosure() {
   function JpxError(msg) {
@@ -8217,15 +8349,15 @@ var JpxImage = function JpxImageClosure() {
         var component = tile.components[packetOffsets.c];
         var resolution = component.resolutions[packetOffsets.r];
         var p = packetOffsets.p;
-        var l = packetOffsets.l;
-        var packet = createPacket(resolution, p, l);
+        //var l = packetOffsets.l;
+        var codeblocks = resolution.pixelsPrecincts[p].codeblocks;
         for (var i = 0; i < packetOffsets.codeblockOffsets.length; ++i) {
           var codeblockOffsets = packetOffsets.codeblockOffsets[i];
           var isNoData = codeblockOffsets.start === codeblockOffsets.end;
           if (isNoData) {
             continue;
           }
-          var codeblock = packet.codeblocks[i];
+          var codeblock = codeblocks[i];
           if (codeblock['data'] === undefined) {
             codeblock.data = [];
           }
@@ -8248,6 +8380,41 @@ var JpxImage = function JpxImageClosure() {
           });
         }
       }
+    },
+    decodePrecinctCoefficients: function JpxImage_decodeCodeblockCoefficients(context, tileIdx, componentIdx, resolutionIdx, precinctIdx) {
+      var tile = context.tiles[tileIdx];
+      var component = tile.components[componentIdx];
+      var resolution = component.resolutions[resolutionIdx];
+      var pixelsPrecinct = resolution.pixelsPrecincts[precinctIdx];
+
+      var codingStyleParameters = component.codingStyleParameters;
+      var quantizationParameters = component.quantizationParameters;
+      var spqcds = quantizationParameters.SPqcds;
+      var scalarExpounded = quantizationParameters.scalarExpounded;
+      var guardBits = quantizationParameters.guardBits;
+      var segmentationSymbolUsed = codingStyleParameters.segmentationSymbolUsed;
+      var precision = component.precision;
+      var reversible = codingStyleParameters.reversibleTransformation;
+
+      var regionInLevel = {
+        x0: pixelsPrecinct.tbxMin_,
+        x1: pixelsPrecinct.tbxMax_,
+        y0: pixelsPrecinct.tbyMin_,
+        y1: pixelsPrecinct.tbyMax_
+      };
+
+      var coefficients = getCoefficientsOfResolution(resolution, spqcds, scalarExpounded, precision, guardBits, reversible, segmentationSymbolUsed, regionInLevel);
+
+      return coefficients;
+    },
+    setPrecinctCoefficients: function JpxImage_addPrecinctCoefficients(context, coefficients, tileIdx, componentIdx, resolutionIdx, precinctIdx) {
+      var tile = context.tiles[tileIdx];
+      var component = tile.components[componentIdx];
+      var resolution = component.resolutions[resolutionIdx];
+      var pixelsPrecinct = resolution.pixelsPrecincts[precinctIdx];
+
+      pixelsPrecinct.decodedCoefficients = coefficients;
+      resolution.hasDecodedCoefficients = true;
     },
     decode: function JpxImage_decode(context, options) {
       if (options !== undefined && options.regionToParse !== undefined) {
@@ -8370,7 +8537,7 @@ var JpxImage = function JpxImageClosure() {
     var cby1 = subband.tby1 + codeblockHeight - 1 >> ycb_;
     var precinctParameters = subband.resolution.precinctParameters;
     var codeblocks = [];
-    var precincts = [];
+    var subbandPrecincts = [];
     var i, j, codeblock, precinctNumber;
     for (j = cby0; j < cby1; j++) {
       for (i = cbx0; i < cbx1; i++) {
@@ -8404,27 +8571,51 @@ var JpxImage = function JpxImageClosure() {
         }
         codeblocks.push(codeblock);
         // building precinct for the sub-band
-        var precinct = precincts[precinctNumber];
-        if (precinct !== undefined) {
-          if (i < precinct.cbxMin) {
-            precinct.cbxMin = i;
-          } else if (i > precinct.cbxMax) {
-            precinct.cbxMax = i;
+        var subbandPrecinct = subbandPrecincts[precinctNumber];
+        if (subbandPrecinct !== undefined) {
+          if (i < subbandPrecinct.cbxMin) {
+            subbandPrecinct.cbxMin = i;
+          } else if (i > subbandPrecinct.cbxMax) {
+            subbandPrecinct.cbxMax = i;
           }
-          if (j < precinct.cbyMin) {
-            precinct.cbxMin = j;
-          } else if (j > precinct.cbyMax) {
-            precinct.cbyMax = j;
+          if (j < subbandPrecinct.cbyMin) {
+            subbandPrecinct.cbyMin = j;
+          } else if (j > subbandPrecinct.cbyMax) {
+            subbandPrecinct.cbyMax = j;
           }
         } else {
-          precincts[precinctNumber] = precinct = {
+          subbandPrecincts[precinctNumber] = subbandPrecinct = {
             cbxMin: i,
             cbyMin: j,
             cbxMax: i,
-            cbyMax: j
+            cbyMax: j,
+            pixelsPrecinct: subband.resolution.pixelsPrecincts[precinctNumber]
           };
         }
-        codeblock.precinct = precinct;
+        if (subbandPrecinct['pixelsPrecinct'] !== undefined) {
+          var pixelsPrecinct = subbandPrecinct.pixelsPrecinct;
+          if (codeblock.tbx0_ < pixelsPrecinct.tbxMin_) {
+            pixelsPrecinct.tbxMin_ = codeblock.tbx0_;
+          } else {
+            pixelsPrecinct.tbxMax_ = codeblock.tbx1_;
+          }
+          if (codeblock.tby0_ < pixelsPrecinct.tbyMin_) {
+            pixelsPrecinct.tbyMin_ = codeblock.tby0_;
+          } else {
+            pixelsPrecinct.tbyMax_ = codeblock.tby1_;
+          }
+        } else {
+          subbandPrecinct.pixelsPrecinct = {
+            codeblocks: [],
+            tbxMin_: codeblock.tbx0_,
+            tbxMax_: codeblock.tbx1_,
+            tbyMin_: codeblock.tby0_,
+            tbyMax_: codeblock.tby1_
+          };
+          subband.resolution.pixelsPrecincts[precinctNumber] = subbandPrecinct.pixelsPrecinct;
+        }
+        codeblock.subbandPrecinct = subbandPrecinct;
+        subbandPrecinct.pixelsPrecinct.codeblocks.push(codeblock);
       }
     }
     subband.codeblockParameters = {
@@ -8434,27 +8625,14 @@ var JpxImage = function JpxImageClosure() {
       numcodeblockhigh: cby1 - cby0 + 1
     };
     subband.codeblocks = codeblocks;
-    subband.precincts = precincts;
+    subband.subbandPrecincts = subbandPrecincts;
   }
   function createPacket(resolution, precinctNumber, layerNumber) {
-    var precinctCodeblocks = [];
     // Section B.10.8 Order of info in packet
-    var subbands = resolution.subbands;
     // sub-bands already ordered in 'LL', 'HL', 'LH', and 'HH' sequence
-    for (var i = 0, ii = subbands.length; i < ii; i++) {
-      var subband = subbands[i];
-      var codeblocks = subband.codeblocks;
-      for (var j = 0, jj = codeblocks.length; j < jj; j++) {
-        var codeblock = codeblocks[j];
-        if (codeblock.precinctNumber !== precinctNumber) {
-          continue;
-        }
-        precinctCodeblocks.push(codeblock);
-      }
-    }
     return {
       layerNumber: layerNumber,
-      codeblocks: precinctCodeblocks
+      codeblocks: resolution.pixelsPrecincts[precinctNumber].codeblocks
     };
   }
   function LayerResolutionComponentPositionIterator(context) {
@@ -8756,6 +8934,7 @@ var JpxImage = function JpxImageClosure() {
       // Section B.5 Resolution levels and sub-bands
       var resolutions = [];
       var subbands = [];
+      var indexInTileComponent = 0;
       for (var r = 0; r <= decompositionLevelsCount; r++) {
         var blocksDimensions = getBlocksDimensions(context, component, r);
         var resolution = {};
@@ -8765,6 +8944,7 @@ var JpxImage = function JpxImageClosure() {
         resolution.trx1 = Math.ceil(component.tcx1 / scale);
         resolution.try1 = Math.ceil(component.tcy1 / scale);
         resolution.resLevel = r;
+        resolution.pixelsPrecincts = [];
         buildPrecincts(context, resolution, blocksDimensions);
         resolutions.push(resolution);
 
@@ -8778,6 +8958,7 @@ var JpxImage = function JpxImageClosure() {
           subband.tbx1 = Math.ceil(component.tcx1 / scale);
           subband.tby1 = Math.ceil(component.tcy1 / scale);
           subband.resolution = resolution;
+          subband.indexInTileComponent = indexInTileComponent++;
           buildCodeblocks(context, subband, blocksDimensions);
           subbands.push(subband);
           resolution.subbands = [subband];
@@ -8792,6 +8973,7 @@ var JpxImage = function JpxImageClosure() {
           subband.tbx1 = Math.ceil(component.tcx1 / bscale - 0.5);
           subband.tby1 = Math.ceil(component.tcy1 / bscale);
           subband.resolution = resolution;
+          subband.indexInTileComponent = indexInTileComponent++;
           buildCodeblocks(context, subband, blocksDimensions);
           subbands.push(subband);
           resolutionSubbands.push(subband);
@@ -8803,6 +8985,7 @@ var JpxImage = function JpxImageClosure() {
           subband.tbx1 = Math.ceil(component.tcx1 / bscale);
           subband.tby1 = Math.ceil(component.tcy1 / bscale - 0.5);
           subband.resolution = resolution;
+          subband.indexInTileComponent = indexInTileComponent++;
           buildCodeblocks(context, subband, blocksDimensions);
           subbands.push(subband);
           resolutionSubbands.push(subband);
@@ -8814,6 +8997,7 @@ var JpxImage = function JpxImageClosure() {
           subband.tbx1 = Math.ceil(component.tcx1 / bscale - 0.5);
           subband.tby1 = Math.ceil(component.tcy1 / bscale - 0.5);
           subband.resolution = resolution;
+          subband.indexInTileComponent = indexInTileComponent++;
           buildCodeblocks(context, subband, blocksDimensions);
           subbands.push(subband);
           resolutionSubbands.push(subband);
@@ -8928,9 +9112,9 @@ var JpxImage = function JpxImageClosure() {
           codeblock;
       for (var i = 0, ii = packet.codeblocks.length; i < ii; i++) {
         codeblock = packet.codeblocks[i];
-        var precinct = codeblock.precinct;
-        var codeblockColumn = codeblock.cbx - precinct.cbxMin;
-        var codeblockRow = codeblock.cby - precinct.cbyMin;
+        var subbandPrecinct = codeblock.subbandPrecinct;
+        var codeblockColumn = codeblock.cbx - subbandPrecinct.cbxMin;
+        var codeblockRow = codeblock.cby - subbandPrecinct.cbyMin;
         var codeblockIncluded = false;
         var firstTimeInclusion = false;
         var valueReady;
@@ -8938,18 +9122,18 @@ var JpxImage = function JpxImageClosure() {
           codeblockIncluded = !!readBits(1);
         } else {
           // reading inclusion tree
-          precinct = codeblock.precinct;
+          subbandPrecinct = codeblock.subbandPrecinct;
           var inclusionTree, zeroBitPlanesTree;
-          if (precinct['inclusionTree'] !== undefined) {
-            inclusionTree = precinct.inclusionTree;
+          if (subbandPrecinct['inclusionTree'] !== undefined) {
+            inclusionTree = subbandPrecinct.inclusionTree;
           } else {
             // building inclusion and zero bit-planes trees
-            var width = precinct.cbxMax - precinct.cbxMin + 1;
-            var height = precinct.cbyMax - precinct.cbyMin + 1;
+            var width = subbandPrecinct.cbxMax - subbandPrecinct.cbxMin + 1;
+            var height = subbandPrecinct.cbyMax - subbandPrecinct.cbyMin + 1;
             inclusionTree = new InclusionTree(width, height, layerNumber);
             zeroBitPlanesTree = new TagTree(width, height);
-            precinct.inclusionTree = inclusionTree;
-            precinct.zeroBitPlanesTree = zeroBitPlanesTree;
+            subbandPrecinct.inclusionTree = inclusionTree;
+            subbandPrecinct.zeroBitPlanesTree = zeroBitPlanesTree;
           }
 
           if (inclusionTree.reset(codeblockColumn, codeblockRow, layerNumber)) {
@@ -8972,7 +9156,7 @@ var JpxImage = function JpxImageClosure() {
           continue;
         }
         if (firstTimeInclusion) {
-          zeroBitPlanesTree = precinct.zeroBitPlanesTree;
+          zeroBitPlanesTree = subbandPrecinct.zeroBitPlanesTree;
           zeroBitPlanesTree.reset(codeblockColumn, codeblockRow);
           while (true) {
             if (readBits(1)) {
@@ -9021,126 +9205,211 @@ var JpxImage = function JpxImageClosure() {
     }
     return position;
   }
-  function copyCoefficients(coefficients, targetArrayWidth, targetArrayHeight, subband, delta, mb, reversible, segmentationSymbolUsed, regionInLevel) {
-    var x0 = subband.tbx0;
-    var y0 = subband.tby0;
-    var codeblocks = subband.codeblocks;
-    var right = subband.type.charAt(0) === 'H' ? 1 : 0;
-    var bottom = subband.type.charAt(1) === 'H' ? targetArrayWidth : 0;
-    var resolution = subband.resolution;
-    var interleave = subband.type !== 'LL';
-    var regionInSubband;
-    if (!interleave) {
-      regionInSubband = regionInLevel;
-    } else {
-      regionInSubband = {
-        x0: (regionInLevel.x0 - resolution.trx0) / 2 + subband.tbx0,
-        y0: (regionInLevel.y0 - resolution.try0) / 2 + subband.tby0,
-        x1: (regionInLevel.x1 - resolution.trx0) / 2 + subband.tbx0,
-        y1: (regionInLevel.y1 - resolution.try0) / 2 + subband.tby0
-      };
+  function getBitModelOfCodeblock(codeblock, mb, segmentationSymbolUsed) {
+    var blockWidth = codeblock.tbx1_ - codeblock.tbx0_;
+    var blockHeight = codeblock.tby1_ - codeblock.tby0_;
+    var bitModel, currentCodingpassType;
+    bitModel = new BitModel(blockWidth, blockHeight, codeblock.subbandType, codeblock.zeroBitPlanes, mb);
+    currentCodingpassType = 2; // first bit plane starts from cleanup
+
+    // collect data
+    var data = codeblock.data,
+        totalLength = 0,
+        codingpasses = 0;
+    var j, jj, dataItem;
+    for (j = 0, jj = data.length; j < jj; j++) {
+      dataItem = data[j];
+      totalLength += dataItem.end - dataItem.start;
+      codingpasses += dataItem.codingpasses;
     }
-    var targetArrayStep = interleave ? 2 : 1;
+    var encodedData = new Uint8Array(totalLength);
+    var position = 0;
+    for (j = 0, jj = data.length; j < jj; j++) {
+      dataItem = data[j];
+      var chunk = dataItem.data.subarray(dataItem.start, dataItem.end);
+      encodedData.set(chunk, position);
+      position += chunk.length;
+    }
+    // decoding the item
+    var decoder = new _arithmetic_decoder.ArithmeticDecoder(encodedData, 0, totalLength);
+    bitModel.setDecoder(decoder);
 
-    for (var i = 0, ii = codeblocks.length; i < ii; ++i) {
-      var codeblock = codeblocks[i];
-      var blockWidth = codeblock.tbx1_ - codeblock.tbx0_;
-      var blockHeight = codeblock.tby1_ - codeblock.tby0_;
-      if (blockWidth === 0 || blockHeight === 0) {
-        continue;
-      }
-      if (codeblock['data'] === undefined) {
-        continue;
-      }
-
-      var regionInCodeblock = {
-        x0: Math.max(codeblock.tbx0_, regionInSubband.x0),
-        y0: Math.max(codeblock.tby0_, regionInSubband.y0),
-        x1: Math.min(codeblock.tbx1_, regionInSubband.x1),
-        y1: Math.min(codeblock.tby1_, regionInSubband.y1)
-      };
-      if (regionInCodeblock.x0 >= regionInCodeblock.x1 || regionInCodeblock.y0 >= regionInCodeblock.y1) {
-        continue;
-      }
-
-      var bitModel, currentCodingpassType;
-      bitModel = new BitModel(blockWidth, blockHeight, codeblock.subbandType, codeblock.zeroBitPlanes, mb);
-      currentCodingpassType = 2; // first bit plane starts from cleanup
-
-      // collect data
-      var data = codeblock.data,
-          totalLength = 0,
-          codingpasses = 0;
-      var j, jj, dataItem;
-      for (j = 0, jj = data.length; j < jj; j++) {
-        dataItem = data[j];
-        totalLength += dataItem.end - dataItem.start;
-        codingpasses += dataItem.codingpasses;
-      }
-      var encodedData = new Uint8Array(totalLength);
-      var position = 0;
-      for (j = 0, jj = data.length; j < jj; j++) {
-        dataItem = data[j];
-        var chunk = dataItem.data.subarray(dataItem.start, dataItem.end);
-        encodedData.set(chunk, position);
-        position += chunk.length;
-      }
-      // decoding the item
-      var decoder = new _arithmetic_decoder.ArithmeticDecoder(encodedData, 0, totalLength);
-      bitModel.setDecoder(decoder);
-
-      for (j = 0; j < codingpasses; j++) {
-        switch (currentCodingpassType) {
-          case 0:
-            bitModel.runSignificancePropagationPass();
-            break;
-          case 1:
-            bitModel.runMagnitudeRefinementPass();
-            break;
-          case 2:
-            bitModel.runCleanupPass();
-            if (segmentationSymbolUsed) {
-              bitModel.checkSegmentationSymbol();
-            }
-            break;
-        }
-        currentCodingpassType = (currentCodingpassType + 1) % 3;
-      }
-
-      var sign = bitModel.coefficentsSign;
-      var magnitude = bitModel.coefficentsMagnitude;
-      var bitsDecoded = bitModel.bitsDecoded;
-      var magnitudeCorrection = reversible ? 0 : 0.5;
-      var k, n, nb;
-      var regionInCodeblockWidth = regionInCodeblock.x1 - regionInCodeblock.x0;
-      // Do the interleaving of Section F.3.3 here, so we do not need
-      // to copy later. LL level is not interleaved, just copied.
-      for (var row = regionInCodeblock.y0; row < regionInCodeblock.y1; ++row) {
-        var codeblockOffset = regionInCodeblock.x0 - codeblock.tbx0_ + (row - codeblock.tby0_) * blockWidth;
-        var targetOffset = (regionInCodeblock.x0 - regionInSubband.x0) * targetArrayStep + (row - regionInSubband.y0) * targetArrayWidth * targetArrayStep + right + bottom;
-
-        for (k = regionInCodeblock.x0; k < regionInCodeblock.x1; k++) {
-          n = magnitude[codeblockOffset];
-          if (n !== 0) {
-            n = (n + magnitudeCorrection) * delta;
-            if (sign[codeblockOffset] !== 0) {
-              n = -n;
-            }
-            nb = bitsDecoded[codeblockOffset];
-            if (reversible && nb >= mb) {
-              coefficients[targetOffset] = n;
-            } else {
-              coefficients[targetOffset] = n * (1 << mb - nb);
-            }
+    for (j = 0; j < codingpasses; j++) {
+      switch (currentCodingpassType) {
+        case 0:
+          bitModel.runSignificancePropagationPass();
+          break;
+        case 1:
+          bitModel.runMagnitudeRefinementPass();
+          break;
+        case 2:
+          bitModel.runCleanupPass();
+          if (segmentationSymbolUsed) {
+            bitModel.checkSegmentationSymbol();
           }
-          targetOffset += targetArrayStep;
-          ++codeblockOffset;
+          break;
+      }
+      currentCodingpassType = (currentCodingpassType + 1) % 3;
+    }
+    return bitModel;
+  }
+  function copyCoefficientsOfCodeblock(coefficients, targetStartOffset, targetStep, targetRowStep, codeblock, regionInCodeblock, delta, mb, reversible, segmentationSymbolUsed) {
+    var blockWidth = codeblock.tbx1_ - codeblock.tbx0_;
+    var blockHeight = codeblock.tby1_ - codeblock.tby0_;
+    var bitModel = getBitModelOfCodeblock(codeblock, mb, segmentationSymbolUsed);
+    var sign = bitModel.coefficentsSign;
+    var magnitude = bitModel.coefficentsMagnitude;
+    var bitsDecoded = bitModel.bitsDecoded;
+    var magnitudeCorrection = reversible ? 0 : 0.5;
+    var k, n, nb;
+    var codeblockRowStart = regionInCodeblock.x0 - codeblock.tbx0_ + (regionInCodeblock.y0 - codeblock.tby0_) * blockWidth;
+    var targetRowStart = targetStartOffset;
+    // Do the interleaving of Section F.3.3 here, so we do not need
+    // to copy later. LL level is not interleaved, just copied.
+    for (var row = regionInCodeblock.y0; row < regionInCodeblock.y1; ++row) {
+      var codeblockOffset = codeblockRowStart;
+      var targetOffset = targetRowStart;
+      codeblockRowStart += blockWidth;
+      targetRowStart += targetRowStep;
+
+      for (k = regionInCodeblock.x0; k < regionInCodeblock.x1; k++) {
+        n = magnitude[codeblockOffset];
+        if (n !== 0) {
+          n = (n + magnitudeCorrection) * delta;
+          if (sign[codeblockOffset] !== 0) {
+            n = -n;
+          }
+          nb = bitsDecoded[codeblockOffset];
+          if (reversible && nb >= mb) {
+            coefficients[targetOffset] = n;
+          } else {
+            coefficients[targetOffset] = n * (1 << mb - nb);
+          }
         }
+        targetOffset += targetStep;
+        ++codeblockOffset;
       }
     }
   }
-  function transformTile(context, tile, c) {
-    var component = tile.components[c];
+  function getCoefficientsOfResolution(resolution, spqcds, scalarExpounded, precision, guardBits, reversible, segmentationSymbolUsed, regionInLevel) {
+    // Allocate space for the whole sublevel.
+    var arrayWidth = regionInLevel.x1 - regionInLevel.x0;
+    var arrayHeight = regionInLevel.y1 - regionInLevel.y0;
+    var coefficients = new Float32Array(arrayWidth * arrayHeight);
+    var regionInSubband;
+    var region = { x0: 0, x1: 0, y0: 0, y1: 1 };
+
+    if (resolution.hasDecodedCoefficients) {
+      decodedCoefficients;
+      var allPrecinctsHaveCoefficients = true;
+      for (var k = 0, kk = resolution.pixelsPrecincts.length; k < kk; ++k) {
+        var pixelsPrecinct = resolution.pixelsPrecincts[k];
+        x0 = Math.max(pixelsPrecinct.tbxMin_, regionInLevel.x0);
+        y0 = Math.max(pixelsPrecinct.tbyMin_, regionInLevel.y0);
+        x1 = Math.min(pixelsPrecinct.tbxMax_, regionInLevel.x1);
+        y1 = Math.min(pixelsPrecinct.tbyMax_, regionInLevel.y1);
+        if (x0 >= x1 || y0 >= y1) {
+          continue;
+        }
+        if (!pixelsPrecinct['decodedCoefficients']) {
+          allPrecinctsHaveCoefficients = false;
+          continue;
+        }
+        var decoded = pixelsPrecinct.decodedCoefficients;
+        var width = x1 - x0;
+        var sourceWidth = pixelsPrecinct.tbxMax_ - pixelsPrecinct.tbxMin_;
+        var targetWidth = regionInLevel.x1 - regionInLevel.x0;
+        var source = x0 - pixelsPrecinct.tbxMin_ + (y0 - pixelsPrecinct.tbyMin_) * sourceWidth;
+        var target = x0 - regionInLevel.x0 + (y0 - regionInLevel.y0) * targetWidth;
+        for (var row = y0; row < y1; ++row) {
+          coefficients.set(decoded.subarray(source, source + width), target);
+          source += sourceWidth;
+          target += targetWidth;
+        }
+      }
+      if (allPrecinctsHaveCoefficients) {
+        return coefficients;
+      }
+    }
+
+    for (var j = 0, jj = resolution.subbands.length; j < jj; j++) {
+      var subband = resolution.subbands[j];
+
+      var interleave = subband.type !== 'LL';
+      var regionInSubband;
+      if (!interleave) {
+        regionInSubband = regionInLevel;
+      } else {
+        region.x0 = (regionInLevel.x0 - resolution.trx0) / 2 + subband.tbx0;
+        region.y0 = (regionInLevel.y0 - resolution.try0) / 2 + subband.tby0;
+        region.x1 = (regionInLevel.x1 - resolution.trx0) / 2 + subband.tbx0;
+        region.y1 = (regionInLevel.y1 - resolution.try0) / 2 + subband.tby0;
+        regionInSubband = region;
+      }
+
+      // In the first resolution level, copyCoefficients will fill the
+      // whole array with coefficients. In the succeeding passes,
+      // copyCoefficients will consecutively fill in the values that belong
+      // to the interleaved positions of the HL, LH, and HH coefficients.
+      // The LL coefficients will then be interleaved in Transform.iterate().
+
+      var right = subband.type.charAt(0) === 'H' ? 1 : 0;
+      var bottom = subband.type.charAt(1) === 'H' ? arrayWidth : 0;
+      var interleaveOffset = right + bottom;
+      var interleave = subband.type !== 'LL';
+      var targetStep = interleave ? 2 : 1;
+      var targetRowStep = arrayWidth * targetStep;
+
+      var regionInCodeblock = {
+        x0: 0,
+        y0: 0,
+        x1: 0,
+        y1: 0
+      };
+
+      var mu, epsilon;
+      if (!scalarExpounded) {
+        // formula E-5
+        mu = spqcds[0].mu;
+        var r = subband.resolution.resLevel;
+        epsilon = spqcds[0].epsilon + (r > 0 ? 1 - r : 0);
+      } else {
+        var indexInTileComponent = subband.indexInTileComponent;
+        mu = spqcds[indexInTileComponent].mu;
+        epsilon = spqcds[indexInTileComponent].epsilon;
+      }
+
+      var gainLog2 = SubbandsGainLog2[subband.type];
+
+      // calculate quantization coefficient (Section E.1.1.1)
+      var delta = reversible ? 1 : Math.pow(2, precision + gainLog2 - epsilon) * (1 + mu / 2048);
+      var mb = guardBits + epsilon - 1;
+
+      for (var i = 0, ii = subband.codeblocks.length; i < ii; ++i) {
+        var codeblock = subband.codeblocks[i];
+        if (codeblock['data'] === undefined) {
+          continue;
+        }
+        if (codeblock.subbandPrecinct.pixelsPrecinct.decodedCoefficients) {
+          continue;
+        }
+
+        regionInCodeblock.x0 = Math.max(codeblock.tbx0_, regionInSubband.x0);
+        regionInCodeblock.y0 = Math.max(codeblock.tby0_, regionInSubband.y0);
+        regionInCodeblock.x1 = Math.min(codeblock.tbx1_, regionInSubband.x1);
+        regionInCodeblock.y1 = Math.min(codeblock.tby1_, regionInSubband.y1);
+        if (regionInCodeblock.x0 >= regionInCodeblock.x1 || regionInCodeblock.y0 >= regionInCodeblock.y1) {
+          continue;
+        }
+
+        var targetStartOffset = (regionInCodeblock.x0 - regionInSubband.x0) * targetStep + (regionInCodeblock.y0 - regionInSubband.y0) * targetRowStep + interleaveOffset;
+
+        copyCoefficientsOfCodeblock(coefficients, targetStartOffset, targetStep, targetRowStep, codeblock, regionInCodeblock, delta, mb, reversible, segmentationSymbolUsed);
+      }
+    }
+    return coefficients;
+  }
+  function getCoefficientsOfComponent(context, component, c, relativeRegionInTile) {
     var codingStyleParameters = component.codingStyleParameters;
     var quantizationParameters = component.quantizationParameters;
     var decompositionLevelsCount = codingStyleParameters.decompositionLevelsCount;
@@ -9149,48 +9418,33 @@ var JpxImage = function JpxImageClosure() {
     var guardBits = quantizationParameters.guardBits;
     var segmentationSymbolUsed = codingStyleParameters.segmentationSymbolUsed;
     var precision = context.components[c].precision;
-    var relativeRegionInTile;
-    if (context.regionToParse !== undefined) {
-      var x1 = Math.min(component.tcx1, context.regionToParse.right);
-      var y1 = Math.min(component.tcy1, context.regionToParse.bottom);
-      relativeRegionInTile = {
-        x0: Math.max(0, context.regionToParse.left - component.tcx0),
-        y0: Math.max(0, context.regionToParse.top - component.tcy0),
-        x1: x1 - component.tcx0,
-        y1: y1 - component.tcy0
-      };
-    }
 
     var reversible = codingStyleParameters.reversibleTransformation;
-    var transform = reversible ? new ReversibleTransform() : new IrreversibleTransform();
 
     var subbandCoefficients = [];
-    var b = 0;
+    var regionInLevel = { x0: 0, y0: 0, x1: 0, y1: 0 };
+    var region = { x0: 0, y0: 0, x1: 0, y1: 0 };
+
     for (var i = 0; i <= decompositionLevelsCount; i++) {
       var resolution = component.resolutions[i];
 
       var width = resolution.trx1 - resolution.trx0;
       var height = resolution.try1 - resolution.try0;
 
-      var regionInLevel, arrayWidth, arrayHeight;
+      var regionInLevel;
       if (relativeRegionInTile === undefined) {
-        arrayWidth = width;
-        arrayHeight = height;
-        regionInLevel = {
-          x0: resolution.trx0,
-          y0: resolution.try0,
-          x1: resolution.trx1,
-          y1: resolution.try1
-        };
+        regionInLevel.x0 = resolution.trx0;
+        regionInLevel.y0 = resolution.try0;
+        regionInLevel.x1 = resolution.trx1;
+        regionInLevel.y1 = resolution.try1;
       } else {
         var scale = 1 << decompositionLevelsCount - i;
         var redundantCoeffs = 4;
-        regionInLevel = {
-          x0: Math.ceil(relativeRegionInTile.x0 / scale) - redundantCoeffs,
-          y0: Math.ceil(relativeRegionInTile.y0 / scale) - redundantCoeffs,
-          x1: Math.ceil(relativeRegionInTile.x1 / scale) + redundantCoeffs,
-          y1: Math.ceil(relativeRegionInTile.y1 / scale) + redundantCoeffs
-        };
+        regionInLevel.x0 = Math.ceil(relativeRegionInTile.x0 / scale) - redundantCoeffs;
+        regionInLevel.y0 = Math.ceil(relativeRegionInTile.y0 / scale) - redundantCoeffs;
+        regionInLevel.x1 = Math.ceil(relativeRegionInTile.x1 / scale) + redundantCoeffs;
+        regionInLevel.y1 = Math.ceil(relativeRegionInTile.y1 / scale) + redundantCoeffs;
+
         regionInLevel.x0 = 2 * Math.floor(regionInLevel.x0 / 2) + resolution.trx0;
         regionInLevel.y0 = 2 * Math.floor(regionInLevel.y0 / 2) + resolution.try0;
         regionInLevel.x1 = 2 * Math.floor(regionInLevel.x1 / 2) + resolution.trx0;
@@ -9200,40 +9454,9 @@ var JpxImage = function JpxImageClosure() {
         regionInLevel.y0 = Math.max(regionInLevel.y0, resolution.try0);
         regionInLevel.x1 = Math.min(regionInLevel.x1, resolution.trx1);
         regionInLevel.y1 = Math.min(regionInLevel.y1, resolution.try1);
-
-        arrayWidth = regionInLevel.x1 - regionInLevel.x0;
-        arrayHeight = regionInLevel.y1 - regionInLevel.y0;
       }
 
-      // Allocate space for the whole sublevel.
-      var coefficients = new Float32Array(arrayWidth * arrayHeight);
-
-      for (var j = 0, jj = resolution.subbands.length; j < jj; j++) {
-        var mu, epsilon;
-        if (!scalarExpounded) {
-          // formula E-5
-          mu = spqcds[0].mu;
-          epsilon = spqcds[0].epsilon + (i > 0 ? 1 - i : 0);
-        } else {
-          mu = spqcds[b].mu;
-          epsilon = spqcds[b].epsilon;
-          b++;
-        }
-
-        var subband = resolution.subbands[j];
-        var gainLog2 = SubbandsGainLog2[subband.type];
-
-        // calculate quantization coefficient (Section E.1.1.1)
-        var delta = reversible ? 1 : Math.pow(2, precision + gainLog2 - epsilon) * (1 + mu / 2048);
-        var mb = guardBits + epsilon - 1;
-
-        // In the first resolution level, copyCoefficients will fill the
-        // whole array with coefficients. In the succeeding passes,
-        // copyCoefficients will consecutively fill in the values that belong
-        // to the interleaved positions of the HL, LH, and HH coefficients.
-        // The LL coefficients will then be interleaved in Transform.iterate().
-        copyCoefficients(coefficients, arrayWidth, arrayHeight, subband, delta, mb, reversible, segmentationSymbolUsed, regionInLevel);
-      }
+      var coefficients = getCoefficientsOfResolution(resolution, spqcds, scalarExpounded, precision, guardBits, reversible, segmentationSymbolUsed, regionInLevel);
 
       var relativeRegionInLevel = {
         x0: regionInLevel.x0 - resolution.trx0,
@@ -9248,7 +9471,26 @@ var JpxImage = function JpxImageClosure() {
         relativeRegionInLevel: relativeRegionInLevel
       });
     }
+    return subbandCoefficients;
+  }
+  function transformTile(context, tile, c) {
+    var component = tile.components[c];
+    var codingStyleParameters = component.codingStyleParameters;
+    var relativeRegionInTile;
+    var reversible = codingStyleParameters.reversibleTransformation;
+    var transform = reversible ? new ReversibleTransform() : new IrreversibleTransform();
+    if (context.regionToParse !== undefined) {
+      var x1 = Math.min(component.tcx1, context.regionToParse.right);
+      var y1 = Math.min(component.tcy1, context.regionToParse.bottom);
+      relativeRegionInTile = {
+        x0: Math.max(0, context.regionToParse.left - component.tcx0),
+        y0: Math.max(0, context.regionToParse.top - component.tcy0),
+        x1: x1 - component.tcx0,
+        y1: y1 - component.tcy0
+      };
+    }
 
+    var subbandCoefficients = getCoefficientsOfComponent(context, component, c, relativeRegionInTile);
     var result = transform.calculate(subbandCoefficients, component.tcx0, component.tcy0);
     var transformedRegion = result.relativeRegionInLevel;
     var transformedWidth = transformedRegion.x1 - transformedRegion.x0;
@@ -10132,7 +10374,7 @@ var JpxImage = function JpxImageClosure() {
 exports.JpxImage = JpxImage;
 
 /***/ }),
-/* 40 */
+/* 42 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -11758,10 +12000,10 @@ exports.stringToUTF8String = stringToUTF8String;
 exports.utf8StringToString = utf8StringToString;
 exports.warn = warn;
 exports.unreachable = unreachable;
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(41)))
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(43)))
 
 /***/ }),
-/* 41 */
+/* 43 */
 /***/ (function(module, exports) {
 
 // shim for using process in browser
@@ -11951,7 +12193,7 @@ process.umask = function() { return 0; };
 
 
 /***/ }),
-/* 42 */
+/* 44 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";

@@ -21,6 +21,8 @@ var JpipMarkersParser                         = require('jpip-markers-parser.js'
 var JpipObjectPoolByDatabin                   = require('jpip-object-pool-by-databin.js'                    );
 var JpipOffsetsCalculator                     = require('jpip-offsets-calculator.js'                        );
 var JpipPacketsDataCollector                  = require('jpip-packets-data-collector.js'                    );
+var JpipParamsCodestreamPart                  = require('jpip-params-codestream-part.js'                    );
+var JpipParamsPrecinctIterator                = require('jpip-params-precinct-iterator.js'                  );
 var JpipRequestDatabinsListener               = require('jpip-request-databins-listener.js'                 );
 var JpipRequestParamsModifier                 = require('jpip-request-params-modifier.js'                   );
 var JpipRequest                               = require('jpip-request.js'                                   );
@@ -49,10 +51,9 @@ var jpipRuntimeFactory = {
     },
     
     createCodestreamReconstructor: function(
-        codestreamStructure, databinsSaver, headerModifier, qualityLayersCache) {
+        databinsSaver, headerModifier, qualityLayersCache) {
         
         return new JpipCodestreamReconstructor(
-            codestreamStructure,
             databinsSaver,
             headerModifier,
             qualityLayersCache);
@@ -96,10 +97,10 @@ var jpipRuntimeFactory = {
     },
     
     createHeaderModifier: function(
-        codestreamStructure, offsetsCalculator, progressionOrder) {
+        offsetsCalculator, progressionOrder) {
         
         return new JpipHeaderModifier(
-            codestreamStructure, offsetsCalculator, progressionOrder);
+            offsetsCalculator, progressionOrder);
     },
     
     createImageDataContext: function(
@@ -122,25 +123,43 @@ var jpipRuntimeFactory = {
         return new JpipOffsetsCalculator(mainHeaderDatabin, markersParser);
     },
     
-    createPacketsDataCollector: function(
-        codestreamStructure, databinsSaver, qualityLayersCache) {
+    createPacketsDataCollector: function(databinsSaver, qualityLayersCache) {
         
         return new JpipPacketsDataCollector(
-            codestreamStructure,
             databinsSaver,
             qualityLayersCache,
             jpipRuntimeFactory);
     },
     
-    createRequestDatabinsListener: function createRequestDatabinsListener(
+    createParamsCodestreamPart: function(
+        codestreamPartParams, codestreamStructure) {
+        
+        return new JpipParamsCodestreamPart(
+            codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
+    },
+    
+    createJpipParamsPrecinctIterator: function(
+        codestreamStructure,
+        idx,
         codestreamPartParams,
+        isIteratePrecinctsNotInCodestreamPart) {
+        
+        return new JpipParamsPrecinctIterator(
+            codestreamStructure,
+            idx,
+            codestreamPartParams,
+            isIteratePrecinctsNotInCodestreamPart);
+    },
+    
+    createRequestDatabinsListener: function createRequestDatabinsListener(
+        codestreamPart,
         qualityLayerReachedCallback,
         codestreamStructure,
         databinsSaver,
         qualityLayersCache) {
         
         return new JpipRequestDatabinsListener(
-            codestreamPartParams,
+            codestreamPart,
             qualityLayerReachedCallback,
             codestreamStructure,
             databinsSaver,
