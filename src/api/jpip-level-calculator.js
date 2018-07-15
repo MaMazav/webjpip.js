@@ -114,19 +114,19 @@ module.exports = function JpipLevelCalculator(
         var firstSize = getTileSize(firstEdgeType, level);
         var lastSize = getTileSize(lastEdgeType, level);
         
-        var width = firstSize[0];
-        var height = firstSize[1];
+        var width = firstSize.width;
+        var height = firstSize.height;
 
         var tilesX = tileBounds.maxTileXExclusive - tileBounds.minTileX;
         var tilesY = tileBounds.maxTileYExclusive - tileBounds.minTileY;
         
         if (tilesX > 1) {
-            width += lastSize[0];
+            width += lastSize.width;
             width += tileWidth * (tilesX - 2);
         }
         
         if (tilesY > 1) {
-            height += lastSize[1];
+            height += lastSize.height;
             height += tileHeight * (tilesY - 2);
         }
         
@@ -191,7 +191,10 @@ module.exports = function JpipLevelCalculator(
             tileHeight = Math.ceil(tileHeight / scale);
         }
         
-        return [tileWidth, tileHeight];
+        return {
+            width: tileWidth,
+            height: tileHeight
+        };
     }
 
     function getTileDimensionSize(

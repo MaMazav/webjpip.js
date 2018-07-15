@@ -491,16 +491,11 @@ var JpxImage = (function JpxImageClosure() {
       var scalarExpounded = quantizationParameters.scalarExpounded;
       var guardBits = quantizationParameters.guardBits;
       var segmentationSymbolUsed = codingStyleParameters.segmentationSymbolUsed;
-      var precision = component.precision;
+      var precision = context.components[componentIdx].precision;
       var reversible = codingStyleParameters.reversibleTransformation;
       
-      var regionInLevel = {
-          x0: pixelsPrecinct.tbxMin_,
-          x1: pixelsPrecinct.tbxMax_,
-          y0: pixelsPrecinct.tbyMin_,
-          y1: pixelsPrecinct.tbyMax_,
-      };
-
+      var regionInLevel = calculateRegionInLevelOfPixelsPrecinct(
+        pixelsPrecinct, resolution);
       var coefficients =
         getCoefficientsOfResolution(resolution, spqcds, scalarExpounded,
                                     precision, guardBits, reversible,
@@ -535,6 +530,32 @@ var JpxImage = (function JpxImageClosure() {
       context.regionToParse = undefined;
     }
   };
+  function calculateRegionInLevelOfPixelsPrecinct(pixelsPrecincts, resolution) {
+    var regionInLevel;
+    var subbands = resolution.subbands;
+    for (var i = 0; i < pixelsPrecincts.subbandPrecincts.length; ++i) {
+      var interleave = resolution.subbands[i].type !== 'LL';
+      var x0 = pixelsPrecincts.subbandPrecincts[i].tbxMin_;
+      var y0 = pixelsPrecincts.subbandPrecincts[i].tbyMin_;
+      var x1 = pixelsPrecincts.subbandPrecincts[i].tbxMax_;
+      var y1 = pixelsPrecincts.subbandPrecincts[i].tbyMax_;
+      if (interleave) {
+        x0 = (x0 - resolution.subbands[i].tbx0) * 2 + resolution.trx0;
+        y0 = (y0 - resolution.subbands[i].tby0) * 2 + resolution.try0;
+        x1 = (x1 - resolution.subbands[i].tbx0) * 2 + resolution.trx0;
+        y1 = (y1 - resolution.subbands[i].tby0) * 2 + resolution.try0;
+      }
+      if (i === 0) {
+        regionInLevel = { x0: x0, y0: y0, x1: x1, y1: y1 };
+      } else {
+        regionInLevel.x0 = Math.min(regionInLevel.x0, x0);
+        regionInLevel.y0 = Math.min(regionInLevel.y0, y0);
+        regionInLevel.x1 = Math.max(regionInLevel.x1, x1);
+        regionInLevel.y1 = Math.max(regionInLevel.y1, y1);
+      }
+    }
+    return regionInLevel;
+  }
   function calculateComponentDimensions(component, siz) {
     // Section B.2 Component mapping
     component.x0 = Math.ceil(siz.XOsiz / component.XRsiz);
@@ -637,7 +658,7 @@ var JpxImage = (function JpxImageClosure() {
       precinctHeightInSubband,
     };
   }
-  function buildCodeblocks(context, subband, dimensions) {
+  function buildCodeblocks(context, subband, dimensions, index) {
     // Section B.7 Division sub-band into code-blocks
     var xcb_ = dimensions.xcb_;
     var ycb_ = dimensions.ycb_;
@@ -690,13 +711,17 @@ var JpxImage = (function JpxImageClosure() {
         if (subbandPrecinct !== undefined) {
           if (i < subbandPrecinct.cbxMin) {
             subbandPrecinct.cbxMin = i;
+            subbandPrecinct.tbxMin_ = codeblock.tbx0_;
           } else if (i > subbandPrecinct.cbxMax) {
             subbandPrecinct.cbxMax = i;
+            subbandPrecinct.tbxMax_ = codeblock.tbx1_;
           }
           if (j < subbandPrecinct.cbyMin) {
             subbandPrecinct.cbyMin = j;
+            subbandPrecinct.tbyMin_ = codeblock.tby0_;
           } else if (j > subbandPrecinct.cbyMax) {
             subbandPrecinct.cbyMax = j;
+            subbandPrecinct.tbyMax_ = codeblock.tby1_;
           }
         } else {
           subbandPrecincts[precinctNumber] = subbandPrecinct = {
@@ -704,34 +729,27 @@ var JpxImage = (function JpxImageClosure() {
             cbyMin: j,
             cbxMax: i,
             cbyMax: j,
-            pixelsPrecinct: subband.resolution.pixelsPrecincts[precinctNumber],
-          };
-        }
-        if (subbandPrecinct['pixelsPrecinct'] !== undefined) {
-          var pixelsPrecinct = subbandPrecinct.pixelsPrecinct;
-          if (codeblock.tbx0_ < pixelsPrecinct.tbxMin_) {
-            pixelsPrecinct.tbxMin_ = codeblock.tbx0_;
-          } else {
-            pixelsPrecinct.tbxMax_ = codeblock.tbx1_;
-          }
-          if (codeblock.tby0_ < pixelsPrecinct.tbyMin_) {
-            pixelsPrecinct.tbyMin_ = codeblock.tby0_;
-          } else {
-            pixelsPrecinct.tbyMax_ = codeblock.tby1_;
-          }
-        } else {
-          subbandPrecinct.pixelsPrecinct = {
-            codeblocks: [],
             tbxMin_: codeblock.tbx0_,
             tbxMax_: codeblock.tbx1_,
             tbyMin_: codeblock.tby0_,
             tbyMax_: codeblock.tby1_,
+            pixelsPrecinct: subband.resolution.pixelsPrecincts[precinctNumber],
+          };
+        }
+        if (subbandPrecinct['pixelsPrecinct'] === undefined) {
+          subbandPrecinct.pixelsPrecinct = {
+            codeblocks: [],
+            subbandPrecincts: []
           };
           subband.resolution.pixelsPrecincts[precinctNumber] =
             subbandPrecinct.pixelsPrecinct;
         }
         codeblock.subbandPrecinct = subbandPrecinct;
-        subbandPrecinct.pixelsPrecinct.codeblocks.push(codeblock);
+        var pixelsPrecinct = subbandPrecinct.pixelsPrecinct;
+        pixelsPrecinct.codeblocks.push(codeblock);
+        if (pixelsPrecinct.subbandPrecincts[index] === undefined) {
+          pixelsPrecinct.subbandPrecincts[index] = subbandPrecinct;
+        }
       }
     }
     subband.codeblockParameters = {
@@ -1093,7 +1111,7 @@ var JpxImage = (function JpxImageClosure() {
           subband.tby1 = Math.ceil(component.tcy1 / scale);
           subband.resolution = resolution;
           subband.indexInTileComponent = indexInTileComponent++;
-          buildCodeblocks(context, subband, blocksDimensions);
+          buildCodeblocks(context, subband, blocksDimensions, 0);
           subbands.push(subband);
           resolution.subbands = [subband];
         } else {
@@ -1108,7 +1126,7 @@ var JpxImage = (function JpxImageClosure() {
           subband.tby1 = Math.ceil(component.tcy1 / bscale);
           subband.resolution = resolution;
           subband.indexInTileComponent = indexInTileComponent++;
-          buildCodeblocks(context, subband, blocksDimensions);
+          buildCodeblocks(context, subband, blocksDimensions, 0);
           subbands.push(subband);
           resolutionSubbands.push(subband);
 
@@ -1120,7 +1138,7 @@ var JpxImage = (function JpxImageClosure() {
           subband.tby1 = Math.ceil(component.tcy1 / bscale - 0.5);
           subband.resolution = resolution;
           subband.indexInTileComponent = indexInTileComponent++;
-          buildCodeblocks(context, subband, blocksDimensions);
+          buildCodeblocks(context, subband, blocksDimensions, 1);
           subbands.push(subband);
           resolutionSubbands.push(subband);
 
@@ -1132,7 +1150,7 @@ var JpxImage = (function JpxImageClosure() {
           subband.tby1 = Math.ceil(component.tcy1 / bscale - 0.5);
           subband.resolution = resolution;
           subband.indexInTileComponent = indexInTileComponent++;
-          buildCodeblocks(context, subband, blocksDimensions);
+          buildCodeblocks(context, subband, blocksDimensions, 2);
           subbands.push(subband);
           resolutionSubbands.push(subband);
 
@@ -1443,31 +1461,102 @@ var JpxImage = (function JpxImageClosure() {
     var arrayHeight = regionInLevel.y1 - regionInLevel.y0;
     var coefficients = new Float32Array(arrayWidth * arrayHeight);
     var regionInSubband;
-    var region = { x0: 0, x1: 0, y0: 0, y1: 1 };
+    var regionTmp = { x0: 0, x1: 0, y0: 0, y1: 1 };
     
-    if (resolution.hasDecodedCoefficients) { decodedCoefficients
+    if (resolution.hasDecodedCoefficients) {
       var allPrecinctsHaveCoefficients = true;
+      var subbands = resolution.subbands;
+      var interleave = subbands[0].type !== 'LL';
+      
       for (var k = 0, kk = resolution.pixelsPrecincts.length; k < kk; ++k) {
         var pixelsPrecinct = resolution.pixelsPrecincts[k];
-        x0 = Math.max(pixelsPrecinct.tbxMin_, regionInLevel.x0);
-        y0 = Math.max(pixelsPrecinct.tbyMin_, regionInLevel.y0);
-        x1 = Math.min(pixelsPrecinct.tbxMax_, regionInLevel.x1);
-        y1 = Math.min(pixelsPrecinct.tbyMax_, regionInLevel.y1);
-        if (x0 >= x1 || y0 >= y1) {
-          continue;
-        }
         if (!pixelsPrecinct['decodedCoefficients']) {
           allPrecinctsHaveCoefficients = false;
           continue;
         }
+        var precinctRegionInLevel = calculateRegionInLevelOfPixelsPrecinct(
+          pixelsPrecinct, resolution);
+        var x0 = Math.max(precinctRegionInLevel.x0, regionInLevel.x0);
+        var y0 = Math.max(precinctRegionInLevel.y0, regionInLevel.y0);
+        var x1 = Math.min(precinctRegionInLevel.x1, regionInLevel.x1);
+        var y1 = Math.min(precinctRegionInLevel.y1, regionInLevel.y1);
+        if (x0 >= x1 || y0 >= y1) {
+          continue;
+        }
         var decoded = pixelsPrecinct.decodedCoefficients;
         var width = x1 - x0;
-        var sourceWidth = pixelsPrecinct.tbxMax_ - pixelsPrecinct.tbxMin_;
-        var targetWidth = regionInLevel.x1 - regionInLevel.x0;
-        var source = (x0 - pixelsPrecinct.tbxMin_) +
-                     (y0 - pixelsPrecinct.tbyMin_) * sourceWidth;
+        var sourceWidth = precinctRegionInLevel.x1 - precinctRegionInLevel.x0;
+        var targetWidth = arrayWidth;
+        var source = (x0 - precinctRegionInLevel.x0) +
+                     (y0 - precinctRegionInLevel.y0) * sourceWidth;
         var target = (x0 - regionInLevel.x0) +
                      (y0 - regionInLevel.y0) * targetWidth;
+        
+        var debugOffsets = decoded.debugOffsets; decoded = decoded.coefficients; // Debug
+        // Debug code
+        var isDebuggedSomething = false;
+        for (var i = 0; false && i < debugOffsets.length; ++i) {
+          var offsets = debugOffsets[i];
+          var subband = resolution.subbands[offsets.subbandIndex];
+          var codeblock = subband.codeblocks[offsets.codeblockIndex];
+          
+          var interleave = subband.type !== 'LL';
+          var regionInSubband;
+          if (!interleave) {
+            regionInSubband = regionInLevel;
+          } else {
+            regionTmp.x0 = (regionInLevel.x0 - resolution.trx0) / 2 + subband.tbx0;
+            regionTmp.y0 = (regionInLevel.y0 - resolution.try0) / 2 + subband.tby0;
+            regionTmp.x1 = (regionInLevel.x1 - resolution.trx0) / 2 + subband.tbx0;
+            regionTmp.y1 = (regionInLevel.y1 - resolution.try0) / 2 + subband.tby0;
+            regionInSubband = regionTmp;
+          }
+
+          var regionInCodeblock = {
+            x0: Math.max(codeblock.tbx0_, regionInSubband.x0),
+            y0: Math.max(codeblock.tby0_, regionInSubband.y0),
+            x1: Math.min(codeblock.tbx1_, regionInSubband.x1),
+            y1: Math.min(codeblock.tby1_, regionInSubband.y1),
+          };
+          if (regionInCodeblock.x0 >= regionInCodeblock.x1 ||
+              regionInCodeblock.y0 >= regionInCodeblock.y1) {
+            continue;
+          }
+          isDebuggedSomething = true;
+          
+          var right = subband.type.charAt(0) === 'H' ? 1 : 0;
+          var bottom = subband.type.charAt(1) === 'H' ? arrayWidth : 0;
+          var interleaveOffset = right + bottom;
+          var interleave = subband.type !== 'LL';
+          var targetStep = interleave ? 2 : 1;
+          var targetRowStep = arrayWidth * targetStep;
+          
+          var newTargetStartOffset =
+            (regionInCodeblock.x0 - regionInSubband.x0) * targetStep +
+            (regionInCodeblock.y0 - regionInSubband.y0) * targetRowStep +
+            interleaveOffset;
+          
+          var newX = newTargetStartOffset % arrayWidth;
+          var newY = Math.floor(newTargetStartOffset / arrayWidth);
+          var oldX = offsets.targetStartOffset % offsets.arrayWidth;
+          var oldY = Math.floor(offsets.targetStartOffset / offsets.arrayWidth);
+          var targetX = target % arrayWidth;
+          var targetY = Math.floor(target / arrayWidth);
+          var sourceX = source % offsets.arrayWidth;
+          var sourceY = Math.floor(source / offsets.arrayWidth);
+          
+          if (sourceWidth !== offsets.arrayWidth ||
+              newX - targetX !== oldX - sourceX ||
+              newY - targetY !== oldY - sourceY) {
+            throw 'mismatch: sourceWidth=' + sourceWidth + ', original.arrayWidth=' + offsets.arrayWidth +
+                'newX=' + newX + ', targetX=' + targetX + ', oldX=' + oldX + ', sourceX=' + sourceX +
+                'newY=' + newY + ', targetY=' + targetY + ', oldY=' + oldY + ', sourceY=' + sourceY;
+          }
+        }
+        if (!isDebuggedSomething) {
+          //throw 'No codeblock seems to be matching this region although precinct does';
+        }
+        
         for (var row = y0; row < y1; ++row) {
           coefficients.set(decoded.subarray(source, source + width), target);
           source += sourceWidth;
@@ -1475,10 +1564,13 @@ var JpxImage = (function JpxImageClosure() {
         }
       }
       if (allPrecinctsHaveCoefficients) {
+        return { coefficients: coefficients }; // Debug
         return coefficients;
       }
     }
 
+    var debugOffsets = [];
+    var pixelsPrecinct = null;
     for (var j = 0, jj = resolution.subbands.length; j < jj; j++) {
       var subband = resolution.subbands[j];
       
@@ -1487,11 +1579,11 @@ var JpxImage = (function JpxImageClosure() {
       if (!interleave) {
         regionInSubband = regionInLevel;
       } else {
-        region.x0 = (regionInLevel.x0 - resolution.trx0) / 2 + subband.tbx0;
-        region.y0 = (regionInLevel.y0 - resolution.try0) / 2 + subband.tby0;
-        region.x1 = (regionInLevel.x1 - resolution.trx0) / 2 + subband.tbx0;
-        region.y1 = (regionInLevel.y1 - resolution.try0) / 2 + subband.tby0;
-        regionInSubband = region;
+        regionTmp.x0 = (regionInLevel.x0 - resolution.trx0) / 2 + subband.tbx0;
+        regionTmp.y0 = (regionInLevel.y0 - resolution.try0) / 2 + subband.tby0;
+        regionTmp.x1 = (regionInLevel.x1 - resolution.trx0) / 2 + subband.tbx0;
+        regionTmp.y1 = (regionInLevel.y1 - resolution.try0) / 2 + subband.tby0;
+        regionInSubband = regionTmp;
       }
 
       // In the first resolution level, copyCoefficients will fill the
@@ -1535,9 +1627,10 @@ var JpxImage = (function JpxImageClosure() {
       
       for (var i = 0, ii = subband.codeblocks.length; i < ii; ++i) {
         var codeblock = subband.codeblocks[i];
-        if (codeblock['data'] === undefined) {
-          continue;
-        }
+        // Debug
+        //if (codeblock['data'] === undefined) {
+        //  continue;
+        //}
         if (codeblock.subbandPrecinct.pixelsPrecinct.decodedCoefficients) {
           continue;
         }
@@ -1551,10 +1644,35 @@ var JpxImage = (function JpxImageClosure() {
           continue;
         }
         
+        // Debug
+        if (pixelsPrecinct === null) {
+          pixelsPrecinct = codeblock.subbandPrecinct.pixelsPrecinct;
+        } else if (pixelsPrecinct !== codeblock.subbandPrecinct.pixelsPrecinct) {
+          throw 'Two precincts in region';
+        }
+        
         var targetStartOffset =
           (regionInCodeblock.x0 - regionInSubband.x0) * targetStep +
           (regionInCodeblock.y0 - regionInSubband.y0) * targetRowStep +
           interleaveOffset;
+        
+        // Debug
+        //debugOffsets.push({
+        //  codeblockIndex: i,
+        //  subbandIndex: j,
+        //  arrayWidth: arrayWidth,
+        //  targetStartOffset: targetStartOffset,
+        //  targetStep: targetStep,
+        //  targetRowStep: targetRowStep,
+        //  interleaveOffset: interleaveOffset,
+        //  regionInCodeblock: JSON.parse(JSON.stringify(regionInCodeblock)),
+        //  regionInSubband: JSON.parse(JSON.stringify(regionInSubband)),
+        //  resolutionTrx0: resolution.trx0,
+        //  resolutionTry0: resolution.try0,
+        //});
+        if (codeblock['data'] === undefined) {
+          continue;
+        }
         
         copyCoefficientsOfCodeblock(coefficients, targetStartOffset,
                                     targetStep, targetRowStep, codeblock,
@@ -1562,6 +1680,7 @@ var JpxImage = (function JpxImageClosure() {
                                     segmentationSymbolUsed);
       }
     }
+    return { coefficients: coefficients, debugOffsets: debugOffsets }; // debug
     return coefficients;
   }
   function getCoefficientsOfComponent(context, component, c,
@@ -1625,6 +1744,7 @@ var JpxImage = (function JpxImageClosure() {
         getCoefficientsOfResolution(resolution, spqcds, scalarExpounded,
                                     precision, guardBits, reversible,
                                     segmentationSymbolUsed, regionInLevel);
+      coefficients = coefficients.coefficients; // Debug
       
       var relativeRegionInLevel = {
         x0: regionInLevel.x0 - resolution.trx0,

@@ -99,7 +99,8 @@ function JpipRequestParamsModifier(codestreamStructure) {
         }
         
         var middleQuality = Math.round(numQualityLayersNumeric / 2);
-        if (middleQuality > firstQualityLayersCount) {
+        if (middleQuality > firstQualityLayersCount && 
+            (qualityNumericOrMax === 'max' || middleQuality < qualityNumericOrMax)) {
             progressiveness.push({ minNumQualityLayers: middleQuality });
         }
         

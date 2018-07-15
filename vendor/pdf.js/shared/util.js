@@ -1644,7 +1644,7 @@ export {
   readUint16,
   readUint32,
   removeNullCharacters,
-  ReadableStream,
+  // ReadableStream, // 4.2018: Commented manually out to support FireFox in webjpip
   setVerbosityLevel,
   shadow,
   string32,

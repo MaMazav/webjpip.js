@@ -18,12 +18,13 @@ var JpipHeaderModifier                        = require('jpip-header-modifier.js
 var JpipImageDataContext                      = require('jpip-image-data-context.js'                        );
 var JpipLevelCalculator                       = require('jpip-level-calculator.js'                          );
 var JpipMarkersParser                         = require('jpip-markers-parser.js'                            );
-var JpipObjectPoolByDatabin                   = require('jpip-object-pool-by-databin.js'                    );
 var JpipOffsetsCalculator                     = require('jpip-offsets-calculator.js'                        );
 var JpipPacketsDataCollector                  = require('jpip-packets-data-collector.js'                    );
 var JpipParamsCodestreamPart                  = require('jpip-params-codestream-part.js'                    );
 var JpipParamsPrecinctIterator                = require('jpip-params-precinct-iterator.js'                  );
-var JpipRequestDatabinsListener               = require('jpip-request-databins-listener.js'                 );
+var JpipPrecinctCodestreamPart                = require('jpip-precinct-codestream-part.js'                  );
+var JpipPrecinctsIteratorWaiter               = require('jpip-precincts-iterator-waiter.js'                 );
+var JpipQualityWaiter                         = require('jpip-quality-waiter.js'                            );
 var JpipRequestParamsModifier                 = require('jpip-request-params-modifier.js'                   );
 var JpipRequest                               = require('jpip-request.js'                                   );
 var JpipSessionHelper                         = require('jpip-session-helper.js'                            );
@@ -104,19 +105,15 @@ var jpipRuntimeFactory = {
     },
     
     createImageDataContext: function(
-        jpipObjects, codestreamPartParams, progressiveness) {
+        jpipObjects, codestreamPartParams, maxQuality, progressiveness) {
         
         return new JpipImageDataContext(
-            jpipObjects, codestreamPartParams, progressiveness);
+            jpipObjects, codestreamPartParams, maxQuality, progressiveness);
     },
     
     createMarkersParser: function(mainHeaderDatabin) {
         return new JpipMarkersParser(
             mainHeaderDatabin, jpipMessageHeaderParser, jpipRuntimeFactory);
-    },
-    
-    createObjectPoolByDatabin: function() {
-        return new JpipObjectPoolByDatabin();
     },
     
     createOffsetsCalculator: function(mainHeaderDatabin, markersParser) {
@@ -138,7 +135,7 @@ var jpipRuntimeFactory = {
             codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
     },
     
-    createJpipParamsPrecinctIterator: function(
+    createParamsPrecinctIterator: function createParamsPrecinctIterator(
         codestreamStructure,
         idx,
         codestreamPartParams,
@@ -151,19 +148,56 @@ var jpipRuntimeFactory = {
             isIteratePrecinctsNotInCodestreamPart);
     },
     
-    createRequestDatabinsListener: function createRequestDatabinsListener(
+    createPrecinctCodestreamPart: function createPrecinctCodestreamPart(
+        sizesCalculator,
+        tileStructure,
+        tileIndex,
+        component,
+        level,
+        precinctX,
+        precinctY) {
+        
+        return new JpipPrecinctCodestreamPart(
+            sizesCalculator,
+            tileStructure,
+            tileIndex,
+            component,
+            level,
+            precinctX,
+            precinctY);
+    },
+    
+    createPrecinctsIteratorWaiter: function createPrecinctsIteratorWaiter(
         codestreamPart,
+        codestreamStructure,
+        databinsSaver,
+        iteratePrecinctCallback) {
+        
+        return new JpipPrecinctsIteratorWaiter(
+            codestreamPart,
+            codestreamStructure,
+            databinsSaver,
+            iteratePrecinctCallback,
+            jpipRuntimeFactory);
+    },
+    
+    createQualityWaiter: function createQualityWaiter(
+        codestreamPart,
+        progressiveness,
+        maxQuality,
         qualityLayerReachedCallback,
         codestreamStructure,
         databinsSaver,
-        qualityLayersCache) {
+        startTrackPrecinct) {
         
-        return new JpipRequestDatabinsListener(
+        return new JpipQualityWaiter(
             codestreamPart,
+            progressiveness,
+            maxQuality,
             qualityLayerReachedCallback,
             codestreamStructure,
             databinsSaver,
-            qualityLayersCache,
+            startTrackPrecinct,
             jpipRuntimeFactory);
     },
     

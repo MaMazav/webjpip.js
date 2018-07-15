@@ -29,9 +29,10 @@ var codestreamStructureStubForTileStructureTest = {
 };
 
 // Tile size of edge tile, just for fun
-var initTileSize = [
-    codestreamStructureStubForTileStructureTest.getTileWidth() - 3,
-    codestreamStructureStubForTileStructureTest.getTileHeight() - 4];
+var initTileSize = {
+    width : codestreamStructureStubForTileStructureTest.getTileWidth() - 3,
+    height: codestreamStructureStubForTileStructureTest.getTileHeight() - 4
+};
 
 var initNumResolutionLevels = 5;
 var initTileParams = createUniformPrecinctCountTileParams(
@@ -299,7 +300,10 @@ function extractTileParamsFromStructure(tileStructure, numComponents) {
         paramsPerComponent[component] = componentParams;
     }
     
-    var tileSize = [tileStructure.getTileWidth(), tileStructure.getTileHeight()];
+    var tileSize = {
+        width : tileStructure.getTileWidth(),
+        height: tileStructure.getTileHeight()
+    };
     
     var isPacketHeadersNearData = tileStructure.getIsPacketHeaderNearData();
     var isStartOfPacketMarkerAllowed =

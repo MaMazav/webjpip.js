@@ -143,7 +143,10 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
         }
 
         if (!tileSizeExpected) {
-            tileSizeExpected = [tileWidth, tileHeight];
+            tileSizeExpected = {
+                width: tileWidth,
+                height: tileHeight
+            };
         }
         var tileParamsExpected = Object.create(parsedParams);
         tileParamsExpected.tileSize = tileSizeExpected;
@@ -171,7 +174,10 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
         var edgeSizeFactor = isEdgeTileFull ? 1 : 0.25;
     
         var noOverrideHorizontalEdgeTileIndex = 37;
-        var horizontalEdgeTileSize = [edgeSizeFactor * tileWidth, tileHeight];
+        var horizontalEdgeTileSize = {
+            width: edgeSizeFactor * tileWidth,
+            height: tileHeight
+        };
         testGetTileStructure(
             noOverrideHorizontalEdgeTileIndex,
             defaultTileParams,
@@ -185,7 +191,10 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
             horizontalEdgeTileSize);
 
         var noOverrideVerticalEdgeTileIndex = 363;
-        var verticalEdgeTileSize = [tileWidth, edgeSizeFactor * tileHeight];
+        var verticalEdgeTileSize = {
+            width: tileWidth,
+            height: edgeSizeFactor * tileHeight
+        };
         testGetTileStructure(
             noOverrideVerticalEdgeTileIndex,
             defaultTileParams,
@@ -198,8 +207,10 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
             'Vertical edge (overriden, isEdgeTileFull = ' + isEdgeTileFull + ')',
             verticalEdgeTileSize);
 
-        var horizontalAndVerticalEdgeTileSize =
-            [edgeSizeFactor * tileWidth, edgeSizeFactor * tileHeight];
+        var horizontalAndVerticalEdgeTileSize = {
+            width: edgeSizeFactor * tileWidth,
+            height: edgeSizeFactor * tileHeight
+        };
         testGetTileStructure(
             horizontalAndVerticalEdgeTileIndex,
             defaultTileParams,
@@ -251,8 +262,10 @@ QUnit.test('JpipCodestreamStructure.getTileStructure', function(assert) {
         mockFactoryForCodestreamStructureTest,
         progressionOrder);
 
-    var horizontalAndVerticalEdgeTileSize =
-        [0.25 * tileWidth, 0.25 * tileHeight];
+    var horizontalAndVerticalEdgeTileSize = {
+        width: 0.25 * tileWidth,
+        height: 0.25 * tileHeight
+    };
 
     testGetTileStructure(
         horizontalAndVerticalEdgeTileIndex,

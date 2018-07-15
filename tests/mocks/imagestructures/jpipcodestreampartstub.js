@@ -31,8 +31,13 @@ var JpipCodestreamPartStub = function JpipCodestreamPartStub(iteratedTileIndices
             },
             
             get tileStructure() {
-                return { getNumQualityLayers: function() {
-                    return 5; }
+                return {
+                    getNumQualityLayers: function() {
+                        return 5;
+                    },
+                    precinctPositionToInClassIndex: function(precinctPosition) {
+                        return precinctPosition.dummyPos;
+                    }
                 };
             },
             
@@ -54,9 +59,7 @@ var JpipCodestreamPartStub = function JpipCodestreamPartStub(iteratedTileIndices
                     
                     get dummyPos() { return dummyPos; },
                     
-                    get isInCodestreamPart() { return true; },
-                    
-                    get inClassIndex() { return dummyPos; }
+                    get isInCodestreamPart() { return true; }
                 };
                 
                 return precinctIterator;

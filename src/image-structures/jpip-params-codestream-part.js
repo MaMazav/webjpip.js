@@ -4,9 +4,7 @@ var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = function JpipParamsCodestreamPart(
     codestreamPartParams, codestreamStructure, jpipFactory) {
-    
-    var minNumQualityLayers = 'max';
-    var maxNumQualityLayersLimit = 'max';
+
     var tilesBounds = null;
     var fullTilesSize = null;
     
@@ -15,53 +13,7 @@ module.exports = function JpipParamsCodestreamPart(
     Object.defineProperty(this, 'level', { get: function() {
         return codestreamPartParams ? codestreamPartParams.level : 0;
     }});
-    
-    Object.defineProperty(this, 'minX', { get: function() {
-        if (codestreamPartParams) {
-            return codestreamPartParams.minX;
-        } else {
-            return 0;
-        }
-    }});
 
-    Object.defineProperty(this, 'minY', { get: function() {
-        if (codestreamPartParams) {
-            return codestreamPartParams.minY;
-        } else {
-            return 0;
-        }
-    }});
-    
-    Object.defineProperty(this, 'width', { get: function() {
-        if (codestreamPartParams) {
-            return codestreamPartParams.maxXExclusive - codestreamPartParams.minX;
-        } else {
-            return codestreamStructure.getImageWidth();
-        }
-    }});
-
-    Object.defineProperty(this, 'height', { get: function() {
-        if (codestreamPartParams) {
-            return codestreamPartParams.maxYExclusive - codestreamPartParams.minY;
-        } else {
-            return codestreamStructure.getImageHeight();
-        }
-    }});
-
-    Object.defineProperty(this, 'minNumQualityLayers', { get: function() {
-        return minNumQualityLayers;
-    }});
-
-    Object.defineProperty(this, 'maxNumQualityLayers', { get: function() {
-        if ((!codestreamPartParams) || (codestreamPartParams.quality === 'max')) {
-            return maxNumQualityLayersLimit;
-        } else if (maxNumQualityLayersLimit == 'max') {
-            return codestreamPartParams.quality;
-        } else {
-            return Math.min(codestreamPartParams.quality, maxNumQualityLayersLimit);
-        }
-    }});
-    
     Object.defineProperty(this, 'fullTilesSize', { get: function() {
         if (fullTilesSize === null) {
             validateTilesBounds();
@@ -70,13 +22,10 @@ module.exports = function JpipParamsCodestreamPart(
         return fullTilesSize;
     }});
     
-    this.setMinNumQualityLayers = function(quality) {
-        minNumQualityLayers = quality;
-    };
-    
-    this.setMaxNumQualityLayersLimit = function(quality) {
-        maxNumQualityLayersLimit = quality || 'max';
-    };
+    Object.defineProperty(this, 'tilesBounds', { get: function() {
+        validateTilesBounds();
+        return tilesBounds;
+    }});
     
     this.getTileIterator = function() {
         var setableIterator = {
@@ -117,7 +66,7 @@ module.exports = function JpipParamsCodestreamPart(
                         'iterator.tileIndex accessed before tryAdvance()');
                 }
                 var idx = iterator.tileIndex;
-                return jpipFactory.createJpipParamsPrecinctIterator(
+                return jpipFactory.createParamsPrecinctIterator(
                     codestreamStructure,
                     idx,
                     codestreamPartParams,

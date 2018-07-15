@@ -7,7 +7,10 @@ function createComponentStructureForTest(
     numResolutionLevels = numResolutionLevels || 5;
 
     // Tile size of edge tile, to check also corner cases
-    var initTileSize = [4096 - 129, 2048 - 130];
+    var initTileSize = {
+        width: 4096 - 129,
+        height: 2048 - 130
+    };
     
     var initTileParams = createTileParams(
         initTileSize,
@@ -24,8 +27,8 @@ function createComponentStructureForTest(
     var initComponentParams = initTileParams.paramsPerComponent[0];
     
     var tileStructureMock = {
-        getTileWidth: function() { return initTileSize[0]; },
-        getTileHeight: function() { return initTileSize[1]; }
+        getTileWidth: function() { return initTileSize.width; },
+        getTileHeight: function() { return initTileSize.height; }
         };
     
     var componentStructure = new jpipExports.JpipComponentStructure(initComponentParams, tileStructureMock);

@@ -169,8 +169,8 @@ function testProgressionOrder(
                 level: level,
                 minX: codestreamStructureStubForTileStructureTest.getTileLeft(),
                 minY: codestreamStructureStubForTileStructureTest.getTileTop(),
-                maxXExclusive: codestreamStructureStubForTileStructureTest.getTileLeft() + sizeParams.tileSize[0],
-                maxYExclusive: codestreamStructureStubForTileStructureTest.getTileTop() + sizeParams.tileSize[1]
+                maxXExclusive: codestreamStructureStubForTileStructureTest.getTileLeft() + sizeParams.tileSize.width,
+                maxYExclusive: codestreamStructureStubForTileStructureTest.getTileTop () + sizeParams.tileSize.height
                 };
 
             var iterator = createParamsPrecinctIterator(
@@ -246,14 +246,17 @@ function createParamsPrecinctIterator(
     progressionOrder = progressionOrder || 'RPCL';
     tileParams = tileParams || initTileParams;
    
+    var codestreamStructure = Object.create(codestreamStructureStubForTileStructureTest);
+
     var tileStructure = new JpipTileStructureStub(
         tileParams,
-        codestreamStructureStubForTileStructureTest,
+        codestreamStructure,
         progressionOrder);
         
+    codestreamStructure.getTileStructure = function() { return tileStructure; };
+
     var iterator = new jpipExports.JpipParamsPrecinctIterator(
-        codestreamStructureStubForTileStructureTest,
-        tileStructure,
+        codestreamStructure,
         tileIndex,
         codestreamPartParams,
         isIteratePrecinctsNotInCodestreamPart);

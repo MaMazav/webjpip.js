@@ -27,11 +27,11 @@ module.exports = function JpipTileStructure(
     };
     
     this.getTileWidth = function getTileWidthClosure() {
-        return sizeParams.tileSize[0];
+        return sizeParams.tileSize.width;
     };
     
     this.getTileHeight = function getTileHeightClosure() {
-        return sizeParams.tileSize[1];
+        return sizeParams.tileSize.height;
     };
     
     this.getNumQualityLayers = function getNumQualityLayers() {
@@ -276,7 +276,7 @@ module.exports = function JpipTileStructure(
         numResolutionLevels,
         getPrecinctSizeFunction,
         getLevelSizeFunction,
-        getTileSizeFunction) {
+        getTileSize1DFunction) {
         
         // Jpeg2000 standard allows partition of tiles which does not fit
         // exactly the precincts partition (i.e. the first precincts "virtually"
@@ -290,20 +290,20 @@ module.exports = function JpipTileStructure(
         
         var precinctSize = getPrecinctSizeFunction(resolutionLevel);
         var levelSize = getLevelSizeFunction(resolutionLevel);
-        var tileSize = getTileSizeFunction(resolutionLevel);
+        var tileSize1D = getTileSize1DFunction(resolutionLevel);
         
-        if (precinctSize >= levelSize || tileSize >= levelSize) {
+        if (precinctSize >= levelSize || tileSize1D >= levelSize) {
             // precinctSize >= levelSize ==> Precinct is larger than image thus
             // anyway tile has a single precinct
-            // tileSize >= levelSize ==> Level has only single tile thus no
+            // tileSize1D >= levelSize ==> Level has only single tile thus no
             // chances for tile top-left to not match first precinct top-left
             
             return true;
         }
         
         var isPrecinctPartitionFitsToTilePartition =
-            precinctSize % tileSize === 0 ||
-            tileSize % precinctSize === 0;
+            precinctSize % tileSize1D === 0 ||
+            tileSize1D % precinctSize === 0;
         
         return isPrecinctPartitionFitsToTilePartition;
     }

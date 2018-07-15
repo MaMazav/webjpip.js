@@ -1,8 +1,14 @@
 'use strict';
 
 var jpipFactory = require('jpip-runtime-factory.js'); 
+var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = JpipImage;
+
+var WORKER_TYPE_PIXELS = 1;
+var WORKER_TYPE_COEFFS = 2;
+
+var TASK_ABORTED_RESULT_PLACEHOLDER = 'aborted';
 
 function JpipImage(options) {
     var databinsSaver = jpipFactory.createDatabinsSaver(/*isJpipTilepartStream=*/false);
@@ -56,12 +62,7 @@ function JpipImage(options) {
         //imageDecoder.onFetcherEvent('tile-terminated', this._onTileTerminated.bind(this));
     };
 
-    this.getLevelCalculator = function getLevelCalculator() {
-        if (levelCalculator === null) {
-            levelCalculator = jpipFactory.createLevelCalculator(imageParams);
-        }
-        return levelCalculator;
-    };
+    this.getLevelCalculator = getLevelCalculator;
 
     this.getDecoderWorkersInputRetreiver = function getDecoderWorkersInputRetreiver() {
         return this;
@@ -71,11 +72,219 @@ function JpipImage(options) {
         return fetcher;
     };
 
+    this.getWorkerTypeOptions = function getWorkerTypeOptions(workerType) {
+        switch (workerType) {
+            case WORKER_TYPE_PIXELS:
+                //var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
+                //var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
+                return {
+                    ctorName: 'webjpip.Internals.PdfjsJpxPixelsDecoder',
+                    ctorArgs: [],
+                    scriptsToImport: [getScriptName(new Error())],
+                    //transferables: [codestreamTransferable, codeblockTransferable],
+                    pathToTransferablesInPromiseResult: [[]]
+                };
+            case WORKER_TYPE_COEFFS:
+                return {
+                    ctorName: 'webjpip.Internals.PdfjsJpxCoefficientsDecoder',
+                    ctorArgs: [],
+                    scriptsToImport: [getScriptName(new Error())],
+                    pathToTransferablesInPromiseResult: [[]]
+                };
+            default:
+                throw 'webjpip error: Unexpected worker type in ' +
+                    'getWorkerTypeOptions ' + workerType;
+        }
+    };
+    
+    this.getKeyAsString = function getKeyAsString(key) {
+        if (key.taskType === 'COEFFS') {
+            return 'C:' + key.inClassIndex;
+            //return 'C:t' + key.tileIndex + 'c' + key.component +
+            //       'r' + key.resolutionLevel + 'px' + key.precinctX +
+            //       'py' + key.precinctY + 'q' + key.maxQuality;
+        } else {
+            var params = paramsModifier.modify(/*codestreamTaskParams=*/key);
+            var partParams = params.codestreamPartParams;
+            return 'P:xmin' + partParams.minX + 'ymin' + partParams.minY +
+                   'xmax' + partParams.maxXExclusive +
+                   'ymax' + partParams.maxYExclusive +
+                   'r' + partParams.level + 'q' + partParams.quality;
+        }
+    };
+    
+    this.taskStarted = function taskStarted(task) {
+        if (task.key.taskType === 'COEFFS') {
+            startCoefficientsTask(task);
+        } else {
+            startPixelsTask(task);
+        }
+    };
+    
+    function startPixelsTask(task) {
+        var params = paramsModifier.modify(/*codestreamTaskParams=*/task.key);
+        var codestreamPart = jpipFactory.createParamsCodestreamPart(
+            params.codestreamPartParams,
+            codestreamStructure);
+        
+        var qualityWaiter;
+        
+        task.on('dependencyTaskData', function(data, dependencyKey) {
+            qualityWaiter.precinctQualityLayerReached(
+                dependencyKey.inClassIndex, data.minQuality);
+        });
+        
+        var isEnded = false;
+        task.on('statusUpdated', function(status) {
+            if (!isEnded &&
+                !status.isWaitingForWorkerResult &&
+                status.terminatedDependsTasks === status.dependsTasks) {
+                throw 'jpip error: Unexpected unended task without pending ' +
+                    'depend tasks';
+            }
+        });
+
+        task.on('schedulerAborted', taskEnded);
+        
+        qualityWaiter = jpipFactory.createQualityWaiter(
+            codestreamPart,
+            params.progressiveness,
+            task.key.maxQuality,
+            qualityLayerReachedCallback,
+            codestreamStructure,
+            databinsSaver,
+            startTrackPrecinctCallback);
+        
+        qualityWaiter._debugType = 'pixel-task';
+        
+        qualityWaiter.register();
+        
+        function startTrackPrecinctCallback(
+            precinctDatabin,
+            qualityInTile,
+            precinctIterator,
+            inClassIndex,
+            tileStructure) {
+
+            var precinctIndex =
+                tileStructure.precinctPositionToIndexInComponentResolution(
+                    precinctIterator);
+
+            // Depends on precincts tasks
+            task.registerTaskDependency({
+                taskType: 'COEFFS',
+                tileIndex: precinctIterator.tileIndex,
+                resolutionLevel: precinctIterator.resolutionLevel,
+                precinctX: precinctIterator.precinctX,
+                precinctY: precinctIterator.precinctY,
+                component: precinctIterator.component,
+                maxQuality: params.codestreamPartParams.quality,
+                inClassIndex: inClassIndex,
+                precinctIndexInComponentResolution: precinctIndex,
+                progressiveness: params.progressiveness
+            });
+        }
+        
+        var headersCodestream = null;
+        var offsetInRegion = null;
+        var imageTilesX;
+        var tilesBounds;
+        
+        function qualityLayerReachedCallback() {
+            if (headersCodestream === null) {
+                headersCodestream = reconstructor.createHeadersCodestream(codestreamPart);
+                offsetInRegion = getOffsetInRegion(codestreamPart, params.codestreamPartParams);
+                imageTilesX = codestreamStructure.getNumTilesX();
+                tilesBounds = codestreamPart.tilesBounds;
+            }
+            
+            task.dataReady({
+                headersCodestream: headersCodestream,
+                offsetInRegion: offsetInRegion,
+                imageTilesX: imageTilesX,
+                tilesBounds: tilesBounds,
+                precinctCoefficients: task.dependTaskResults // TODO: Ensure that dependTaskResults not changed within decoder-workers
+            }, WORKER_TYPE_PIXELS);
+            
+            if (qualityWaiter.isDone()) {
+                taskEnded();
+            }
+        }
+        
+        function taskEnded() {
+            isEnded = true;
+            task.terminate();
+            qualityWaiter.unregister();
+        }
+    }
+    
+    function startCoefficientsTask(task) {
+        var codestreamPart = jpipFactory.createPrecinctCodestreamPart(
+            getLevelCalculator(),
+            codestreamStructure.getTileStructure(task.key.tileIndex),
+            task.key.tileIndex,
+            task.key.component,
+            task.key.resolutionLevel,
+            task.key.precinctX,
+            task.key.precinctY);
+        
+        task.on('schedulerAborted', taskAborted);
+
+        var context = jpipFactory.createImageDataContext(
+            jpipObjectsForRequestContext,
+            codestreamPart,
+            task.key.maxQuality,
+            task.key.progressiveness); // TODO: Eliminate progressiveness from API
+        
+        var hadData = false;
+        task._wrapped.jpipHasData = false; // TODO: Remove before commit
+        
+        context.on('data', onData);
+        if (context.hasData()) {
+            onData(context);
+        }
+        
+        function onData(context_) {
+            if (context !== context_) {
+                throw 'webjpip error: Unexpected context in data event';
+            }
+            
+            // TODO: First quality layer
+            
+            hadData = true;
+            task._wrapped.jpipHasData = true; // TODO: Remove before commit
+            var data = context.getFetchedData();
+            task.dataReady(data, WORKER_TYPE_COEFFS);
+            
+            if (context.isDone()) {
+                if (!hadData) {
+                    throw 'webjpip error: Coefficients task without data';
+                }
+                taskEnded();
+            }
+        }
+        
+        function taskAborted() {
+            task._wrapped.jpipIsAborted = true; // TODO: Remove before commit
+            taskEnded();
+        }
+        
+        function taskEnded() {
+            task.terminate();
+            context.dispose();
+        }
+    }
+    
+    if (!JpipImage.useLegacy) {
+        return;
+    }
+    //*
     this.getWorkerTypeOptions = function getWorkerTypeOptions(taskType) {
-        var codestreamTransferable = [0, 'headersCodestream', 'codestream', 'buffer'];
+        var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
         var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
         return {
-            ctorName: 'webjpip.PdfjsJpxDecoder',
+            //ctorName: 'webjpip.Internals.PdfjsJpxDecoderLegacy',
+            ctorName: 'webjpip.Internals.PdfjsJpxDecoderDebug',
             ctorArgs: [],
             scriptsToImport: [getScriptName(new Error())],
             transferables: [codestreamTransferable, codeblockTransferable],
@@ -89,14 +298,17 @@ function JpipImage(options) {
     
     this.taskStarted = function taskStarted(task) {
         var params = paramsModifier.modify(/*codestreamTaskParams=*/task.key);
-        var part = jpipFactory.createParamsCodestreamPart(
+        var codestreamPart = jpipFactory.createParamsCodestreamPart(
             params.codestreamPartParams,
             codestreamStructure);
             
         var context = jpipFactory.createImageDataContext(
             jpipObjectsForRequestContext,
-            part,
+            codestreamPart,
+            params.codestreamPartParams.quality,
             params.progressiveness);
+        
+        var offsetInRegion = getOffsetInRegion(codestreamPart, params.codestreamPartParams);
         
         context.on('data', onData);
         if (context.hasData()) {
@@ -110,6 +322,7 @@ function JpipImage(options) {
             
             // TODO: First quality layer
             var data = context.getFetchedData();
+            data.offsetInRegion = offsetInRegion;
             task.dataReady(data);
             
             if (context.isDone()) {
@@ -118,7 +331,49 @@ function JpipImage(options) {
             }
         }
     };
+    //*/
+    
+    function getOffsetInRegion(codestreamPart, codestreamPartParams) {
+        if (codestreamPartParams) {
+            var tileIterator = codestreamPart.getTileIterator();
+            if (!tileIterator.tryAdvance()) {
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'Empty codestreamPart in JpipImageDataContext');
+            }
+            var firstTileId = tileIterator.tileIndex;
+            
+            var firstTileLeft = codestreamStructure.getTileLeft(
+                firstTileId, codestreamPart.level);
+            var firstTileTop = codestreamStructure.getTileTop(
+                firstTileId, codestreamPart.level);
+                
+            return {
+                offsetX: codestreamPartParams.minX - firstTileLeft,
+                offsetY: codestreamPartParams.minY - firstTileTop,
+                width : codestreamPartParams.maxXExclusive - codestreamPartParams.minX,
+                height: codestreamPartParams.maxYExclusive - codestreamPartParams.minY
+            };
+        } else {
+            return {
+                offsetX: 0,
+                offsetY: 0,
+                width : codestreamStructure.getImageWidth(),
+                height: codestreamStructure.getImageHeight()
+            };
+        }
+    }
+
+    function getLevelCalculator() {
+        if (levelCalculator === null) {
+            levelCalculator = jpipFactory.createLevelCalculator(imageParams);
+        }
+        return levelCalculator;
+    }
 }
+
+JpipImage.toggleLegacy = function() {
+    JpipImage.useLegacy = !JpipImage.useLegacy;
+};
 
 var currentStackFrameRegex = /at (|[^ ]+ \()([^ ]+):\d+:\d+/;
 var lastStackFrameRegexWithStrudel = new RegExp(/.+@(.*?):\d+:\d+/);

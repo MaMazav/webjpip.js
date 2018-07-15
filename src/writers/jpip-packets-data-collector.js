@@ -7,10 +7,12 @@ module.exports = function JpipPacketsDataCollector(
     qualityLayersCache,
     jpipFactory) {
     
-    this.getAllCodeblocksData = function getAllCodeblocksData(codestreamPart) {
-        var alreadyReturnedCodeblocks = jpipFactory.createObjectPoolByDatabin();
+    this.getAllCodeblocksData = function getAllCodeblocksData(
+        codestreamPart, minQuality, maxQuality) {
+            
+        var alreadyReturnedCodeblocks = [];
         var codeblocksData = getNewCodeblocksDataAndUpdateReturnedCodeblocks(
-            codestreamPart, alreadyReturnedCodeblocks);
+            codestreamPart, minQuality, maxQuality, alreadyReturnedCodeblocks);
         
         return {
             codeblocksData: codeblocksData,
@@ -19,7 +21,7 @@ module.exports = function JpipPacketsDataCollector(
     };
         
     function getNewCodeblocksDataAndUpdateReturnedCodeblocks(
-        codestreamPart, alreadyReturnedCodeblocks) {
+        codestreamPart, minQuality, maxQuality, alreadyReturnedCodeblocks) {
         
         var tileIndexInCodestreamPart = 0;
         var dummyOffset = 0;
@@ -35,15 +37,15 @@ module.exports = function JpipPacketsDataCollector(
             
             var quality = tileIterator.tileStructure.getNumQualityLayers();
             
-            if (codestreamPart.maxNumQualityLayers !== undefined) {
-                quality = Math.min(quality,codestreamPart.maxNumQualityLayers);
+            if (maxQuality !== undefined && maxQuality !== 'max') {
+                quality = Math.min(quality, maxQuality);
             }
             
-            if (codestreamPart.minNumQualityLayers === 'max') {
+            if (minQuality === 'max') {
                 codestreamPart.minNumQualityLayers = quality;
-            } else if (codestreamPart.minNumQualityLayers > quality) {
+            } else if (minQuality > quality) {
                 throw new jGlobals.jpipExceptions.InternalErrorException(
-                    'minNumQualityLayers is larger than quality');
+                    'minQuality is larger than quality');
             }
             
             while (precinctIterator.tryAdvance()) {
@@ -52,24 +54,30 @@ module.exports = function JpipPacketsDataCollector(
                         'Unexpected precinct not in codestream part');
                 }
                 
+                var inClassIndex =
+                    tileIterator.tileStructure.precinctPositionToInClassIndex(
+                        precinctIterator);
                 var precinctDatabin = databinsSaver.getPrecinctDatabin(
-                    precinctIterator.inClassIndex);
+                    inClassIndex);
                 
                 var returnedInPrecinct =
-                    alreadyReturnedCodeblocks.getObject(precinctDatabin);
-                if (returnedInPrecinct.layerPerCodeblock === undefined) {
-                    returnedInPrecinct.layerPerCodeblock = [];
+                    alreadyReturnedCodeblocks[inClassIndex];
+                if (returnedInPrecinct === undefined) {
+                    returnedInPrecinct = { layerPerCodeblock: [] };
+                    alreadyReturnedCodeblocks[inClassIndex] =
+                        returnedInPrecinct;
                 }
             
                 var layerReached = pushPackets(
                     result,
                     tileIndexInCodestreamPart,
+                    tileIterator.tileStructure,
                     precinctIterator,
                     precinctDatabin,
                     returnedInPrecinct,
                     quality);
                 
-                if (layerReached < codestreamPart.minNumQualityLayers) {
+                if (layerReached < minQuality) {
                     // NOTE: alreadyReturnedCodeblocks is wrong in this stage,
                     // because it was updated with a data which will not be
                     // returned. I don't care about it now because returning
@@ -97,6 +105,7 @@ module.exports = function JpipPacketsDataCollector(
     function pushPackets(
         result,
         tileIndexInCodestreamPart,
+        tileStructure,
         precinctIterator,
         precinctDatabin,
         returnedCodeblocksInPrecinct,
@@ -163,10 +172,13 @@ module.exports = function JpipPacketsDataCollector(
                 offsetInPrecinctDatabin += codeblock.codeblockBodyLengthBytes;
             }
             
+            var precinctIndex =
+                tileStructure.precinctPositionToIndexInComponentResolution(
+                    precinctIterator);
             var packet = {
                 tileIndex: tileIndexInCodestreamPart,
                 r: precinctIterator.resolutionLevel,
-                p: precinctIterator.precinctIndexInComponentResolution,
+                p: precinctIndex,
                 c: precinctIterator.component,
                 l: layer,
                 codeblockOffsets: codeblockOffsetsInResult
