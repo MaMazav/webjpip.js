@@ -1,32 +1,54 @@
 'use strict';
 
-module.exports = PdfjsJpxDecoder;
+module.exports = PdfjsJpxPixelsDecoder;
 
 var jGlobals = require('j2k-jpip-globals.js');
 
 import { JpxImage } from 'jpx.js';
 
-function PdfjsJpxDecoder() {
+function PdfjsJpxPixelsDecoder() {
     this._image = new JpxImage();
 }
 
-PdfjsJpxDecoder.prototype.start = function start(data) {
+PdfjsJpxPixelsDecoder.prototype.start = function start(data) {
     var self = this;
     return new Promise(function(resolve, reject) {
         var regionToParse = {
-            left  : data.headersCodestream.offsetX,
-            top   : data.headersCodestream.offsetY,
-            right : data.headersCodestream.offsetX + data.width,
-            bottom: data.headersCodestream.offsetY + data.height
+            left  : data.offsetInRegion.offsetX,
+            top   : data.offsetInRegion.offsetY,
+            right : data.offsetInRegion.offsetX + data.offsetInRegion.width,
+            bottom: data.offsetInRegion.offsetY + data.offsetInRegion.height
         };
         
         var currentContext = self._image.parseCodestream(
-            data.headersCodestream.codestream,
+            data.headersCodestream,
             0,
-            data.headersCodestream.codestream.length,
+            data.headersCodestream.length,
             { isOnlyParseHeaders: true });
         
-        self._image.addPacketsData(currentContext, data.codeblocksData);
+        var imageTilesX = data.imageTilesX;
+        var boundsTilesX = data.tilesBounds.maxTileXExclusive - data.tilesBounds.minTileX;
+        var minTileX = data.tilesBounds.minTileX;
+        var minTileY = data.tilesBounds.minTileY;
+        
+        for (var i = 0; i < data.precinctCoefficients.length; ++i) {
+            var coeffs = data.precinctCoefficients[i];
+            
+            var imageTileIndex = coeffs.key.tileIndex;
+            var imageTileX = imageTileIndex % imageTilesX;
+            var imageTileY = Math.floor(imageTileIndex / imageTilesX);
+            var inBoundsTileX = imageTileX - minTileX;
+            var inBoundsTileY = imageTileY - minTileY;
+            var inBoundsTileIndex = inBoundsTileX + (inBoundsTileY * boundsTilesX);
+            
+            self._image.setPrecinctCoefficients(
+                currentContext,
+                coeffs.coefficients,
+                inBoundsTileIndex,
+                coeffs.key.component,
+                coeffs.key.resolutionLevel,
+                coeffs.key.precinctIndexInComponentResolution);
+        }
         
         self._image.decode(currentContext, { regionToParse: regionToParse });
 
@@ -35,7 +57,7 @@ PdfjsJpxDecoder.prototype.start = function start(data) {
     });
 };
 
-PdfjsJpxDecoder.prototype._copyTilesPixelsToOnePixelsArray =
+PdfjsJpxPixelsDecoder.prototype._copyTilesPixelsToOnePixelsArray =
     function copyTilesPixelsToOnePixelsArray(tiles, resultRegion, componentsCount) {
         
     var firstTile = tiles[0];
@@ -94,7 +116,7 @@ PdfjsJpxDecoder.prototype._copyTilesPixelsToOnePixelsArray =
     return result;
 };
 
-PdfjsJpxDecoder.prototype._copyTile = function copyTile(
+PdfjsJpxPixelsDecoder.prototype._copyTile = function copyTile(
     targetImage, tile, targetImageStartOffset, targetImageStride, componentsCount) {
     
     var rOffset = 0;

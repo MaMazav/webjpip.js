@@ -37,7 +37,7 @@ function createSessionForTest(options) {
     var levelSizesResult = [];
     
     var tileStructure = new JpipTileStructureStub(
-        { tileSize: [tileWidthInLevel0, tileHeightInLevel0] } );
+        { tileSize: { width: tileWidthInLevel0, height: tileHeightInLevel0 } } );
         
     var codestreamStructure = new JpipCodestreamStructureStub(
         tileStructure,

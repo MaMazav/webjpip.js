@@ -22,15 +22,18 @@ QUnit.module('JpipStructureParser');
 QUnit.test('parseCodestreamStructure', function(assert) {
     var parser = createStructureParserForTest();
     
-    var tileSize = [128, 512];
+    var tileSize = {
+        width : 128,
+        height: 512
+    };
     
     var codestreamStructureParamsActual = parser.parseCodestreamStructure();
     var codestreamStructureParamsExpected = {
         numComponents: 3,
         imageWidth: 5450,
         imageHeight: 3623,
-        tileWidth: tileSize[0],
-        tileHeight: tileSize[1],
+        tileWidth : tileSize.width,
+        tileHeight: tileSize.height,
         firstTileOffsetX: 5,
         firstTileOffsetY: 10,
         componentsScaleX: [1, 1, 1],

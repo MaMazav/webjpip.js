@@ -26,11 +26,11 @@ var JpipTileStructureStub = function(
     };
     
     this.getTileWidth = function() {
-        return tileParams.tileSize[0];
+        return tileParams.tileSize.width;
     };
     
     this.getTileHeight = function() {
-        return tileParams.tileSize[1];
+        return tileParams.tileSize.height;
     };
     
     this.getNumQualityLayers = function getNumQualityLayers() {

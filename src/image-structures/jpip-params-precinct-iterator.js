@@ -102,29 +102,6 @@ module.exports = function JpipParamsPrecinctIterator(
         return true;
     };
     
-    Object.defineProperty(this, 'precinctIndexInComponentResolution', {
-        get: function() {
-            if (precinctIndexInComponentResolution < 0) {
-                precinctIndexInComponentResolution =
-                    tileStructure.precinctPositionToIndexInComponentResolution(
-                        this);
-            }
-
-            return precinctIndexInComponentResolution;
-        }
-    });
-
-    Object.defineProperty(this, 'inClassIndex', {
-        get: function() {
-            if (inClassIndex < 0) {
-                inClassIndex = tileStructure.precinctPositionToInClassIndex(
-                    this);
-            }
-            
-            return inClassIndex;
-        }
-    });
-    
     function initialize() {
         tileStructure = codestreamStructure.getTileStructure(tileIndex);
 

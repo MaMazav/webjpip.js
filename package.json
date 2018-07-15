@@ -4,7 +4,7 @@
   "description": "Pure javascript JPIP implementation (client side)",
   "main": "gulpfile.js",
   "scripts": {
-    "build": "npm-run-all webpack-prod webpack-dev",
+    "build": "npm-run-all webpack-dev webpack-prod",
     "webpack-prod": "npx webpack --env=prod",
     "webpack-dev": "npx webpack --env=dev"
   },

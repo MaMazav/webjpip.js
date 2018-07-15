@@ -2,7 +2,7 @@
 
 QUnit.module('JpipCodestreamReconstructor');
 
-QUnit.test('createCodestreamForRegion (some tiles, main header data not recieved)', function(assert) {
+QUnit.test('createCodestream (some tiles, main header data not recieved)', function(assert) {
     var noMainHeaderDatabinsSaver = createDatabinsSaverMockForReconstructorTest(
         databinStubs.notRecievedAnythingDatabinStub);
     var noMainHeaderReconstructor = createReconstructorForTest(
@@ -10,7 +10,7 @@ QUnit.test('createCodestreamForRegion (some tiles, main header data not recieved
     var codestreamPartStub = new JpipCodestreamPartStub([0, 1, 2]);
 
     var noMainHeaderReconstructedActual =
-        noMainHeaderReconstructor.createCodestreamForRegion(
+        noMainHeaderReconstructor.createCodestream(
             codestreamPartStub);
     var noMainHeaderReconstructedExpected = null;
     assert.deepEqual(
@@ -20,7 +20,7 @@ QUnit.test('createCodestreamForRegion (some tiles, main header data not recieved
         );
     });
 
-QUnit.test('createCodestreamForRegion (some tiles, one tile header data not recieved)', function(assert) {
+QUnit.test('createCodestream (some tiles, one tile header data not recieved)', function(assert) {
     var noTileHeaderDatabinsSaver = createDatabinsSaverMockForReconstructorTest();
     noTileHeaderDatabinsSaver.addTileHeaderDatabinForTest(
         1, databinStubs.notRecievedAnythingDatabinStub);
@@ -30,7 +30,7 @@ QUnit.test('createCodestreamForRegion (some tiles, one tile header data not reci
     var codestreamPartStub = new JpipCodestreamPartStub([0, 1, 2]);
 
     var noTileHeaderReconstructedActual =
-        noTileHeaderReconstructor.createCodestreamForRegion(codestreamPartStub);
+        noTileHeaderReconstructor.createCodestream(codestreamPartStub);
         
     var noTileHeaderReconstructedExpected = null;
     
@@ -41,7 +41,7 @@ QUnit.test('createCodestreamForRegion (some tiles, one tile header data not reci
         );
     });
 
-QUnit.test('createCodestreamForRegion (single tile, main header data not recieved)', function(assert) {
+QUnit.test('createCodestream (single tile, main header data not recieved)', function(assert) {
     var noMainHeaderDatabinsSaver = createDatabinsSaverMockForReconstructorTest(
         databinStubs.notRecievedAnythingDatabinStub);
     var noMainHeaderReconstructor = createReconstructorForTest(
@@ -49,7 +49,7 @@ QUnit.test('createCodestreamForRegion (single tile, main header data not recieve
     var codestreamPartStub = new JpipCodestreamPartStub([1]);
 
     var noMainHeaderReconstructedActual =
-        noMainHeaderReconstructor.createCodestreamForRegion(codestreamPartStub);
+        noMainHeaderReconstructor.createCodestream(codestreamPartStub);
         
     var noMainHeaderReconstructedExpected = null;
     
@@ -60,7 +60,7 @@ QUnit.test('createCodestreamForRegion (single tile, main header data not recieve
         );
     });
 
-QUnit.test('createCodestreamForRegion (single tile, tile header data not recieved)', function(assert) {
+QUnit.test('createCodestream (single tile, tile header data not recieved)', function(assert) {
     var noTileHeaderDatabinsSaver = createDatabinsSaverStub(
         databinStubs.mainHeaderDatabinStub);
     var noTileHeaderReconstructor = createReconstructorForTest(
@@ -69,7 +69,7 @@ QUnit.test('createCodestreamForRegion (single tile, tile header data not recieve
         databinStubs.indices.tileHeaderNotRecievedMarker]);
 
         var noTileHeaderReconstructedActual =
-        noTileHeaderReconstructor.createCodestreamForRegion(
+        noTileHeaderReconstructor.createCodestream(
             codestreamPartStub);
         
     var noTileHeaderReconstructedExpected = null;
@@ -81,7 +81,7 @@ QUnit.test('createCodestreamForRegion (single tile, tile header data not recieve
         );
     });
 
-QUnit.test('createCodestreamForRegion (JPP not supported)', function(assert) {
+QUnit.test('createCodestream (JPP not supported)', function(assert) {
     var databinsSaverJPT = {
         getIsJpipTilePartStream: function() { return true; },
         getMainHeaderDatabin: function() { return databinStubs.mainHeaderDatabinStub; },
@@ -91,35 +91,35 @@ QUnit.test('createCodestreamForRegion (JPP not supported)', function(assert) {
     var codestreamPartStub = { level: 0 };
     
     assert.throws(
-        function() { reconstructorJPT.createCodestreamForRegion(codestreamPartStub); },
+        function() { reconstructorJPT.createCodestream(codestreamPartStub); },
         _jGlobals.jpipExceptions.UnsupportedFeatureException,
         'JPT throws a not supported exception'
         );
     });
 
-QUnit.test('createCodestreamForRegion (some tiles, simple reconstruction)', function(assert) {
+QUnit.test('createCodestream (some tiles, simple reconstruction)', function(assert) {
     var reconstructor = createReconstructorForTest();
         
     var fullReconstructedExpected = getFullReconstructedExpected();
     var codestreamPartStub = new JpipCodestreamPartStub([0, 1, 2]);
-    var fullReconstructedActual = reconstructor.createCodestreamForRegion(codestreamPartStub);
+    var fullReconstructedActual = reconstructor.createCodestream(codestreamPartStub);
     var fullReconstructedActualAsArray = Array.from(fullReconstructedActual);
     assert.deepEqual(
-        fullReconstructedActualAsArray, fullReconstructedExpected, 'createCodestreamForRegion');
+        fullReconstructedActualAsArray, fullReconstructedExpected, 'createCodestream');
     });
     
-QUnit.test('createCodestreamForRegion (single tile, simple reconstruction)', function(assert) {
+QUnit.test('createCodestream (single tile, simple reconstruction)', function(assert) {
     var reconstructor = createReconstructorForTest();
         
     var singleTileReconstructedExpected = getSingleTileReconstructedExpected();
     var codestreamPartStub = new JpipCodestreamPartStub([1]);
-    var tileReconstructedActual = reconstructor.createCodestreamForRegion(codestreamPartStub);
+    var tileReconstructedActual = reconstructor.createCodestream(codestreamPartStub);
     var tileReconstructedActualAsArray = Array.from(tileReconstructedActual);
     assert.deepEqual(
-        tileReconstructedActualAsArray, singleTileReconstructedExpected, 'createCodestreamForRegion');
+        tileReconstructedActualAsArray, singleTileReconstructedExpected, 'createCodestream');
     });
 
-QUnit.test('createCodestreamForRegion (single tile, with resolution levels to cut)', function(assert) {
+QUnit.test('createCodestream (single tile, with resolution levels to cut)', function(assert) {
     var dummyProgressionOrder = 'Dummy progression order';
     var databinsSaverMock = createDatabinsSaverMockForReconstructorTest();
     var codestreamStructureMock = createCodestreamStructureMockForReconstructorTest(
@@ -137,11 +137,11 @@ QUnit.test('createCodestreamForRegion (single tile, with resolution levels to cu
 
     var singleTileReconstructedExpected = getSingleTileReconstructedExpected();
     var codestreamPartStub = new JpipCodestreamPartStub([1], numResolutionLevels);
-    var tileReconstructedActual = reconstructor.createCodestreamForRegion(
+    var tileReconstructedActual = reconstructor.createCodestream(
         codestreamPartStub);
     var tileReconstructedActualAsArray = Array.from(tileReconstructedActual);
     assert.deepEqual(
-        tileReconstructedActualAsArray, singleTileReconstructedExpected, 'createCodestreamForRegion');
+        tileReconstructedActualAsArray, singleTileReconstructedExpected, 'createCodestream');
         
     var levelExpected = numResolutionLevels;
     var levelActual = modifier.levelArgumentForTest;
@@ -151,7 +151,7 @@ QUnit.test('createCodestreamForRegion (single tile, with resolution levels to cu
         'Correctness of level argument passed to modifier');
     });
 
-QUnit.test('createCodestreamForRegion (some tiles, precinct data not recieved)', function(assert) {
+QUnit.test('createCodestream (some tiles, precinct data not recieved)', function(assert) {
     var noPrecinctDatabinsSaver = createDatabinsSaverMockForReconstructorTest();
     noPrecinctDatabinsSaver.addPrecinctDatabinForTest(
         1, databinStubs.notRecievedAnythingDatabinStub);
@@ -161,7 +161,7 @@ QUnit.test('createCodestreamForRegion (some tiles, precinct data not recieved)',
     var codestreamPartStub = new JpipCodestreamPartStub([0, 1, 2], 0, /*minNumQualityLayers=*/0);
 
     var noPrecinctReconstructedActual =
-        noPrecinctReconstructor.createCodestreamForRegion(codestreamPartStub);
+        noPrecinctReconstructor.createCodestream(codestreamPartStub);
             
     var noPrecinctReconstructedExpected =
         getFullReconstructedExpectedWithEmptyPrecinctExpected();
@@ -176,7 +176,7 @@ QUnit.test('createCodestreamForRegion (some tiles, precinct data not recieved)',
         );
     });
 
-QUnit.test('createCodestreamForRegion (single tile, precinct data not recieved)', function(assert) {
+QUnit.test('createCodestream (single tile, precinct data not recieved)', function(assert) {
     var noPrecinctDatabinsSaver = createDatabinsSaverMockForReconstructorTest();
     noPrecinctDatabinsSaver.addPrecinctDatabinForTest(
         1, databinStubs.notRecievedAnythingDatabinStub);
@@ -186,7 +186,7 @@ QUnit.test('createCodestreamForRegion (single tile, precinct data not recieved)'
     var codestreamPartStub = new JpipCodestreamPartStub([1], 0, /*minNumQualityLayers=*/0);
 
     var noPrecinctReconstructedActual =
-        noPrecinctReconstructor.createCodestreamForRegion(codestreamPartStub);
+        noPrecinctReconstructor.createCodestream(codestreamPartStub);
         
     var noPrecinctReconstructedExpected =
         getSingleTileReconstructedWithEmptyPrecinctExpected();

@@ -71,14 +71,23 @@ var jpipMockFactory = {
         throw 'Unexpected call to createPacketsDataCollector. Fix test';
     },
     
-    createRequestDatabinsListener: function createRequestDatabinsListener(
-        codestreamPartParams,
+    createPrecinctsIteratorWaiter: function createPrecinctsIteratorWaiter(
+        codestreamPart,
+        iteratePrecinctCallback,
+        codestreamStructure,
+        databinsSaver) {
+        
+        throw 'Unexpected call to createPrecinctsIteratorWaiter. Fix test';
+    },
+    
+    createQualityWaiter: function createQualityWaiter(
+        codestreamPart,
         qualityLayerReachedCallback,
         codestreamStructure,
         databinsSaver,
         qualityLayersCache) {
         
-        throw 'Unexpected call to createRequestDatabinsListener. Fix test';
+        throw 'Unexpected call to createQualityWaiter. Fix test';
     },
     
     createRequestParamsModifier: function createRequestParamsModifier(

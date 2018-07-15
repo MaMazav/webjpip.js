@@ -9,12 +9,32 @@ module.exports = function JpipCodestreamReconstructor(
         
     var dummyBufferForLengthCalculation = { isDummyBufferForLengthCalculation: true };
     
-    this.createCodestreamForRegion = function createCodestreamForRegion(
-        codestreamPart, isOnlyHeadersWithoutBitstream) {
+    this.createCodestream = function createCodestream(
+        codestreamPart,
+        minQuality,
+        maxQuality) {
+        
+        return createCodestreamInternal(codestreamPart, minQuality, maxQuality);
+    };
+    
+    this.createHeadersCodestream = function createHeadersCodestream(codestreamPart) {
+        var dummyQuality = 1;
+        var isOnlyHeaders = true;
+        return createCodestreamInternal(
+            codestreamPart, dummyQuality, dummyQuality, isOnlyHeaders);
+    };
+    
+    function createCodestreamInternal(
+        codestreamPart,
+        minQuality,
+        maxQuality,
+        isOnlyHeadersWithoutBitstream) {
 
-        var calculatedLength = createCodestreamForRegionInternal(
+        var calculatedLength = createCodestreamOrCalculateLength(
             dummyBufferForLengthCalculation,
             codestreamPart,
+            minQuality,
+            maxQuality,
             isOnlyHeadersWithoutBitstream);
         
         if (calculatedLength === null) {
@@ -22,8 +42,12 @@ module.exports = function JpipCodestreamReconstructor(
         }
         
         var result = new Uint8Array(calculatedLength);
-        var actualLength = createCodestreamForRegionInternal(
-            result, codestreamPart, isOnlyHeadersWithoutBitstream);
+        var actualLength = createCodestreamOrCalculateLength(
+            result,
+            codestreamPart,
+            minQuality,
+            maxQuality,
+            isOnlyHeadersWithoutBitstream);
 
         if (actualLength === calculatedLength) {
             return result;
@@ -34,10 +58,14 @@ module.exports = function JpipCodestreamReconstructor(
         throw new jGlobals.jpipExceptions.InternalErrorException(
             'JpipCodestreamReconstructor: Unmatched actualLength ' + actualLength +
             ' and calculatedLength ' + calculatedLength);
-    };
+    }
 
-    function createCodestreamForRegionInternal(
-        result, codestreamPart, isOnlyHeadersWithoutBitstream) {
+    function createCodestreamOrCalculateLength(
+        result,
+        codestreamPart,
+        minQuality,
+        maxQuality,
+        isOnlyHeadersWithoutBitstream) {
         
         var currentOffset = createMainHeader(result, codestreamPart.level);
         
@@ -56,8 +84,8 @@ module.exports = function JpipCodestreamReconstructor(
                 tileIdToWrite++,
                 tileIterator,
                 codestreamPart.level,
-                codestreamPart.minNumQualityLayers,
-                codestreamPart.maxNumQualityLayers,
+                minQuality,
+                maxQuality,
                 isOnlyHeadersWithoutBitstream);
                 
             currentOffset += tileBytesCopied;
@@ -268,8 +296,11 @@ module.exports = function JpipCodestreamReconstructor(
             var emptyPacketsToPush = numQualityLayersInTile;
             
             if (precinctIterator.isInCodestreamPart) {
+                var inClassIndex =
+                    tileIterator.tileStructure.precinctPositionToInClassIndex(
+                        precinctIterator);
                 var precinctDatabin = databinsSaver.getPrecinctDatabin(
-                    precinctIterator.inClassIndex);
+                    inClassIndex);
                 
                 var qualityLayerOffset = qualityLayersCache.getQualityLayerOffset(
                     precinctDatabin,

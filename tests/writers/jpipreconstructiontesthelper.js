@@ -161,7 +161,10 @@ function getFullReconstructedExpectedWithEmptyPrecinctExpected() {
 
 function createCodestreamStructureMockForReconstructorTest(dummyProgressionOrder) {
     var tileParams = {
-        tileSize: [240, 1387],
+        tileSize: {
+            width: 240,
+            height: 1387
+        },
         numQualityLayers: 5
         };
         
