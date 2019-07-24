@@ -7,7 +7,6 @@ module.exports.j2kExceptions = jGlobals.j2kExceptions;
 module.exports.jpipExceptions = jGlobals.jpipExceptions;
 module.exports.Internals = {
     PdfjsJpxDecoderLegacy: require('pdfjs-jpx-decoder-legacy.js'),
-    PdfjsJpxDecoderDebug: require('pdfjs-jpx-decoder-debug.js'),
     PdfjsJpxPixelsDecoder: require('pdfjs-jpx-pixels-decoder.js'),
     PdfjsJpxCoefficientsDecoder: require('pdfjs-jpx-coefficients-decoder.js'),
     jpipRuntimeFactory: require('jpip-runtime-factory.js'),

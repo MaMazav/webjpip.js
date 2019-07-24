@@ -30,8 +30,6 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
         this._databinsSaver,
         this._startTrackPrecinct.bind(this));
     
-    this._listener._debugType = 'image-data-context';
-    
     this._listener.register();
 }
 

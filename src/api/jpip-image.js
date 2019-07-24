@@ -49,17 +49,9 @@ function JpipImage(options) {
     var levelCalculator = null;
     
     var fetcher = jpipFactory.createFetcher(databinsSaver, options); // TODO: WorkerProxyFetcher
-    //function GridImageBase() {
-    //    this._fetcher = fetcher;
-    //    this._imageParams = null;
-    //    this._waitingFetches = {};
-    //    this._levelCalculator = null;
-    //}
 
     this.opened = function opened(imageDecoder) {
         imageParams = imageDecoder.getImageParams();
-        //imageDecoder.onFetcherEvent('data', this._onDataFetched.bind(this));
-        //imageDecoder.onFetcherEvent('tile-terminated', this._onTileTerminated.bind(this));
     };
 
     this.getLevelCalculator = getLevelCalculator;
@@ -75,6 +67,7 @@ function JpipImage(options) {
     this.getWorkerTypeOptions = function getWorkerTypeOptions(workerType) {
         switch (workerType) {
             case WORKER_TYPE_PIXELS:
+                // TODO: Transferables
                 //var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
                 //var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
                 return {
@@ -100,9 +93,6 @@ function JpipImage(options) {
     this.getKeyAsString = function getKeyAsString(key) {
         if (key.taskType === 'COEFFS') {
             return 'C:' + key.inClassIndex;
-            //return 'C:t' + key.tileIndex + 'c' + key.component +
-            //       'r' + key.resolutionLevel + 'px' + key.precinctX +
-            //       'py' + key.precinctY + 'q' + key.maxQuality;
         } else {
             var params = paramsModifier.modify(/*codestreamTaskParams=*/key);
             var partParams = params.codestreamPartParams;
@@ -144,7 +134,11 @@ function JpipImage(options) {
             }
         });
 
-        task.on('schedulerAborted', taskEnded);
+        task.on('custom', function(customEventName) {
+            if (customEventName === 'aborting') {
+                taskEnded();
+            }
+        });
         
         qualityWaiter = jpipFactory.createQualityWaiter(
             codestreamPart,
@@ -154,8 +148,6 @@ function JpipImage(options) {
             codestreamStructure,
             databinsSaver,
             startTrackPrecinctCallback);
-        
-        qualityWaiter._debugType = 'pixel-task';
         
         qualityWaiter.register();
         
@@ -228,7 +220,11 @@ function JpipImage(options) {
             task.key.precinctX,
             task.key.precinctY);
         
-        task.on('schedulerAborted', taskAborted);
+        task.on('custom', function(customEventName) {
+            if (customEventName === 'aborting') {
+                taskAborted();
+            }
+        });
 
         var context = jpipFactory.createImageDataContext(
             jpipObjectsForRequestContext,
@@ -237,7 +233,7 @@ function JpipImage(options) {
             task.key.progressiveness); // TODO: Eliminate progressiveness from API
         
         var hadData = false;
-        task._wrapped.jpipHasData = false; // TODO: Remove before commit
+        var isTerminated = false;
         
         context.on('data', onData);
         if (context.hasData()) {
@@ -252,7 +248,6 @@ function JpipImage(options) {
             // TODO: First quality layer
             
             hadData = true;
-            task._wrapped.jpipHasData = true; // TODO: Remove before commit
             var data = context.getFetchedData();
             task.dataReady(data, WORKER_TYPE_COEFFS);
             
@@ -265,11 +260,13 @@ function JpipImage(options) {
         }
         
         function taskAborted() {
-            task._wrapped.jpipIsAborted = true; // TODO: Remove before commit
-            taskEnded();
+            if (!isTerminated) { // TODO: Not sure why it's needed
+                taskEnded();
+            }
         }
         
         function taskEnded() {
+            isTerminated = true;
             task.terminate();
             context.dispose();
         }
@@ -283,8 +280,7 @@ function JpipImage(options) {
         var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
         var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
         return {
-            //ctorName: 'webjpip.Internals.PdfjsJpxDecoderLegacy',
-            ctorName: 'webjpip.Internals.PdfjsJpxDecoderDebug',
+            ctorName: 'webjpip.Internals.PdfjsJpxDecoderLegacy',
             ctorArgs: [],
             scriptsToImport: [getScriptName(new Error())],
             transferables: [codestreamTransferable, codeblockTransferable],
