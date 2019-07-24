@@ -238,6 +238,213 @@ module.exports.jpipExceptions.InternalErrorException.Name = 'jpipExceptions.Inte
 "use strict";
 
 
+var simpleAjaxHelper = __webpack_require__(5);
+var mutualExclusiveTransactionHelper = __webpack_require__(6);
+
+var jpipCodingPassesNumberParser = __webpack_require__(7);
+var jpipMessageHeaderParser = __webpack_require__(8);
+
+var JpipChannel = __webpack_require__(9);
+var JpipCodestreamReconstructor = __webpack_require__(10);
+var JpipCodestreamStructure = __webpack_require__(11);
+var JpipComponentStructure = __webpack_require__(12);
+var CompositeArray = __webpack_require__(13);
+var JpipDatabinParts = __webpack_require__(14);
+var JpipDatabinsSaver = __webpack_require__(15);
+var JpipFetch = __webpack_require__(16);
+var JpipHeaderModifier = __webpack_require__(17);
+var JpipImageDataContext = __webpack_require__(18);
+var JpipLevelCalculator = __webpack_require__(19);
+var JpipMarkersParser = __webpack_require__(20);
+var JpipOffsetsCalculator = __webpack_require__(21);
+var JpipPacketsDataCollector = __webpack_require__(22);
+var JpipParamsCodestreamPart = __webpack_require__(23);
+var JpipParamsPrecinctIterator = __webpack_require__(24);
+var JpipPrecinctCodestreamPart = __webpack_require__(25);
+var JpipPrecinctsIteratorWaiter = __webpack_require__(26);
+var JpipQualityWaiter = __webpack_require__(27);
+var JpipRequestParamsModifier = __webpack_require__(28);
+var JpipRequest = __webpack_require__(29);
+var JpipSessionHelper = __webpack_require__(30);
+var JpipSession = __webpack_require__(31);
+var JpipReconnectableRequester = __webpack_require__(32);
+var JpipStructureParser = __webpack_require__(33);
+var JpipTileStructure = __webpack_require__(34);
+var JpipBitstreamReader = __webpack_require__(35);
+var JpipTagTree = __webpack_require__(36);
+var JpipCodeblockLengthParser = __webpack_require__(37);
+var JpipSubbandLengthInPacketHeaderCalculator = __webpack_require__(38);
+var JpipPacketLengthCalculator = __webpack_require__(39);
+var JpipQualityLayersCache = __webpack_require__(40);
+
+var JpipFetcher;
+
+var jpipRuntimeFactory = {
+    createChannel: function createChannel(maxRequestsWaitingForResponseInChannel, sessionHelper) {
+
+        return new JpipChannel(maxRequestsWaitingForResponseInChannel, sessionHelper, jpipRuntimeFactory);
+    },
+
+    createCodestreamReconstructor: function createCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache) {
+
+        return new JpipCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache);
+    },
+
+    createLevelCalculator: function createLevelCalculator(params) {
+        return new JpipLevelCalculator(params);
+    },
+
+    createCodestreamStructure: function createCodestreamStructure(structureParser, progressionOrder) {
+        return new JpipCodestreamStructure(structureParser, jpipRuntimeFactory, progressionOrder);
+    },
+
+    createComponentStructure: function createComponentStructure(params, tileStructure) {
+        return new JpipComponentStructure(params, tileStructure);
+    },
+
+    createCompositeArray: function createCompositeArray(offset) {
+        return new CompositeArray(offset);
+    },
+
+    createDatabinParts: function createDatabinParts(classId, inClassId) {
+        return new JpipDatabinParts(classId, inClassId, jpipRuntimeFactory);
+    },
+
+    createDatabinsSaver: function createDatabinsSaver(isJpipTilepartStream) {
+        return new JpipDatabinsSaver(isJpipTilepartStream, jpipRuntimeFactory);
+    },
+
+    createFetcher: function createFetcher(databinsSaver, options) {
+        if (!JpipFetcher) {
+            // Avoid dependency - load only on runtime
+            JpipFetcher = __webpack_require__(41);
+        }
+        return new JpipFetcher(databinsSaver, options);
+    },
+
+    createFetch: function createFetch(fetchContext, requester, progressiveness) {
+        return new JpipFetch(fetchContext, requester, progressiveness);
+    },
+
+    createHeaderModifier: function createHeaderModifier(offsetsCalculator, progressionOrder) {
+
+        return new JpipHeaderModifier(offsetsCalculator, progressionOrder);
+    },
+
+    createImageDataContext: function createImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness) {
+
+        return new JpipImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness);
+    },
+
+    createMarkersParser: function createMarkersParser(mainHeaderDatabin) {
+        return new JpipMarkersParser(mainHeaderDatabin, jpipMessageHeaderParser, jpipRuntimeFactory);
+    },
+
+    createOffsetsCalculator: function createOffsetsCalculator(mainHeaderDatabin, markersParser) {
+        return new JpipOffsetsCalculator(mainHeaderDatabin, markersParser);
+    },
+
+    createPacketsDataCollector: function createPacketsDataCollector(databinsSaver, qualityLayersCache) {
+
+        return new JpipPacketsDataCollector(databinsSaver, qualityLayersCache, jpipRuntimeFactory);
+    },
+
+    createParamsCodestreamPart: function createParamsCodestreamPart(codestreamPartParams, codestreamStructure) {
+
+        return new JpipParamsCodestreamPart(codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
+    },
+
+    createParamsPrecinctIterator: function createParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
+
+        return new JpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart);
+    },
+
+    createPrecinctCodestreamPart: function createPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY) {
+
+        return new JpipPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY);
+    },
+
+    createPrecinctsIteratorWaiter: function createPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback) {
+
+        return new JpipPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback, jpipRuntimeFactory);
+    },
+
+    createQualityWaiter: function createQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct) {
+
+        return new JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, jpipRuntimeFactory);
+    },
+
+    createRequestParamsModifier: function createRequestParamsModifier(codestreamStructure) {
+
+        return new JpipRequestParamsModifier(codestreamStructure);
+    },
+
+    createRequest: function createRequest(sessionHelper, channel, requestUrl, callback, failureCallback) {
+
+        return new JpipRequest(sessionHelper, jpipMessageHeaderParser, channel, requestUrl, callback, failureCallback);
+    },
+
+    createSessionHelper: function createSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver) {
+
+        return new JpipSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver, simpleAjaxHelper);
+    },
+
+    createSession: function createSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver) {
+
+        return new JpipSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver, setInterval, clearInterval, jpipRuntimeFactory);
+    },
+
+    createReconnectableRequester: function createReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver) {
+
+        return new JpipReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver, jpipRuntimeFactory);
+    },
+
+    createStructureParser: function createStructureParser(databinsSaver, markersParser, offsetsCalculator) {
+        return new JpipStructureParser(databinsSaver, markersParser, jpipMessageHeaderParser, offsetsCalculator);
+    },
+
+    createTileStructure: function createTileStructure(sizeParams, codestreamStructure, progressionOrder) {
+        return new JpipTileStructure(sizeParams, codestreamStructure, jpipRuntimeFactory, progressionOrder);
+    },
+
+    createBitstreamReader: function createBitstreamReader(databin) {
+        return new JpipBitstreamReader(databin, mutualExclusiveTransactionHelper);
+    },
+
+    createTagTree: function createTagTree(bitstreamReader, width, height) {
+        return new JpipTagTree(bitstreamReader, width, height, mutualExclusiveTransactionHelper);
+    },
+
+    createCodeblockLengthParser: function createCodeblockLengthParser(bitstreamReader, transactionHelper) {
+
+        return new JpipCodeblockLengthParser(bitstreamReader, mutualExclusiveTransactionHelper);
+    },
+
+    createSubbandLengthInPacketHeaderCalculator: function createSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband) {
+
+        return new JpipSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband, jpipCodingPassesNumberParser, mutualExclusiveTransactionHelper, jpipRuntimeFactory);
+    },
+
+    createPacketLengthCalculator: function createPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct) {
+
+        return new JpipPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct, jpipRuntimeFactory);
+    },
+
+    createQualityLayersCache: function createQualityLayersCache(codestreamStructure) {
+
+        return new JpipQualityLayersCache(codestreamStructure, jpipRuntimeFactory);
+    }
+};
+
+module.exports = jpipRuntimeFactory;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
@@ -248,19 +455,19 @@ var _util = __webpack_require__(43);
 var _arithmetic_decoder = __webpack_require__(45);
 
 /* Copyright 2012 Mozilla Foundation
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 var JpxError = function JpxErrorClosure() {
   function JpxError(msg) {
@@ -703,7 +910,6 @@ var JpxImage = function JpxImageClosure() {
         var component = tile.components[packetOffsets.c];
         var resolution = component.resolutions[packetOffsets.r];
         var p = packetOffsets.p;
-        //var l = packetOffsets.l;
         var codeblocks = resolution.pixelsPrecincts[p].codeblocks;
         for (var i = 0; i < packetOffsets.codeblockOffsets.length; ++i) {
           var codeblockOffsets = packetOffsets.codeblockOffsets[i];
@@ -911,7 +1117,7 @@ var JpxImage = function JpxImageClosure() {
     var cby1 = subband.tby1 + codeblockHeight - 1 >> ycb_;
     var precinctParameters = subband.resolution.precinctParameters;
     var codeblocks = [];
-    var subbandPrecincts = [];
+    var precincts = [];
     var i, j, codeblock, precinctNumber;
     for (j = cby0; j < cby1; j++) {
       for (i = cbx0; i < cbx1; i++) {
@@ -945,24 +1151,24 @@ var JpxImage = function JpxImageClosure() {
         }
         codeblocks.push(codeblock);
         // building precinct for the sub-band
-        var subbandPrecinct = subbandPrecincts[precinctNumber];
-        if (subbandPrecinct !== undefined) {
-          if (i < subbandPrecinct.cbxMin) {
-            subbandPrecinct.cbxMin = i;
-            subbandPrecinct.tbxMin_ = codeblock.tbx0_;
-          } else if (i > subbandPrecinct.cbxMax) {
-            subbandPrecinct.cbxMax = i;
-            subbandPrecinct.tbxMax_ = codeblock.tbx1_;
+        var precinct = precincts[precinctNumber];
+        if (precinct !== undefined) {
+          if (i < precinct.cbxMin) {
+            precinct.cbxMin = i;
+            precinct.tbxMin_ = codeblock.tbx0_;
+          } else if (i > precinct.cbxMax) {
+            precinct.cbxMax = i;
+            precinct.tbxMax_ = codeblock.tbx1_;
           }
-          if (j < subbandPrecinct.cbyMin) {
-            subbandPrecinct.cbyMin = j;
-            subbandPrecinct.tbyMin_ = codeblock.tby0_;
-          } else if (j > subbandPrecinct.cbyMax) {
-            subbandPrecinct.cbyMax = j;
-            subbandPrecinct.tbyMax_ = codeblock.tby1_;
+          if (j < precinct.cbyMin) {
+            precinct.cbyMin = j;
+            precinct.tbyMin_ = codeblock.tby0_;
+          } else if (j > precinct.cbyMax) {
+            precinct.cbyMax = j;
+            precinct.tbyMax_ = codeblock.tby1_;
           }
         } else {
-          subbandPrecincts[precinctNumber] = subbandPrecinct = {
+          precincts[precinctNumber] = precinct = {
             cbxMin: i,
             cbyMin: j,
             cbxMax: i,
@@ -974,18 +1180,18 @@ var JpxImage = function JpxImageClosure() {
             pixelsPrecinct: subband.resolution.pixelsPrecincts[precinctNumber]
           };
         }
-        if (subbandPrecinct['pixelsPrecinct'] === undefined) {
-          subbandPrecinct.pixelsPrecinct = {
+        if (precinct['pixelsPrecinct'] === undefined) {
+          precinct.pixelsPrecinct = {
             codeblocks: [],
             subbandPrecincts: []
           };
-          subband.resolution.pixelsPrecincts[precinctNumber] = subbandPrecinct.pixelsPrecinct;
+          subband.resolution.pixelsPrecincts[precinctNumber] = precinct.pixelsPrecinct;
         }
-        codeblock.subbandPrecinct = subbandPrecinct;
-        var pixelsPrecinct = subbandPrecinct.pixelsPrecinct;
+        codeblock.precinct = precinct;
+        var pixelsPrecinct = precinct.pixelsPrecinct;
         pixelsPrecinct.codeblocks.push(codeblock);
         if (pixelsPrecinct.subbandPrecincts[index] === undefined) {
-          pixelsPrecinct.subbandPrecincts[index] = subbandPrecinct;
+          pixelsPrecinct.subbandPrecincts[index] = precinct;
         }
       }
     }
@@ -996,7 +1202,7 @@ var JpxImage = function JpxImageClosure() {
       numcodeblockhigh: cby1 - cby0 + 1
     };
     subband.codeblocks = codeblocks;
-    subband.subbandPrecincts = subbandPrecincts;
+    subband.subbandPrecincts = precincts;
   }
   function createPacket(resolution, precinctNumber, layerNumber) {
     // Section B.10.8 Order of info in packet
@@ -1483,9 +1689,9 @@ var JpxImage = function JpxImageClosure() {
           codeblock;
       for (var i = 0, ii = packet.codeblocks.length; i < ii; i++) {
         codeblock = packet.codeblocks[i];
-        var subbandPrecinct = codeblock.subbandPrecinct;
-        var codeblockColumn = codeblock.cbx - subbandPrecinct.cbxMin;
-        var codeblockRow = codeblock.cby - subbandPrecinct.cbyMin;
+        var precinct = codeblock.precinct;
+        var codeblockColumn = codeblock.cbx - precinct.cbxMin;
+        var codeblockRow = codeblock.cby - precinct.cbyMin;
         var codeblockIncluded = false;
         var firstTimeInclusion = false;
         var valueReady;
@@ -1493,18 +1699,18 @@ var JpxImage = function JpxImageClosure() {
           codeblockIncluded = !!readBits(1);
         } else {
           // reading inclusion tree
-          subbandPrecinct = codeblock.subbandPrecinct;
+          precinct = codeblock.precinct;
           var inclusionTree, zeroBitPlanesTree;
-          if (subbandPrecinct['inclusionTree'] !== undefined) {
-            inclusionTree = subbandPrecinct.inclusionTree;
+          if (precinct['inclusionTree'] !== undefined) {
+            inclusionTree = precinct.inclusionTree;
           } else {
             // building inclusion and zero bit-planes trees
-            var width = subbandPrecinct.cbxMax - subbandPrecinct.cbxMin + 1;
-            var height = subbandPrecinct.cbyMax - subbandPrecinct.cbyMin + 1;
+            var width = precinct.cbxMax - precinct.cbxMin + 1;
+            var height = precinct.cbyMax - precinct.cbyMin + 1;
             inclusionTree = new InclusionTree(width, height, layerNumber);
             zeroBitPlanesTree = new TagTree(width, height);
-            subbandPrecinct.inclusionTree = inclusionTree;
-            subbandPrecinct.zeroBitPlanesTree = zeroBitPlanesTree;
+            precinct.inclusionTree = inclusionTree;
+            precinct.zeroBitPlanesTree = zeroBitPlanesTree;
           }
 
           if (inclusionTree.reset(codeblockColumn, codeblockRow, layerNumber)) {
@@ -1527,7 +1733,7 @@ var JpxImage = function JpxImageClosure() {
           continue;
         }
         if (firstTimeInclusion) {
-          zeroBitPlanesTree = subbandPrecinct.zeroBitPlanesTree;
+          zeroBitPlanesTree = precinct.zeroBitPlanesTree;
           zeroBitPlanesTree.reset(codeblockColumn, codeblockRow);
           while (true) {
             if (readBits(1)) {
@@ -1576,92 +1782,6 @@ var JpxImage = function JpxImageClosure() {
     }
     return position;
   }
-  function getBitModelOfCodeblock(codeblock, mb, segmentationSymbolUsed) {
-    var blockWidth = codeblock.tbx1_ - codeblock.tbx0_;
-    var blockHeight = codeblock.tby1_ - codeblock.tby0_;
-    var bitModel, currentCodingpassType;
-    bitModel = new BitModel(blockWidth, blockHeight, codeblock.subbandType, codeblock.zeroBitPlanes, mb);
-    currentCodingpassType = 2; // first bit plane starts from cleanup
-
-    // collect data
-    var data = codeblock.data,
-        totalLength = 0,
-        codingpasses = 0;
-    var j, jj, dataItem;
-    for (j = 0, jj = data.length; j < jj; j++) {
-      dataItem = data[j];
-      totalLength += dataItem.end - dataItem.start;
-      codingpasses += dataItem.codingpasses;
-    }
-    var encodedData = new Uint8Array(totalLength);
-    var position = 0;
-    for (j = 0, jj = data.length; j < jj; j++) {
-      dataItem = data[j];
-      var chunk = dataItem.data.subarray(dataItem.start, dataItem.end);
-      encodedData.set(chunk, position);
-      position += chunk.length;
-    }
-    // decoding the item
-    var decoder = new _arithmetic_decoder.ArithmeticDecoder(encodedData, 0, totalLength);
-    bitModel.setDecoder(decoder);
-
-    for (j = 0; j < codingpasses; j++) {
-      switch (currentCodingpassType) {
-        case 0:
-          bitModel.runSignificancePropagationPass();
-          break;
-        case 1:
-          bitModel.runMagnitudeRefinementPass();
-          break;
-        case 2:
-          bitModel.runCleanupPass();
-          if (segmentationSymbolUsed) {
-            bitModel.checkSegmentationSymbol();
-          }
-          break;
-      }
-      currentCodingpassType = (currentCodingpassType + 1) % 3;
-    }
-    return bitModel;
-  }
-  function copyCoefficientsOfCodeblock(coefficients, targetStartOffset, targetStep, targetRowStep, codeblock, regionInCodeblock, delta, mb, reversible, segmentationSymbolUsed) {
-    var blockWidth = codeblock.tbx1_ - codeblock.tbx0_;
-    var blockHeight = codeblock.tby1_ - codeblock.tby0_;
-    var bitModel = getBitModelOfCodeblock(codeblock, mb, segmentationSymbolUsed);
-    var sign = bitModel.coefficentsSign;
-    var magnitude = bitModel.coefficentsMagnitude;
-    var bitsDecoded = bitModel.bitsDecoded;
-    var magnitudeCorrection = reversible ? 0 : 0.5;
-    var k, n, nb;
-    var codeblockRowStart = regionInCodeblock.x0 - codeblock.tbx0_ + (regionInCodeblock.y0 - codeblock.tby0_) * blockWidth;
-    var targetRowStart = targetStartOffset;
-    // Do the interleaving of Section F.3.3 here, so we do not need
-    // to copy later. LL level is not interleaved, just copied.
-    for (var row = regionInCodeblock.y0; row < regionInCodeblock.y1; ++row) {
-      var codeblockOffset = codeblockRowStart;
-      var targetOffset = targetRowStart;
-      codeblockRowStart += blockWidth;
-      targetRowStart += targetRowStep;
-
-      for (k = regionInCodeblock.x0; k < regionInCodeblock.x1; k++) {
-        n = magnitude[codeblockOffset];
-        if (n !== 0) {
-          n = (n + magnitudeCorrection) * delta;
-          if (sign[codeblockOffset] !== 0) {
-            n = -n;
-          }
-          nb = bitsDecoded[codeblockOffset];
-          if (reversible && nb >= mb) {
-            coefficients[targetOffset] = n;
-          } else {
-            coefficients[targetOffset] = n * (1 << mb - nb);
-          }
-        }
-        targetOffset += targetStep;
-        ++codeblockOffset;
-      }
-    }
-  }
   function getCoefficientsOfResolution(resolution, spqcds, scalarExpounded, precision, guardBits, reversible, segmentationSymbolUsed, regionInLevel) {
     // Allocate space for the whole sublevel.
     var arrayWidth = regionInLevel.x1 - regionInLevel.x0;
@@ -1696,63 +1816,6 @@ var JpxImage = function JpxImageClosure() {
         var source = x0 - precinctRegionInLevel.x0 + (y0 - precinctRegionInLevel.y0) * sourceWidth;
         var target = x0 - regionInLevel.x0 + (y0 - regionInLevel.y0) * targetWidth;
 
-        var debugOffsets = decoded.debugOffsets;decoded = decoded.coefficients; // Debug
-        // Debug code
-        var isDebuggedSomething = false;
-        for (var i = 0; false && i < debugOffsets.length; ++i) {
-          var offsets = debugOffsets[i];
-          var subband = resolution.subbands[offsets.subbandIndex];
-          var codeblock = subband.codeblocks[offsets.codeblockIndex];
-
-          var interleave = subband.type !== 'LL';
-          var regionInSubband;
-          if (!interleave) {
-            regionInSubband = regionInLevel;
-          } else {
-            regionTmp.x0 = (regionInLevel.x0 - resolution.trx0) / 2 + subband.tbx0;
-            regionTmp.y0 = (regionInLevel.y0 - resolution.try0) / 2 + subband.tby0;
-            regionTmp.x1 = (regionInLevel.x1 - resolution.trx0) / 2 + subband.tbx0;
-            regionTmp.y1 = (regionInLevel.y1 - resolution.try0) / 2 + subband.tby0;
-            regionInSubband = regionTmp;
-          }
-
-          var regionInCodeblock = {
-            x0: Math.max(codeblock.tbx0_, regionInSubband.x0),
-            y0: Math.max(codeblock.tby0_, regionInSubband.y0),
-            x1: Math.min(codeblock.tbx1_, regionInSubband.x1),
-            y1: Math.min(codeblock.tby1_, regionInSubband.y1)
-          };
-          if (regionInCodeblock.x0 >= regionInCodeblock.x1 || regionInCodeblock.y0 >= regionInCodeblock.y1) {
-            continue;
-          }
-          isDebuggedSomething = true;
-
-          var right = subband.type.charAt(0) === 'H' ? 1 : 0;
-          var bottom = subband.type.charAt(1) === 'H' ? arrayWidth : 0;
-          var interleaveOffset = right + bottom;
-          var interleave = subband.type !== 'LL';
-          var targetStep = interleave ? 2 : 1;
-          var targetRowStep = arrayWidth * targetStep;
-
-          var newTargetStartOffset = (regionInCodeblock.x0 - regionInSubband.x0) * targetStep + (regionInCodeblock.y0 - regionInSubband.y0) * targetRowStep + interleaveOffset;
-
-          var newX = newTargetStartOffset % arrayWidth;
-          var newY = Math.floor(newTargetStartOffset / arrayWidth);
-          var oldX = offsets.targetStartOffset % offsets.arrayWidth;
-          var oldY = Math.floor(offsets.targetStartOffset / offsets.arrayWidth);
-          var targetX = target % arrayWidth;
-          var targetY = Math.floor(target / arrayWidth);
-          var sourceX = source % offsets.arrayWidth;
-          var sourceY = Math.floor(source / offsets.arrayWidth);
-
-          if (sourceWidth !== offsets.arrayWidth || newX - targetX !== oldX - sourceX || newY - targetY !== oldY - sourceY) {
-            throw 'mismatch: sourceWidth=' + sourceWidth + ', original.arrayWidth=' + offsets.arrayWidth + 'newX=' + newX + ', targetX=' + targetX + ', oldX=' + oldX + ', sourceX=' + sourceX + 'newY=' + newY + ', targetY=' + targetY + ', oldY=' + oldY + ', sourceY=' + sourceY;
-          }
-        }
-        if (!isDebuggedSomething) {
-          //throw 'No codeblock seems to be matching this region although precinct does';
-        }
-
         for (var row = y0; row < y1; ++row) {
           coefficients.set(decoded.subarray(source, source + width), target);
           source += sourceWidth;
@@ -1760,15 +1823,12 @@ var JpxImage = function JpxImageClosure() {
         }
       }
       if (allPrecinctsHaveCoefficients) {
-        return { coefficients: coefficients }; // Debug
         return coefficients;
       }
     }
 
-    var debugOffsets = [];
-    var pixelsPrecinct = null;
-    for (var j = 0, jj = resolution.subbands.length; j < jj; j++) {
-      var subband = resolution.subbands[j];
+    for (var s = 0, ss = resolution.subbands.length; s < ss; s++) {
+      var subband = resolution.subbands[s];
 
       var interleave = subband.type !== 'LL';
       var regionInSubband;
@@ -1822,11 +1882,10 @@ var JpxImage = function JpxImageClosure() {
 
       for (var i = 0, ii = subband.codeblocks.length; i < ii; ++i) {
         var codeblock = subband.codeblocks[i];
-        // Debug
-        //if (codeblock['data'] === undefined) {
-        //  continue;
-        //}
-        if (codeblock.subbandPrecinct.pixelsPrecinct.decodedCoefficients) {
+        if (codeblock['data'] === undefined) {
+          continue;
+        }
+        if (codeblock.precinct.pixelsPrecinct.decodedCoefficients) {
           continue;
         }
 
@@ -1838,41 +1897,98 @@ var JpxImage = function JpxImageClosure() {
           continue;
         }
 
-        // Debug
-        if (pixelsPrecinct === null) {
-          pixelsPrecinct = codeblock.subbandPrecinct.pixelsPrecinct;
-        } else if (pixelsPrecinct !== codeblock.subbandPrecinct.pixelsPrecinct) {
-          throw 'Two precincts in region';
-        }
-
         var targetStartOffset = (regionInCodeblock.x0 - regionInSubband.x0) * targetStep + (regionInCodeblock.y0 - regionInSubband.y0) * targetRowStep + interleaveOffset;
 
-        // Debug
-        //debugOffsets.push({
-        //  codeblockIndex: i,
-        //  subbandIndex: j,
-        //  arrayWidth: arrayWidth,
-        //  targetStartOffset: targetStartOffset,
-        //  targetStep: targetStep,
-        //  targetRowStep: targetRowStep,
-        //  interleaveOffset: interleaveOffset,
-        //  regionInCodeblock: JSON.parse(JSON.stringify(regionInCodeblock)),
-        //  regionInSubband: JSON.parse(JSON.stringify(regionInSubband)),
-        //  resolutionTrx0: resolution.trx0,
-        //  resolutionTry0: resolution.try0,
-        //});
-        if (codeblock['data'] === undefined) {
-          continue;
+        var blockWidth = codeblock.tbx1_ - codeblock.tbx0_;
+        var blockHeight = codeblock.tby1_ - codeblock.tby0_;
+        var bitModel, currentCodingpassType;
+        bitModel = new BitModel(blockWidth, blockHeight, codeblock.subbandType, codeblock.zeroBitPlanes, mb);
+        currentCodingpassType = 2; // first bit plane starts from cleanup
+
+        // collect data
+        var data = codeblock.data,
+            totalLength = 0,
+            codingpasses = 0;
+        var j, jj, dataItem;
+        for (j = 0, jj = data.length; j < jj; j++) {
+          dataItem = data[j];
+          totalLength += dataItem.end - dataItem.start;
+          codingpasses += dataItem.codingpasses;
+        }
+        var encodedData = new Uint8Array(totalLength);
+        var position = 0;
+        for (j = 0, jj = data.length; j < jj; j++) {
+          dataItem = data[j];
+          var chunk = dataItem.data.subarray(dataItem.start, dataItem.end);
+          encodedData.set(chunk, position);
+          position += chunk.length;
+        }
+        // decoding the item
+        var decoder = new _arithmetic_decoder.ArithmeticDecoder(encodedData, 0, totalLength);
+        bitModel.setDecoder(decoder);
+
+        for (j = 0; j < codingpasses; j++) {
+          switch (currentCodingpassType) {
+            case 0:
+              bitModel.runSignificancePropagationPass();
+              break;
+            case 1:
+              bitModel.runMagnitudeRefinementPass();
+              break;
+            case 2:
+              bitModel.runCleanupPass();
+              if (segmentationSymbolUsed) {
+                bitModel.checkSegmentationSymbol();
+              }
+              break;
+          }
+          currentCodingpassType = (currentCodingpassType + 1) % 3;
         }
 
-        copyCoefficientsOfCodeblock(coefficients, targetStartOffset, targetStep, targetRowStep, codeblock, regionInCodeblock, delta, mb, reversible, segmentationSymbolUsed);
+        var offset = codeblock.tbx0_ - x0 + (codeblock.tby0_ - y0) * width;
+        var sign = bitModel.coefficentsSign;
+        var magnitude = bitModel.coefficentsMagnitude;
+        var bitsDecoded = bitModel.bitsDecoded;
+        var magnitudeCorrection = reversible ? 0 : 0.5;
+        var k, n, nb;
+        var codeblockRowStart = regionInCodeblock.x0 - codeblock.tbx0_ + (regionInCodeblock.y0 - codeblock.tby0_) * blockWidth;
+        var targetRowStart = targetStartOffset;
+        // Do the interleaving of Section F.3.3 here, so we do not need
+        // to copy later. LL level is not interleaved, just copied.
+        for (var j = regionInCodeblock.y0; j < regionInCodeblock.y1; j++) {
+          var position = codeblockRowStart;
+          var pos = targetRowStart;
+          codeblockRowStart += blockWidth;
+          targetRowStart += targetRowStep;
+
+          for (k = regionInCodeblock.x0; k < regionInCodeblock.x1; k++) {
+            n = magnitude[position];
+            if (n !== 0) {
+              n = (n + magnitudeCorrection) * delta;
+              if (sign[position] !== 0) {
+                n = -n;
+              }
+              nb = bitsDecoded[position];
+              if (reversible && nb >= mb) {
+                coefficients[pos] = n;
+              } else {
+                coefficients[pos] = n * (1 << mb - nb);
+              }
+            }
+            offset++;
+            position++;
+            pos += targetStep;
+          }
+          offset += width - blockWidth;
+        }
       }
     }
-    return { coefficients: coefficients, debugOffsets: debugOffsets }; // debug
     return coefficients;
   }
-  function getCoefficientsOfComponent(context, component, c, relativeRegionInTile) {
+  function transformTile(context, tile, c) {
+    var component = tile.components[c];
     var codingStyleParameters = component.codingStyleParameters;
+
     var quantizationParameters = component.quantizationParameters;
     var decompositionLevelsCount = codingStyleParameters.decompositionLevelsCount;
     var spqcds = quantizationParameters.SPqcds;
@@ -1882,6 +1998,19 @@ var JpxImage = function JpxImageClosure() {
     var precision = context.components[c].precision;
 
     var reversible = codingStyleParameters.reversibleTransformation;
+    var transform = reversible ? new ReversibleTransform() : new IrreversibleTransform();
+
+    var relativeRegionInTile;
+    if (context.regionToParse !== undefined) {
+      var x1 = Math.min(component.tcx1, context.regionToParse.right);
+      var y1 = Math.min(component.tcy1, context.regionToParse.bottom);
+      relativeRegionInTile = {
+        x0: Math.max(0, context.regionToParse.left - component.tcx0),
+        y0: Math.max(0, context.regionToParse.top - component.tcy0),
+        x1: x1 - component.tcx0,
+        y1: y1 - component.tcy0
+      };
+    }
 
     var subbandCoefficients = [];
     var regionInLevel = { x0: 0, y0: 0, x1: 0, y1: 0 };
@@ -1919,7 +2048,6 @@ var JpxImage = function JpxImageClosure() {
       }
 
       var coefficients = getCoefficientsOfResolution(resolution, spqcds, scalarExpounded, precision, guardBits, reversible, segmentationSymbolUsed, regionInLevel);
-      coefficients = coefficients.coefficients; // Debug
 
       var relativeRegionInLevel = {
         x0: regionInLevel.x0 - resolution.trx0,
@@ -1934,26 +2062,6 @@ var JpxImage = function JpxImageClosure() {
         relativeRegionInLevel: relativeRegionInLevel
       });
     }
-    return subbandCoefficients;
-  }
-  function transformTile(context, tile, c) {
-    var component = tile.components[c];
-    var codingStyleParameters = component.codingStyleParameters;
-    var relativeRegionInTile;
-    var reversible = codingStyleParameters.reversibleTransformation;
-    var transform = reversible ? new ReversibleTransform() : new IrreversibleTransform();
-    if (context.regionToParse !== undefined) {
-      var x1 = Math.min(component.tcx1, context.regionToParse.right);
-      var y1 = Math.min(component.tcy1, context.regionToParse.bottom);
-      relativeRegionInTile = {
-        x0: Math.max(0, context.regionToParse.left - component.tcx0),
-        y0: Math.max(0, context.regionToParse.top - component.tcy0),
-        x1: x1 - component.tcx0,
-        y1: y1 - component.tcy0
-      };
-    }
-
-    var subbandCoefficients = getCoefficientsOfComponent(context, component, c, relativeRegionInTile);
     var result = transform.calculate(subbandCoefficients, component.tcx0, component.tcy0);
     var transformedRegion = result.relativeRegionInLevel;
     var transformedWidth = transformedRegion.x1 - transformedRegion.x0;
@@ -2837,213 +2945,6 @@ var JpxImage = function JpxImageClosure() {
 exports.JpxImage = JpxImage;
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var simpleAjaxHelper = __webpack_require__(5);
-var mutualExclusiveTransactionHelper = __webpack_require__(6);
-
-var jpipCodingPassesNumberParser = __webpack_require__(7);
-var jpipMessageHeaderParser = __webpack_require__(8);
-
-var JpipChannel = __webpack_require__(9);
-var JpipCodestreamReconstructor = __webpack_require__(10);
-var JpipCodestreamStructure = __webpack_require__(11);
-var JpipComponentStructure = __webpack_require__(12);
-var CompositeArray = __webpack_require__(13);
-var JpipDatabinParts = __webpack_require__(14);
-var JpipDatabinsSaver = __webpack_require__(15);
-var JpipFetch = __webpack_require__(16);
-var JpipHeaderModifier = __webpack_require__(17);
-var JpipImageDataContext = __webpack_require__(18);
-var JpipLevelCalculator = __webpack_require__(19);
-var JpipMarkersParser = __webpack_require__(20);
-var JpipOffsetsCalculator = __webpack_require__(21);
-var JpipPacketsDataCollector = __webpack_require__(22);
-var JpipParamsCodestreamPart = __webpack_require__(23);
-var JpipParamsPrecinctIterator = __webpack_require__(24);
-var JpipPrecinctCodestreamPart = __webpack_require__(25);
-var JpipPrecinctsIteratorWaiter = __webpack_require__(26);
-var JpipQualityWaiter = __webpack_require__(27);
-var JpipRequestParamsModifier = __webpack_require__(28);
-var JpipRequest = __webpack_require__(29);
-var JpipSessionHelper = __webpack_require__(30);
-var JpipSession = __webpack_require__(31);
-var JpipReconnectableRequester = __webpack_require__(32);
-var JpipStructureParser = __webpack_require__(33);
-var JpipTileStructure = __webpack_require__(34);
-var JpipBitstreamReader = __webpack_require__(35);
-var JpipTagTree = __webpack_require__(36);
-var JpipCodeblockLengthParser = __webpack_require__(37);
-var JpipSubbandLengthInPacketHeaderCalculator = __webpack_require__(38);
-var JpipPacketLengthCalculator = __webpack_require__(39);
-var JpipQualityLayersCache = __webpack_require__(40);
-
-var JpipFetcher;
-
-var jpipRuntimeFactory = {
-    createChannel: function createChannel(maxRequestsWaitingForResponseInChannel, sessionHelper) {
-
-        return new JpipChannel(maxRequestsWaitingForResponseInChannel, sessionHelper, jpipRuntimeFactory);
-    },
-
-    createCodestreamReconstructor: function createCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache) {
-
-        return new JpipCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache);
-    },
-
-    createLevelCalculator: function createLevelCalculator(params) {
-        return new JpipLevelCalculator(params);
-    },
-
-    createCodestreamStructure: function createCodestreamStructure(structureParser, progressionOrder) {
-        return new JpipCodestreamStructure(structureParser, jpipRuntimeFactory, progressionOrder);
-    },
-
-    createComponentStructure: function createComponentStructure(params, tileStructure) {
-        return new JpipComponentStructure(params, tileStructure);
-    },
-
-    createCompositeArray: function createCompositeArray(offset) {
-        return new CompositeArray(offset);
-    },
-
-    createDatabinParts: function createDatabinParts(classId, inClassId) {
-        return new JpipDatabinParts(classId, inClassId, jpipRuntimeFactory);
-    },
-
-    createDatabinsSaver: function createDatabinsSaver(isJpipTilepartStream) {
-        return new JpipDatabinsSaver(isJpipTilepartStream, jpipRuntimeFactory);
-    },
-
-    createFetcher: function createFetcher(databinsSaver, options) {
-        if (!JpipFetcher) {
-            // Avoid dependency - load only on runtime
-            JpipFetcher = __webpack_require__(41);
-        }
-        return new JpipFetcher(databinsSaver, options);
-    },
-
-    createFetch: function createFetch(fetchContext, requester, progressiveness) {
-        return new JpipFetch(fetchContext, requester, progressiveness);
-    },
-
-    createHeaderModifier: function createHeaderModifier(offsetsCalculator, progressionOrder) {
-
-        return new JpipHeaderModifier(offsetsCalculator, progressionOrder);
-    },
-
-    createImageDataContext: function createImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness) {
-
-        return new JpipImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness);
-    },
-
-    createMarkersParser: function createMarkersParser(mainHeaderDatabin) {
-        return new JpipMarkersParser(mainHeaderDatabin, jpipMessageHeaderParser, jpipRuntimeFactory);
-    },
-
-    createOffsetsCalculator: function createOffsetsCalculator(mainHeaderDatabin, markersParser) {
-        return new JpipOffsetsCalculator(mainHeaderDatabin, markersParser);
-    },
-
-    createPacketsDataCollector: function createPacketsDataCollector(databinsSaver, qualityLayersCache) {
-
-        return new JpipPacketsDataCollector(databinsSaver, qualityLayersCache, jpipRuntimeFactory);
-    },
-
-    createParamsCodestreamPart: function createParamsCodestreamPart(codestreamPartParams, codestreamStructure) {
-
-        return new JpipParamsCodestreamPart(codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
-    },
-
-    createParamsPrecinctIterator: function createParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
-
-        return new JpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart);
-    },
-
-    createPrecinctCodestreamPart: function createPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY) {
-
-        return new JpipPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY);
-    },
-
-    createPrecinctsIteratorWaiter: function createPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback) {
-
-        return new JpipPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback, jpipRuntimeFactory);
-    },
-
-    createQualityWaiter: function createQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct) {
-
-        return new JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, jpipRuntimeFactory);
-    },
-
-    createRequestParamsModifier: function createRequestParamsModifier(codestreamStructure) {
-
-        return new JpipRequestParamsModifier(codestreamStructure);
-    },
-
-    createRequest: function createRequest(sessionHelper, channel, requestUrl, callback, failureCallback) {
-
-        return new JpipRequest(sessionHelper, jpipMessageHeaderParser, channel, requestUrl, callback, failureCallback);
-    },
-
-    createSessionHelper: function createSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver) {
-
-        return new JpipSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver, simpleAjaxHelper);
-    },
-
-    createSession: function createSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver) {
-
-        return new JpipSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver, setInterval, clearInterval, jpipRuntimeFactory);
-    },
-
-    createReconnectableRequester: function createReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver) {
-
-        return new JpipReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver, jpipRuntimeFactory);
-    },
-
-    createStructureParser: function createStructureParser(databinsSaver, markersParser, offsetsCalculator) {
-        return new JpipStructureParser(databinsSaver, markersParser, jpipMessageHeaderParser, offsetsCalculator);
-    },
-
-    createTileStructure: function createTileStructure(sizeParams, codestreamStructure, progressionOrder) {
-        return new JpipTileStructure(sizeParams, codestreamStructure, jpipRuntimeFactory, progressionOrder);
-    },
-
-    createBitstreamReader: function createBitstreamReader(databin) {
-        return new JpipBitstreamReader(databin, mutualExclusiveTransactionHelper);
-    },
-
-    createTagTree: function createTagTree(bitstreamReader, width, height) {
-        return new JpipTagTree(bitstreamReader, width, height, mutualExclusiveTransactionHelper);
-    },
-
-    createCodeblockLengthParser: function createCodeblockLengthParser(bitstreamReader, transactionHelper) {
-
-        return new JpipCodeblockLengthParser(bitstreamReader, mutualExclusiveTransactionHelper);
-    },
-
-    createSubbandLengthInPacketHeaderCalculator: function createSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband) {
-
-        return new JpipSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband, jpipCodingPassesNumberParser, mutualExclusiveTransactionHelper, jpipRuntimeFactory);
-    },
-
-    createPacketLengthCalculator: function createPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct) {
-
-        return new JpipPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct, jpipRuntimeFactory);
-    },
-
-    createQualityLayersCache: function createQualityLayersCache(codestreamStructure) {
-
-        return new JpipQualityLayersCache(codestreamStructure, jpipRuntimeFactory);
-    }
-};
-
-module.exports = jpipRuntimeFactory;
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3057,10 +2958,9 @@ module.exports.j2kExceptions = jGlobals.j2kExceptions;
 module.exports.jpipExceptions = jGlobals.jpipExceptions;
 module.exports.Internals = {
     PdfjsJpxDecoderLegacy: __webpack_require__(42),
-    PdfjsJpxDecoderDebug: __webpack_require__(46),
-    PdfjsJpxPixelsDecoder: __webpack_require__(47),
-    PdfjsJpxCoefficientsDecoder: __webpack_require__(48),
-    jpipRuntimeFactory: __webpack_require__(2),
+    PdfjsJpxPixelsDecoder: __webpack_require__(46),
+    PdfjsJpxCoefficientsDecoder: __webpack_require__(47),
+    jpipRuntimeFactory: __webpack_require__(1),
     jGlobals: jGlobals
 };
 
@@ -3071,7 +2971,7 @@ module.exports.Internals = {
 "use strict";
 
 
-var jpipFactory = __webpack_require__(2);
+var jpipFactory = __webpack_require__(1);
 var jGlobals = __webpack_require__(0);
 
 module.exports = JpipImage;
@@ -3113,17 +3013,9 @@ function JpipImage(options) {
     var levelCalculator = null;
 
     var fetcher = jpipFactory.createFetcher(databinsSaver, options); // TODO: WorkerProxyFetcher
-    //function GridImageBase() {
-    //    this._fetcher = fetcher;
-    //    this._imageParams = null;
-    //    this._waitingFetches = {};
-    //    this._levelCalculator = null;
-    //}
 
     this.opened = function opened(imageDecoder) {
         imageParams = imageDecoder.getImageParams();
-        //imageDecoder.onFetcherEvent('data', this._onDataFetched.bind(this));
-        //imageDecoder.onFetcherEvent('tile-terminated', this._onTileTerminated.bind(this));
     };
 
     this.getLevelCalculator = getLevelCalculator;
@@ -3139,6 +3031,7 @@ function JpipImage(options) {
     this.getWorkerTypeOptions = function getWorkerTypeOptions(workerType) {
         switch (workerType) {
             case WORKER_TYPE_PIXELS:
+                // TODO: Transferables
                 //var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
                 //var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
                 return {
@@ -3163,9 +3056,6 @@ function JpipImage(options) {
     this.getKeyAsString = function getKeyAsString(key) {
         if (key.taskType === 'COEFFS') {
             return 'C:' + key.inClassIndex;
-            //return 'C:t' + key.tileIndex + 'c' + key.component +
-            //       'r' + key.resolutionLevel + 'px' + key.precinctX +
-            //       'py' + key.precinctY + 'q' + key.maxQuality;
         } else {
             var params = paramsModifier.modify( /*codestreamTaskParams=*/key);
             var partParams = params.codestreamPartParams;
@@ -3198,11 +3088,13 @@ function JpipImage(options) {
             }
         });
 
-        task.on('schedulerAborted', taskEnded);
+        task.on('custom', function (customEventName) {
+            if (customEventName === 'aborting') {
+                taskEnded();
+            }
+        });
 
         qualityWaiter = jpipFactory.createQualityWaiter(codestreamPart, params.progressiveness, task.key.maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinctCallback);
-
-        qualityWaiter._debugType = 'pixel-task';
 
         qualityWaiter.register();
 
@@ -3261,12 +3153,16 @@ function JpipImage(options) {
     function startCoefficientsTask(task) {
         var codestreamPart = jpipFactory.createPrecinctCodestreamPart(getLevelCalculator(), codestreamStructure.getTileStructure(task.key.tileIndex), task.key.tileIndex, task.key.component, task.key.resolutionLevel, task.key.precinctX, task.key.precinctY);
 
-        task.on('schedulerAborted', taskAborted);
+        task.on('custom', function (customEventName) {
+            if (customEventName === 'aborting') {
+                taskAborted();
+            }
+        });
 
         var context = jpipFactory.createImageDataContext(jpipObjectsForRequestContext, codestreamPart, task.key.maxQuality, task.key.progressiveness); // TODO: Eliminate progressiveness from API
 
         var hadData = false;
-        task._wrapped.jpipHasData = false; // TODO: Remove before commit
+        var isTerminated = false;
 
         context.on('data', onData);
         if (context.hasData()) {
@@ -3281,7 +3177,6 @@ function JpipImage(options) {
             // TODO: First quality layer
 
             hadData = true;
-            task._wrapped.jpipHasData = true; // TODO: Remove before commit
             var data = context.getFetchedData();
             task.dataReady(data, WORKER_TYPE_COEFFS);
 
@@ -3294,11 +3189,14 @@ function JpipImage(options) {
         }
 
         function taskAborted() {
-            task._wrapped.jpipIsAborted = true; // TODO: Remove before commit
-            taskEnded();
+            if (!isTerminated) {
+                // TODO: Not sure why it's needed
+                taskEnded();
+            }
         }
 
         function taskEnded() {
+            isTerminated = true;
             task.terminate();
             context.dispose();
         }
@@ -3312,8 +3210,7 @@ function JpipImage(options) {
         var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
         var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
         return {
-            //ctorName: 'webjpip.Internals.PdfjsJpxDecoderLegacy',
-            ctorName: 'webjpip.Internals.PdfjsJpxDecoderDebug',
+            ctorName: 'webjpip.Internals.PdfjsJpxDecoderLegacy',
             ctorArgs: [],
             scriptsToImport: [getScriptName(new Error())],
             transferables: [codestreamTransferable, codeblockTransferable],
@@ -6049,8 +5946,6 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
     this._precinctDataArrivedBound = this._precinctDataArrived.bind(this);
 
     this._listener = this._jpipFactory.createQualityWaiter(this._codestreamPart, progressiveness, this._maxQuality, this._qualityLayerReachedCallback.bind(this), this._codestreamStructure, this._databinsSaver, this._startTrackPrecinct.bind(this));
-
-    this._listener._debugType = 'image-data-context';
 
     this._listener.register();
 }
@@ -10391,9 +10286,11 @@ module.exports = function JpipQualityLayersCache(codestreamStructure, jpipFactor
 
 
 var jGlobals = __webpack_require__(0);
-var jpipFactory = __webpack_require__(2);
+var jpipFactory = __webpack_require__(1);
 
 module.exports = JpipFetcher;
+
+/* global console: false */
 
 function JpipFetcher(databinsSaver, options) {
     options = options || {};
@@ -10513,6 +10410,15 @@ function JpipFetcher(databinsSaver, options) {
         };
 
         if (!resolveOpen || !status.isReady && !status.exception) {
+            if (status.exception) {
+                try {
+                    // TODO: Nicer way to propagate errors from here is required
+                    console.error('JpipFetcher.requesterStatusCallback got ' + 'unexpected exception: ' + status.exception);
+                } catch (e) {
+                    // Old IE not support console.log
+                }
+            }
+
             return;
         }
 
@@ -10550,7 +10456,7 @@ function JpipFetcher(databinsSaver, options) {
 "use strict";
 
 
-var _jpx = __webpack_require__(1);
+var _jpx = __webpack_require__(2);
 
 module.exports = PdfjsJpxDecoderLegacy;
 
@@ -12663,155 +12569,7 @@ exports.ArithmeticDecoder = ArithmeticDecoder;
 "use strict";
 
 
-var _jpx = __webpack_require__(1);
-
-module.exports = PdfjsJpxDecoderLegacy;
-
-var jGlobals = __webpack_require__(0);
-
-function PdfjsJpxDecoderLegacy() {
-    this._image = new _jpx.JpxImage();
-}
-
-PdfjsJpxDecoderLegacy.prototype.start = function start(data) {
-    var self = this;
-    return new Promise(function (resolve, reject) {
-        var regionToParse = {
-            left: data.offsetInRegion.offsetX,
-            top: data.offsetInRegion.offsetY,
-            right: data.offsetInRegion.offsetX + data.offsetInRegion.width,
-            bottom: data.offsetInRegion.offsetY + data.offsetInRegion.height
-        };
-
-        var currentContext = self._image.parseCodestream(data.headersCodestream, 0, data.headersCodestream.length, { isOnlyParseHeaders: true });
-
-        if (data.codeblocksData) {
-            self._image.addPacketsData(currentContext, data.codeblocksData);
-        }
-        if (data.precinctCoefficients) {
-            for (var i = 0; i < data.precinctCoefficients.length; ++i) {
-                var precinct = data.precinctCoefficients[i];
-                self._image.setPrecinctCoefficients(currentContext, precinct.coefficients, precinct.tileIndex, precinct.c, precinct.r, precinct.p);
-            }
-        }
-
-        self._image.decode(currentContext, { regionToParse: regionToParse });
-
-        var pixels = self._copyTilesPixelsToOnePixelsArray(self._image.tiles, regionToParse, self._image.componentsCount);
-        resolve(pixels);
-    });
-};
-
-PdfjsJpxDecoderLegacy.prototype._copyTilesPixelsToOnePixelsArray = function copyTilesPixelsToOnePixelsArray(tiles, resultRegion, componentsCount) {
-
-    var firstTile = tiles[0];
-    var width = resultRegion.right - resultRegion.left;
-    var height = resultRegion.bottom - resultRegion.top;
-
-    //if (firstTile.left === resultRegion.left &&
-    //    firstTile.top === resultRegion.top &&
-    //    firstTile.width === width &&
-    //    firstTile.height === height &&
-    //    componentsCount === 4) {
-    //    
-    //    return firstTile;
-    //}
-
-    var result = new ImageData(width, height);
-
-    var bytesPerPixel = 4;
-    var rgbaImageStride = width * bytesPerPixel;
-
-    var tileIndex = 0;
-
-    //for (var x = 0; x < numTilesX; ++x) {
-
-    for (var i = 0; i < tiles.length; ++i) {
-        var tileRight = tiles[i].left + tiles[i].width;
-        var tileBottom = tiles[i].top + tiles[i].height;
-
-        var intersectionLeft = Math.max(resultRegion.left, tiles[i].left);
-        var intersectionTop = Math.max(resultRegion.top, tiles[i].top);
-        var intersectionRight = Math.min(resultRegion.right, tileRight);
-        var intersectionBottom = Math.min(resultRegion.bottom, tileBottom);
-
-        var intersectionWidth = intersectionRight - intersectionLeft;
-        var intersectionHeight = intersectionBottom - intersectionTop;
-
-        if (intersectionLeft !== tiles[i].left || intersectionTop !== tiles[i].top || intersectionWidth !== tiles[i].width || intersectionHeight !== tiles[i].height) {
-
-            throw 'Unsupported tiles to copy';
-        }
-
-        var tileOffsetXPixels = intersectionLeft - resultRegion.left;
-        var tileOffsetYPixels = intersectionTop - resultRegion.top;
-
-        var tileOffsetBytes = tileOffsetXPixels * bytesPerPixel + tileOffsetYPixels * rgbaImageStride;
-
-        this._copyTile(result.data, tiles[i], tileOffsetBytes, rgbaImageStride, componentsCount);
-    }
-
-    return result;
-};
-
-PdfjsJpxDecoderLegacy.prototype._copyTile = function copyTile(targetImage, tile, targetImageStartOffset, targetImageStride, componentsCount) {
-
-    var rOffset = 0;
-    var gOffset = 1;
-    var bOffset = 2;
-    var pixelsOffset = 1;
-
-    var pixels = tile.pixels || tile.items;
-
-    if (componentsCount === undefined) {
-        componentsCount = pixels.length / (tile.width * tile.height);
-    }
-
-    switch (componentsCount) {
-        case 1:
-            gOffset = 0;
-            bOffset = 0;
-            break;
-
-        case 3:
-            pixelsOffset = 3;
-            break;
-
-        case 4:
-            pixelsOffset = 4;
-            break;
-
-        default:
-            throw 'Unsupported components count ' + componentsCount;
-    }
-
-    var targetImageIndex = targetImageStartOffset;
-    var pixel = 0;
-    for (var y = 0; y < tile.height; ++y) {
-        var targetImageStartLine = targetImageIndex;
-
-        for (var x = 0; x < tile.width; ++x) {
-            targetImage[targetImageIndex + 0] = pixels[pixel + rOffset];
-            targetImage[targetImageIndex + 1] = pixels[pixel + gOffset];
-            targetImage[targetImageIndex + 2] = pixels[pixel + bOffset];
-            targetImage[targetImageIndex + 3] = 255;
-
-            pixel += pixelsOffset;
-            targetImageIndex += 4;
-        }
-
-        targetImageIndex = targetImageStartLine + targetImageStride;
-    }
-};
-
-/***/ }),
-/* 47 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var _jpx = __webpack_require__(1);
+var _jpx = __webpack_require__(2);
 
 module.exports = PdfjsJpxPixelsDecoder;
 
@@ -12961,13 +12719,13 @@ PdfjsJpxPixelsDecoder.prototype._copyTile = function copyTile(targetImage, tile,
 };
 
 /***/ }),
-/* 48 */
+/* 47 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _jpx = __webpack_require__(1);
+var _jpx = __webpack_require__(2);
 
 module.exports = PdfjsJpxCoefficientsDecoder;
 

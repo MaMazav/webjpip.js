@@ -5,6 +5,8 @@ var jpipFactory = require('jpip-runtime-factory.js');
 
 module.exports = JpipFetcher;
 
+/* global console: false */
+
 function JpipFetcher(databinsSaver, options) {
     options = options || {};
 
@@ -131,6 +133,16 @@ function JpipFetcher(databinsSaver, options) {
             };
         
         if (!resolveOpen || (!status.isReady && !status.exception)) {
+            if (status.exception) {
+                try {
+                    // TODO: Nicer way to propagate errors from here is required
+                    console.error('JpipFetcher.requesterStatusCallback got ' +
+                        'unexpected exception: ' + status.exception);
+                } catch(e) {
+                    // Old IE not support console.log
+                }
+            }
+            
             return;
         }
         
