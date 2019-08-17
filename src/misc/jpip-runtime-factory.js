@@ -14,6 +14,7 @@ var CompositeArray                            = require('composite-array.js'    
 var JpipDatabinParts                          = require('jpip-databin-parts.js'                             );
 var JpipDatabinsSaver                         = require('jpip-databins-saver.js'                            );
 var JpipFetch                                 = require('jpip-fetch.js'                                     );
+var JpipFetcher                               = require('jpip-fetcher.js'                                   );
 var JpipHeaderModifier                        = require('jpip-header-modifier.js'                           );
 var JpipImageDataContext                      = require('jpip-image-data-context.js'                        );
 var JpipLevelCalculator                       = require('jpip-level-calculator.js'                          );
@@ -38,8 +39,6 @@ var JpipCodeblockLengthParser                 = require('jpip-codeblock-length-p
 var JpipSubbandLengthInPacketHeaderCalculator = require('jpip-subband-length-in-packet-header-calculator.js');
 var JpipPacketLengthCalculator                = require('jpip-packet-length-calculator.js'                  );
 var JpipQualityLayersCache                    = require('jpip-quality-layers-cache.js'                      );
-
-var JpipFetcher;
 
 var jpipRuntimeFactory = {
     createChannel: function createChannel(
@@ -86,11 +85,7 @@ var jpipRuntimeFactory = {
     },
     
     createFetcher: function(databinsSaver, options) {
-        if (!JpipFetcher) {
-            // Avoid dependency - load only on runtime
-            JpipFetcher = require('jpip-fetcher.js');
-        }
-        return new JpipFetcher(databinsSaver, options);
+        return new JpipFetcher(databinsSaver, options, jpipRuntimeFactory);
     },
     
     createFetch: function(fetchContext, requester, progressiveness) {

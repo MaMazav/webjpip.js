@@ -238,213 +238,6 @@ module.exports.jpipExceptions.InternalErrorException.Name = 'jpipExceptions.Inte
 "use strict";
 
 
-var simpleAjaxHelper = __webpack_require__(5);
-var mutualExclusiveTransactionHelper = __webpack_require__(6);
-
-var jpipCodingPassesNumberParser = __webpack_require__(7);
-var jpipMessageHeaderParser = __webpack_require__(8);
-
-var JpipChannel = __webpack_require__(9);
-var JpipCodestreamReconstructor = __webpack_require__(10);
-var JpipCodestreamStructure = __webpack_require__(11);
-var JpipComponentStructure = __webpack_require__(12);
-var CompositeArray = __webpack_require__(13);
-var JpipDatabinParts = __webpack_require__(14);
-var JpipDatabinsSaver = __webpack_require__(15);
-var JpipFetch = __webpack_require__(16);
-var JpipHeaderModifier = __webpack_require__(17);
-var JpipImageDataContext = __webpack_require__(18);
-var JpipLevelCalculator = __webpack_require__(19);
-var JpipMarkersParser = __webpack_require__(20);
-var JpipOffsetsCalculator = __webpack_require__(21);
-var JpipPacketsDataCollector = __webpack_require__(22);
-var JpipParamsCodestreamPart = __webpack_require__(23);
-var JpipParamsPrecinctIterator = __webpack_require__(24);
-var JpipPrecinctCodestreamPart = __webpack_require__(25);
-var JpipPrecinctsIteratorWaiter = __webpack_require__(26);
-var JpipQualityWaiter = __webpack_require__(27);
-var JpipRequestParamsModifier = __webpack_require__(28);
-var JpipRequest = __webpack_require__(29);
-var JpipSessionHelper = __webpack_require__(30);
-var JpipSession = __webpack_require__(31);
-var JpipReconnectableRequester = __webpack_require__(32);
-var JpipStructureParser = __webpack_require__(33);
-var JpipTileStructure = __webpack_require__(34);
-var JpipBitstreamReader = __webpack_require__(35);
-var JpipTagTree = __webpack_require__(36);
-var JpipCodeblockLengthParser = __webpack_require__(37);
-var JpipSubbandLengthInPacketHeaderCalculator = __webpack_require__(38);
-var JpipPacketLengthCalculator = __webpack_require__(39);
-var JpipQualityLayersCache = __webpack_require__(40);
-
-var JpipFetcher;
-
-var jpipRuntimeFactory = {
-    createChannel: function createChannel(maxRequestsWaitingForResponseInChannel, sessionHelper) {
-
-        return new JpipChannel(maxRequestsWaitingForResponseInChannel, sessionHelper, jpipRuntimeFactory);
-    },
-
-    createCodestreamReconstructor: function createCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache) {
-
-        return new JpipCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache);
-    },
-
-    createLevelCalculator: function createLevelCalculator(params) {
-        return new JpipLevelCalculator(params);
-    },
-
-    createCodestreamStructure: function createCodestreamStructure(structureParser, progressionOrder) {
-        return new JpipCodestreamStructure(structureParser, jpipRuntimeFactory, progressionOrder);
-    },
-
-    createComponentStructure: function createComponentStructure(params, tileStructure) {
-        return new JpipComponentStructure(params, tileStructure);
-    },
-
-    createCompositeArray: function createCompositeArray(offset) {
-        return new CompositeArray(offset);
-    },
-
-    createDatabinParts: function createDatabinParts(classId, inClassId) {
-        return new JpipDatabinParts(classId, inClassId, jpipRuntimeFactory);
-    },
-
-    createDatabinsSaver: function createDatabinsSaver(isJpipTilepartStream) {
-        return new JpipDatabinsSaver(isJpipTilepartStream, jpipRuntimeFactory);
-    },
-
-    createFetcher: function createFetcher(databinsSaver, options) {
-        if (!JpipFetcher) {
-            // Avoid dependency - load only on runtime
-            JpipFetcher = __webpack_require__(41);
-        }
-        return new JpipFetcher(databinsSaver, options);
-    },
-
-    createFetch: function createFetch(fetchContext, requester, progressiveness) {
-        return new JpipFetch(fetchContext, requester, progressiveness);
-    },
-
-    createHeaderModifier: function createHeaderModifier(offsetsCalculator, progressionOrder) {
-
-        return new JpipHeaderModifier(offsetsCalculator, progressionOrder);
-    },
-
-    createImageDataContext: function createImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness) {
-
-        return new JpipImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness);
-    },
-
-    createMarkersParser: function createMarkersParser(mainHeaderDatabin) {
-        return new JpipMarkersParser(mainHeaderDatabin, jpipMessageHeaderParser, jpipRuntimeFactory);
-    },
-
-    createOffsetsCalculator: function createOffsetsCalculator(mainHeaderDatabin, markersParser) {
-        return new JpipOffsetsCalculator(mainHeaderDatabin, markersParser);
-    },
-
-    createPacketsDataCollector: function createPacketsDataCollector(databinsSaver, qualityLayersCache) {
-
-        return new JpipPacketsDataCollector(databinsSaver, qualityLayersCache, jpipRuntimeFactory);
-    },
-
-    createParamsCodestreamPart: function createParamsCodestreamPart(codestreamPartParams, codestreamStructure) {
-
-        return new JpipParamsCodestreamPart(codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
-    },
-
-    createParamsPrecinctIterator: function createParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
-
-        return new JpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart);
-    },
-
-    createPrecinctCodestreamPart: function createPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY) {
-
-        return new JpipPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY);
-    },
-
-    createPrecinctsIteratorWaiter: function createPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback) {
-
-        return new JpipPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback, jpipRuntimeFactory);
-    },
-
-    createQualityWaiter: function createQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct) {
-
-        return new JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, jpipRuntimeFactory);
-    },
-
-    createRequestParamsModifier: function createRequestParamsModifier(codestreamStructure) {
-
-        return new JpipRequestParamsModifier(codestreamStructure);
-    },
-
-    createRequest: function createRequest(sessionHelper, channel, requestUrl, callback, failureCallback) {
-
-        return new JpipRequest(sessionHelper, jpipMessageHeaderParser, channel, requestUrl, callback, failureCallback);
-    },
-
-    createSessionHelper: function createSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver) {
-
-        return new JpipSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver, simpleAjaxHelper);
-    },
-
-    createSession: function createSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver) {
-
-        return new JpipSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver, setInterval, clearInterval, jpipRuntimeFactory);
-    },
-
-    createReconnectableRequester: function createReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver) {
-
-        return new JpipReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver, jpipRuntimeFactory);
-    },
-
-    createStructureParser: function createStructureParser(databinsSaver, markersParser, offsetsCalculator) {
-        return new JpipStructureParser(databinsSaver, markersParser, jpipMessageHeaderParser, offsetsCalculator);
-    },
-
-    createTileStructure: function createTileStructure(sizeParams, codestreamStructure, progressionOrder) {
-        return new JpipTileStructure(sizeParams, codestreamStructure, jpipRuntimeFactory, progressionOrder);
-    },
-
-    createBitstreamReader: function createBitstreamReader(databin) {
-        return new JpipBitstreamReader(databin, mutualExclusiveTransactionHelper);
-    },
-
-    createTagTree: function createTagTree(bitstreamReader, width, height) {
-        return new JpipTagTree(bitstreamReader, width, height, mutualExclusiveTransactionHelper);
-    },
-
-    createCodeblockLengthParser: function createCodeblockLengthParser(bitstreamReader, transactionHelper) {
-
-        return new JpipCodeblockLengthParser(bitstreamReader, mutualExclusiveTransactionHelper);
-    },
-
-    createSubbandLengthInPacketHeaderCalculator: function createSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband) {
-
-        return new JpipSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband, jpipCodingPassesNumberParser, mutualExclusiveTransactionHelper, jpipRuntimeFactory);
-    },
-
-    createPacketLengthCalculator: function createPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct) {
-
-        return new JpipPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct, jpipRuntimeFactory);
-    },
-
-    createQualityLayersCache: function createQualityLayersCache(codestreamStructure) {
-
-        return new JpipQualityLayersCache(codestreamStructure, jpipRuntimeFactory);
-    }
-};
-
-module.exports = jpipRuntimeFactory;
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
@@ -2945,6 +2738,208 @@ var JpxImage = function JpxImageClosure() {
 exports.JpxImage = JpxImage;
 
 /***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var simpleAjaxHelper = __webpack_require__(5);
+var mutualExclusiveTransactionHelper = __webpack_require__(6);
+
+var jpipCodingPassesNumberParser = __webpack_require__(7);
+var jpipMessageHeaderParser = __webpack_require__(8);
+
+var JpipChannel = __webpack_require__(9);
+var JpipCodestreamReconstructor = __webpack_require__(10);
+var JpipCodestreamStructure = __webpack_require__(11);
+var JpipComponentStructure = __webpack_require__(12);
+var CompositeArray = __webpack_require__(13);
+var JpipDatabinParts = __webpack_require__(14);
+var JpipDatabinsSaver = __webpack_require__(15);
+var JpipFetch = __webpack_require__(16);
+var JpipFetcher = __webpack_require__(17);
+var JpipHeaderModifier = __webpack_require__(18);
+var JpipImageDataContext = __webpack_require__(19);
+var JpipLevelCalculator = __webpack_require__(20);
+var JpipMarkersParser = __webpack_require__(21);
+var JpipOffsetsCalculator = __webpack_require__(22);
+var JpipPacketsDataCollector = __webpack_require__(23);
+var JpipParamsCodestreamPart = __webpack_require__(24);
+var JpipParamsPrecinctIterator = __webpack_require__(25);
+var JpipPrecinctCodestreamPart = __webpack_require__(26);
+var JpipPrecinctsIteratorWaiter = __webpack_require__(27);
+var JpipQualityWaiter = __webpack_require__(28);
+var JpipRequestParamsModifier = __webpack_require__(29);
+var JpipRequest = __webpack_require__(30);
+var JpipSessionHelper = __webpack_require__(31);
+var JpipSession = __webpack_require__(32);
+var JpipReconnectableRequester = __webpack_require__(33);
+var JpipStructureParser = __webpack_require__(34);
+var JpipTileStructure = __webpack_require__(35);
+var JpipBitstreamReader = __webpack_require__(36);
+var JpipTagTree = __webpack_require__(37);
+var JpipCodeblockLengthParser = __webpack_require__(38);
+var JpipSubbandLengthInPacketHeaderCalculator = __webpack_require__(39);
+var JpipPacketLengthCalculator = __webpack_require__(40);
+var JpipQualityLayersCache = __webpack_require__(41);
+
+var jpipRuntimeFactory = {
+    createChannel: function createChannel(maxRequestsWaitingForResponseInChannel, sessionHelper) {
+
+        return new JpipChannel(maxRequestsWaitingForResponseInChannel, sessionHelper, jpipRuntimeFactory);
+    },
+
+    createCodestreamReconstructor: function createCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache) {
+
+        return new JpipCodestreamReconstructor(databinsSaver, headerModifier, qualityLayersCache);
+    },
+
+    createLevelCalculator: function createLevelCalculator(params) {
+        return new JpipLevelCalculator(params);
+    },
+
+    createCodestreamStructure: function createCodestreamStructure(structureParser, progressionOrder) {
+        return new JpipCodestreamStructure(structureParser, jpipRuntimeFactory, progressionOrder);
+    },
+
+    createComponentStructure: function createComponentStructure(params, tileStructure) {
+        return new JpipComponentStructure(params, tileStructure);
+    },
+
+    createCompositeArray: function createCompositeArray(offset) {
+        return new CompositeArray(offset);
+    },
+
+    createDatabinParts: function createDatabinParts(classId, inClassId) {
+        return new JpipDatabinParts(classId, inClassId, jpipRuntimeFactory);
+    },
+
+    createDatabinsSaver: function createDatabinsSaver(isJpipTilepartStream) {
+        return new JpipDatabinsSaver(isJpipTilepartStream, jpipRuntimeFactory);
+    },
+
+    createFetcher: function createFetcher(databinsSaver, options) {
+        return new JpipFetcher(databinsSaver, options, jpipRuntimeFactory);
+    },
+
+    createFetch: function createFetch(fetchContext, requester, progressiveness) {
+        return new JpipFetch(fetchContext, requester, progressiveness);
+    },
+
+    createHeaderModifier: function createHeaderModifier(offsetsCalculator, progressionOrder) {
+
+        return new JpipHeaderModifier(offsetsCalculator, progressionOrder);
+    },
+
+    createImageDataContext: function createImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness) {
+
+        return new JpipImageDataContext(jpipObjects, codestreamPartParams, maxQuality, progressiveness);
+    },
+
+    createMarkersParser: function createMarkersParser(mainHeaderDatabin) {
+        return new JpipMarkersParser(mainHeaderDatabin, jpipMessageHeaderParser, jpipRuntimeFactory);
+    },
+
+    createOffsetsCalculator: function createOffsetsCalculator(mainHeaderDatabin, markersParser) {
+        return new JpipOffsetsCalculator(mainHeaderDatabin, markersParser);
+    },
+
+    createPacketsDataCollector: function createPacketsDataCollector(databinsSaver, qualityLayersCache) {
+
+        return new JpipPacketsDataCollector(databinsSaver, qualityLayersCache, jpipRuntimeFactory);
+    },
+
+    createParamsCodestreamPart: function createParamsCodestreamPart(codestreamPartParams, codestreamStructure) {
+
+        return new JpipParamsCodestreamPart(codestreamPartParams, codestreamStructure, jpipRuntimeFactory);
+    },
+
+    createParamsPrecinctIterator: function createParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart) {
+
+        return new JpipParamsPrecinctIterator(codestreamStructure, idx, codestreamPartParams, isIteratePrecinctsNotInCodestreamPart);
+    },
+
+    createPrecinctCodestreamPart: function createPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY) {
+
+        return new JpipPrecinctCodestreamPart(sizesCalculator, tileStructure, tileIndex, component, level, precinctX, precinctY);
+    },
+
+    createPrecinctsIteratorWaiter: function createPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback) {
+
+        return new JpipPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback, jpipRuntimeFactory);
+    },
+
+    createQualityWaiter: function createQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct) {
+
+        return new JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, jpipRuntimeFactory);
+    },
+
+    createRequestParamsModifier: function createRequestParamsModifier(codestreamStructure) {
+
+        return new JpipRequestParamsModifier(codestreamStructure);
+    },
+
+    createRequest: function createRequest(sessionHelper, channel, requestUrl, callback, failureCallback) {
+
+        return new JpipRequest(sessionHelper, jpipMessageHeaderParser, channel, requestUrl, callback, failureCallback);
+    },
+
+    createSessionHelper: function createSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver) {
+
+        return new JpipSessionHelper(dataRequestUrl, knownTargetId, codestreamStructure, databinsSaver, simpleAjaxHelper);
+    },
+
+    createSession: function createSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver) {
+
+        return new JpipSession(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, targetId, codestreamStructure, databinsSaver, setInterval, clearInterval, jpipRuntimeFactory);
+    },
+
+    createReconnectableRequester: function createReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver) {
+
+        return new JpipReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver, jpipRuntimeFactory);
+    },
+
+    createStructureParser: function createStructureParser(databinsSaver, markersParser, offsetsCalculator) {
+        return new JpipStructureParser(databinsSaver, markersParser, jpipMessageHeaderParser, offsetsCalculator);
+    },
+
+    createTileStructure: function createTileStructure(sizeParams, codestreamStructure, progressionOrder) {
+        return new JpipTileStructure(sizeParams, codestreamStructure, jpipRuntimeFactory, progressionOrder);
+    },
+
+    createBitstreamReader: function createBitstreamReader(databin) {
+        return new JpipBitstreamReader(databin, mutualExclusiveTransactionHelper);
+    },
+
+    createTagTree: function createTagTree(bitstreamReader, width, height) {
+        return new JpipTagTree(bitstreamReader, width, height, mutualExclusiveTransactionHelper);
+    },
+
+    createCodeblockLengthParser: function createCodeblockLengthParser(bitstreamReader, transactionHelper) {
+
+        return new JpipCodeblockLengthParser(bitstreamReader, mutualExclusiveTransactionHelper);
+    },
+
+    createSubbandLengthInPacketHeaderCalculator: function createSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband) {
+
+        return new JpipSubbandLengthInPacketHeaderCalculator(bitstreamReader, numCodeblocksXInSubband, numCodeblocksYInSubband, jpipCodingPassesNumberParser, mutualExclusiveTransactionHelper, jpipRuntimeFactory);
+    },
+
+    createPacketLengthCalculator: function createPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct) {
+
+        return new JpipPacketLengthCalculator(tileStructure, componentStructure, databin, startOffsetInDatabin, precinct, jpipRuntimeFactory);
+    },
+
+    createQualityLayersCache: function createQualityLayersCache(codestreamStructure) {
+
+        return new JpipQualityLayersCache(codestreamStructure, jpipRuntimeFactory);
+    }
+};
+
+module.exports = jpipRuntimeFactory;
+
+/***/ }),
 /* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2960,7 +2955,7 @@ module.exports.Internals = {
     PdfjsJpxDecoderLegacy: __webpack_require__(42),
     PdfjsJpxPixelsDecoder: __webpack_require__(46),
     PdfjsJpxCoefficientsDecoder: __webpack_require__(47),
-    jpipRuntimeFactory: __webpack_require__(1),
+    jpipRuntimeFactory: __webpack_require__(2),
     jGlobals: jGlobals
 };
 
@@ -2971,7 +2966,7 @@ module.exports.Internals = {
 "use strict";
 
 
-var jpipFactory = __webpack_require__(1);
+var jpipFactory = __webpack_require__(2);
 var jGlobals = __webpack_require__(0);
 
 module.exports = JpipImage;
@@ -3012,7 +3007,7 @@ function JpipImage(options) {
     var imageParams = null;
     var levelCalculator = null;
 
-    var fetcher = jpipFactory.createFetcher(databinsSaver, options); // TODO: WorkerProxyFetcher
+    var fetcher = jpipFactory.createFetcher(databinsSaver, options); // NOTE: Proxying fetcher to web worker might boost performance
 
     this.opened = function opened(imageDecoder) {
         imageParams = imageDecoder.getImageParams();
@@ -3031,22 +3026,21 @@ function JpipImage(options) {
     this.getWorkerTypeOptions = function getWorkerTypeOptions(workerType) {
         switch (workerType) {
             case WORKER_TYPE_PIXELS:
-                // TODO: Transferables
-                //var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
-                //var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
                 return {
                     ctorName: 'webjpip.Internals.PdfjsJpxPixelsDecoder',
                     ctorArgs: [],
                     scriptsToImport: [getScriptName(new Error())],
-                    //transferables: [codestreamTransferable, codeblockTransferable],
-                    pathToTransferablesInPromiseResult: [[]]
+                    pathToTransferablesInPromiseResult: [[0, 'data', 'buffer']]
                 };
             case WORKER_TYPE_COEFFS:
+                var codestreamTransferable = [0, 'headersCodestream', 'buffer'];
+                var codeblockTransferable = [0, 'codeblocksData', 'data', 'buffer'];
                 return {
                     ctorName: 'webjpip.Internals.PdfjsJpxCoefficientsDecoder',
                     ctorArgs: [],
                     scriptsToImport: [getScriptName(new Error())],
-                    pathToTransferablesInPromiseResult: [[]]
+                    transferables: [codestreamTransferable, codeblockTransferable],
+                    pathToTransferablesInPromiseResult: [[0, 'coefficients', 'buffer']]
                 };
             default:
                 throw 'webjpip error: Unexpected worker type in ' + 'getWorkerTypeOptions ' + workerType;
@@ -3076,14 +3070,30 @@ function JpipImage(options) {
         var codestreamPart = jpipFactory.createParamsCodestreamPart(params.codestreamPartParams, codestreamStructure);
 
         var qualityWaiter;
+        var dependencies = 0;
+        var dependencyIndexByInClassIndex = [];
+        var minQualityData = [];
+        var minQualityDataCount = 0;
+        var isProcessedMinQuality = false;
 
         task.on('dependencyTaskData', function (data, dependencyKey) {
+            var index = dependencyIndexByInClassIndex[dependencyKey.inClassIndex];
+            if (!minQualityData[index]) {
+                if (data.minQuality !== params.progressiveness[0].minNumQualityLayers) {
+                    throw 'jpip error: Unexpected quality as min quality data';
+                }
+
+                minQualityData[index] = data;
+                ++minQualityDataCount;
+            }
+
             qualityWaiter.precinctQualityLayerReached(dependencyKey.inClassIndex, data.minQuality);
         });
 
         var isEnded = false;
         task.on('statusUpdated', function (status) {
             if (!isEnded && !status.isWaitingForWorkerResult && status.terminatedDependsTasks === status.dependsTasks) {
+
                 throw 'jpip error: Unexpected unended task without pending ' + 'depend tasks';
             }
         });
@@ -3099,6 +3109,8 @@ function JpipImage(options) {
         qualityWaiter.register();
 
         function startTrackPrecinctCallback(precinctDatabin, qualityInTile, precinctIterator, inClassIndex, tileStructure) {
+
+            dependencyIndexByInClassIndex[inClassIndex] = dependencies++;
 
             var precinctIndex = tileStructure.precinctPositionToIndexInComponentResolution(precinctIterator);
 
@@ -3130,23 +3142,42 @@ function JpipImage(options) {
                 tilesBounds = codestreamPart.tilesBounds;
             }
 
-            task.dataReady({
-                headersCodestream: headersCodestream,
-                offsetInRegion: offsetInRegion,
-                imageTilesX: imageTilesX,
-                tilesBounds: tilesBounds,
-                precinctCoefficients: task.dependTaskResults // TODO: Ensure that dependTaskResults not changed within decoder-workers
-            }, WORKER_TYPE_PIXELS);
+            if (!isProcessedMinQuality) {
+                if (minQualityDataCount < minQualityData.length) {
+                    throw 'webjpip error: Min quality layer data missing';
+                }
+
+                isProcessedMinQuality = true;
+                task.dataReady({
+                    headersCodestream: headersCodestream,
+                    offsetInRegion: offsetInRegion,
+                    imageTilesX: imageTilesX,
+                    tilesBounds: tilesBounds,
+                    precinctCoefficients: minQualityData
+                }, WORKER_TYPE_PIXELS, /*canSkip=*/false);
+            }
+
+            if (qualityWaiter.getProgressiveStagesFinished() > 1) {
+                task.dataReady({
+                    headersCodestream: headersCodestream,
+                    offsetInRegion: offsetInRegion,
+                    imageTilesX: imageTilesX,
+                    tilesBounds: tilesBounds,
+                    precinctCoefficients: task.dependTaskResults // NOTE: dependTaskResults might be changed while work (passed by ref)
+                }, WORKER_TYPE_PIXELS, /*canSkip=*/true);
+            }
 
             if (qualityWaiter.isDone()) {
                 taskEnded();
+                task.terminate();
             }
         }
 
         function taskEnded() {
-            isEnded = true;
-            task.terminate();
-            qualityWaiter.unregister();
+            if (!isEnded) {
+                isEnded = true;
+                qualityWaiter.unregister();
+            }
         }
     }
 
@@ -3155,17 +3186,18 @@ function JpipImage(options) {
 
         task.on('custom', function (customEventName) {
             if (customEventName === 'aborting') {
-                taskAborted();
+                taskEnded();
             }
         });
 
         var context = jpipFactory.createImageDataContext(jpipObjectsForRequestContext, codestreamPart, task.key.maxQuality, task.key.progressiveness); // TODO: Eliminate progressiveness from API
 
         var hadData = false;
+        var hadMinQuality = false;
         var isTerminated = false;
 
         context.on('data', onData);
-        if (context.hasData()) {
+        if (context.getProgressiveStagesFinished() > 0) {
             onData(context);
         }
 
@@ -3174,34 +3206,38 @@ function JpipImage(options) {
                 throw 'webjpip error: Unexpected context in data event';
             }
 
-            // TODO: First quality layer
-
             hadData = true;
-            var data = context.getFetchedData();
-            task.dataReady(data, WORKER_TYPE_COEFFS);
+
+            var stage = context.getProgressiveStagesFinished();
+            if (!hadMinQuality) {
+                hadMinQuality = true;
+                var minQualityData = context.getFetchedData(task.key.progressiveness[0].minNumQualityLayers);
+                task.dataReady(minQualityData, WORKER_TYPE_COEFFS, /*canSkip=*/false);
+            }
+
+            if (stage > 1) {
+                var data = context.getFetchedData();
+                task.dataReady(data, WORKER_TYPE_COEFFS, /*canSkip=*/true);
+            }
 
             if (context.isDone()) {
                 if (!hadData) {
                     throw 'webjpip error: Coefficients task without data';
                 }
                 taskEnded();
-            }
-        }
-
-        function taskAborted() {
-            if (!isTerminated) {
-                // TODO: Not sure why it's needed
-                taskEnded();
+                task.terminate();
             }
         }
 
         function taskEnded() {
-            isTerminated = true;
-            task.terminate();
-            context.dispose();
+            if (!isTerminated) {
+                isTerminated = true;
+                context.dispose();
+            }
         }
     }
 
+    // TODO: Remove
     if (!JpipImage.useLegacy) {
         return;
     }
@@ -3240,10 +3276,9 @@ function JpipImage(options) {
                 throw 'webjpip error: Unexpected context in data event';
             }
 
-            // TODO: First quality layer
             var data = context.getFetchedData();
             data.offsetInRegion = offsetInRegion;
-            task.dataReady(data);
+            task.dataReady(data, /*canSkip=*/true);
 
             if (context.isDone()) {
                 task.terminate();
@@ -5776,6 +5811,175 @@ function JpipFetch(fetchContext, requester, progressiveness) {
 
 var jGlobals = __webpack_require__(0);
 
+module.exports = JpipFetcher;
+
+/* global console: false */
+
+function JpipFetcher(databinsSaver, options, jpipFactory) {
+    options = options || {};
+
+    var isOpenCalled = false;
+    var resolveOpen = null;
+    var rejectOpen = null;
+    var progressionOrder = 'RPCL';
+
+    var maxChannelsInSession = options.maxChannelsInSession || 1;
+    var maxRequestsWaitingForResponseInChannel = options.maxRequestsWaitingForResponseInChannel || 1;
+
+    var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
+
+    var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
+    var offsetsCalculator = jpipFactory.createOffsetsCalculator(mainHeaderDatabin, markersParser);
+    var structureParser = jpipFactory.createStructureParser(databinsSaver, markersParser, offsetsCalculator);
+    var codestreamStructure = jpipFactory.createCodestreamStructure(structureParser, progressionOrder);
+
+    var requester = jpipFactory.createReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver);
+
+    var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
+
+    requester.setStatusCallback(requesterStatusCallback);
+
+    this.open = function open(baseUrl) {
+        if (isOpenCalled) {
+            throw 'webJpip error: Cannot call JpipFetcher.open() twice';
+        }
+
+        return new Promise(function (resolve, reject) {
+            resolveOpen = resolve;
+            rejectOpen = reject;
+            requester.open(baseUrl);
+        });
+    };
+
+    this.close = function close() {
+        return new Promise(function (resolve, reject) {
+            requester.close(resolve);
+        });
+    };
+
+    this.on = function on() {
+        // Required for all imageDecoderFramework fetcher instances
+    };
+
+    this.startFetch = function startFetch(fetchContext, codestreamPartParams) {
+        var params = paramsModifier.modify(codestreamPartParams);
+        var fetch = createFetch(fetchContext, params.progressiveness);
+
+        fetch.move(params.codestreamPartParams);
+    };
+
+    this.startMovableFetch = function startMovableFetch(fetchContext, codestreamPartParams) {
+        var params = paramsModifier.modify(codestreamPartParams);
+        var fetch = createFetch(fetchContext, params.progressiveness);
+
+        var dedicatedChannelHandle = requester.dedicateChannelForMovableRequest();
+        fetch.setDedicatedChannelHandle(dedicatedChannelHandle);
+        fetchContext.on('move', fetch.move);
+
+        fetch.move(params.codestreamPartParams);
+    };
+
+    function createFetch(fetchContext, progressiveness) {
+        //var imageDataContext = jpipFactory.createImageDataContext(
+        //    jpipObjectsForRequestContext,
+        //    codestreamPartParamsModified,
+        //    progressivenessModified);
+        //    //{
+        //    //    disableServerRequests: !!options.isOnlyWaitForData,
+        //    //    isMovable: false,
+        //    //    userContextVars: userContextVars,
+        //    //    failureCallback: options.failureCallback
+        //    //});
+
+        var fetch = jpipFactory.createFetch(fetchContext, requester, progressiveness);
+
+        fetchContext.on('isProgressiveChanged', fetch.isProgressiveChanged);
+        fetchContext.on('terminate', fetch.terminate);
+        fetchContext.on('stop', fetch.stop);
+        fetchContext.on('resume', fetch.resum);
+
+        return fetch;
+    }
+
+    //this.startMovableFetch = function startMovableFetch(imageDataContext, movableFetchState) {
+    //    movableFetchState.dedicatedChannelHandle =
+    //        requester.dedicateChannelForMovableRequest();
+    //    movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
+    //        requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
+    //    movableFetchState.fetchHandle.resume();
+    //};
+    //
+    //this.moveFetch = function moveFetch(imageDataContext, movableFetchState) {
+    //    movableFetchState.fetchHandle.stopAsync();
+    //    movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
+    //        requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
+    //    movableFetchState.fetchHandle.resume();
+    //};
+
+    this.reconnect = function reconnect() {
+        requester.reconnect();
+    };
+
+    function requesterStatusCallback(requesterStatus) {
+        var serializableException = null;
+        if (requesterStatus.exception !== null) {
+            serializableException = requesterStatus.exception.toString();
+        }
+
+        var status = {
+            isReady: requesterStatus.isReady,
+            exception: serializableException
+        };
+
+        if (!resolveOpen || !status.isReady && !status.exception) {
+            if (status.exception) {
+                try {
+                    // TODO: Nicer way to propagate errors from here is required
+                    console.error('JpipFetcher.requesterStatusCallback got ' + 'unexpected exception: ' + status.exception);
+                } catch (e) {
+                    // Old IE not support console.log
+                }
+            }
+
+            return;
+        }
+
+        var localResolve = resolveOpen;
+        var localReject = rejectOpen;
+        resolveOpen = null;
+        rejectOpen = null;
+
+        if (!status.isReady) {
+            localReject(status.exception);
+            return;
+        }
+
+        var params = codestreamStructure.getSizesParams();
+        var clonedParams = JSON.parse(JSON.stringify(params));
+
+        var tile = codestreamStructure.getDefaultTileStructure();
+        var component = tile.getDefaultComponentStructure();
+
+        clonedParams.imageLevel = 0;
+        clonedParams.lowestQuality = 1;
+        clonedParams.highestQuality = tile.getNumQualityLayers();
+        clonedParams.numResolutionLevelsForLimittedViewer = component.getNumResolutionLevels();
+
+        localResolve(clonedParams);
+    }
+
+    return this;
+}
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var jGlobals = __webpack_require__(0);
+
 module.exports = function JpipHeaderModifier(offsetsCalculator, progressionOrder) {
 
     var encodedProgressionOrder = encodeProgressionOrder(progressionOrder);
@@ -5918,7 +6122,7 @@ module.exports = function JpipHeaderModifier(offsetsCalculator, progressionOrder
 };
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5950,21 +6154,27 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
     this._listener.register();
 }
 
-JpipImageDataContext.prototype.hasData = function hasData() {
+JpipImageDataContext.prototype.getProgressiveStagesFinished = function getProgressiveStagesFinished() {
     //ensureNoFailure();
     this._ensureNotDisposed();
-    return this._listener.hasData();
+    return this._listener.getProgressiveStagesFinished();
 };
 
-JpipImageDataContext.prototype.getFetchedData = function getFetchedData() {
+JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality) {
     this._ensureNotDisposed();
-    if (!this.hasData()) {
-        throw 'JpipImageDataContext error: cannot call getFetchedData before hasData = true';
+    if (this.getProgressiveStagesFinished() === 0) {
+        throw 'JpipImageDataContext error: cannot call getFetchedData before getProgressiveStagesFinished() > 0';
     }
 
     //ensureNoFailure();
-    var qualityReached = this._listener.getQualityReached();
-    var codeblocks = this._packetsDataCollector.getAllCodeblocksData(this._codestreamPart, qualityReached);
+    var minQuality = this._listener.getQualityReached();
+    if (quality) {
+        if (quality > minQuality) {
+            throw 'JpipImageDataContext error: getFetchedData called ' + 'with quality higher than already reached';
+        }
+        minQuality = quality;
+    }
+    var codeblocks = this._packetsDataCollector.getAllCodeblocksData(this._codestreamPart, minQuality, quality);
 
     var headersCodestream = this._getCodestream( /*isOnlyHeadersWithoutBitstream=*/true);
 
@@ -5980,7 +6190,7 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData() {
     return {
         headersCodestream: headersCodestream,
         codeblocksData: codeblocks.codeblocksData,
-        minQuality: qualityReached
+        minQuality: minQuality
     };
 };
 
@@ -6018,7 +6228,7 @@ JpipImageDataContext.prototype.setIsProgressive = function setIsProgressive(isPr
     this._ensureNotDisposed();
     var oldIsProgressive = this._isProgressive;
     this._isProgressive = isProgressive;
-    if (!oldIsProgressive && isProgressive && this.hasData()) {
+    if (!oldIsProgressive && isProgressive && this.getProgressiveStagesFinished() > 0) {
         for (var i = 0; i < this._dataListeners.length; ++i) {
             this._dataListeners[i](this);
         }
@@ -6070,6 +6280,7 @@ JpipImageDataContext.prototype._qualityLayerReachedCallback = function qualityLa
     if (!this._isProgressive && !this._listener.isDone()) {
         return;
     }
+
     for (var i = 0; i < this._dataListeners.length; ++i) {
         this._dataListeners[i](this);
     }
@@ -6082,7 +6293,7 @@ JpipImageDataContext.prototype._ensureNotDisposed = function ensureNotDisposed()
 };
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6421,7 +6632,7 @@ module.exports = function JpipLevelCalculator(params) {
 };
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6591,7 +6802,7 @@ module.exports = function JpipMarkersParser(mainHeaderDatabin, messageHeaderPars
 };
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6812,7 +7023,7 @@ module.exports = function JpipOffsetsCalculator(mainHeaderDatabin, markersParser
 };
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6978,7 +7189,7 @@ module.exports = function JpipPacketsDataCollector(databinsSaver, qualityLayersC
 };
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -6990,8 +7201,6 @@ module.exports = function JpipParamsCodestreamPart(codestreamPartParams, codestr
 
     var tilesBounds = null;
     var fullTilesSize = null;
-
-    // TODO: Ensure that strings property name doesn't break on uglify
 
     Object.defineProperty(this, 'level', { get: function get() {
             return codestreamPartParams ? codestreamPartParams.level : 0;
@@ -7103,7 +7312,7 @@ module.exports = function JpipParamsCodestreamPart(codestreamPartParams, codestr
 };
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7124,8 +7333,6 @@ module.exports = function JpipParamsPrecinctIterator(codestreamStructure, tileIn
     var progressionOrder;
     var precinctsInCodestreamPartPerLevelPerComponent = null;
     var tileStructure;
-
-    // TODO: Ensure that strings property name doesn't break on uglify
 
     // A.6.1 in part 1: Core Coding System
 
@@ -7348,7 +7555,7 @@ module.exports = function JpipParamsPrecinctIterator(codestreamStructure, tileIn
 };
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7361,8 +7568,6 @@ module.exports = function JpipPrecinctCodestreamPart(sizesCalculator, tileStruct
     var fullTilesSize = null;
     var tilesBounds = null;
     var level = calculateLevel();
-
-    // TODO: Ensure that strings property name doesn't break on uglify
 
     Object.defineProperty(this, 'level', { get: function get() {
             return level;
@@ -7477,7 +7682,7 @@ module.exports = function JpipPrecinctCodestreamPart(sizesCalculator, tileStruct
 };
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7574,7 +7779,7 @@ module.exports = function JpipPrecinctsIteratorWaiter(codestreamPart, codestream
 };
 
 /***/ }),
-/* 27 */
+/* 28 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7615,8 +7820,8 @@ module.exports = function JpipQualityWaiter(codestreamPart, progressiveness, max
         }
     };
 
-    this.hasData = function hasData() {
-        return progressiveStagesFinished > 0;
+    this.getProgressiveStagesFinished = function getProgressiveStagesFinished() {
+        return progressiveStagesFinished;
     };
 
     this.isDone = function isDone() {
@@ -7725,7 +7930,7 @@ module.exports = function JpipQualityWaiter(codestreamPart, progressiveness, max
 };
 
 /***/ }),
-/* 28 */
+/* 29 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -7876,7 +8081,7 @@ function JpipRequestParamsModifier(codestreamStructure) {
 }
 
 /***/ }),
-/* 29 */
+/* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8105,7 +8310,7 @@ module.exports = function JpipRequest(sessionHelper, messageHeaderParser, channe
 };
 
 /***/ }),
-/* 30 */
+/* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8317,7 +8522,7 @@ module.exports = function JpipSessionHelper(dataRequestUrl, knownTargetId, codes
 };
 
 /***/ }),
-/* 31 */
+/* 32 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8535,7 +8740,7 @@ module.exports = function JpipSession(maxChannelsInSession, maxRequestsWaitingFo
 };
 
 /***/ }),
-/* 32 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -8813,7 +9018,7 @@ maxJpipCacheSizeConfig) {
 };
 
 /***/ }),
-/* 33 */
+/* 34 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9020,7 +9225,7 @@ module.exports = function JpipStructureParser(databinsSaver, markersParser, mess
 };
 
 /***/ }),
-/* 34 */
+/* 35 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9294,7 +9499,7 @@ module.exports = function JpipTileStructure(sizeParams, codestreamStructure, jpi
 };
 
 /***/ }),
-/* 35 */
+/* 36 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9564,7 +9769,7 @@ module.exports = function JpipBitstreamReaderClosure() {
 }();
 
 /***/ }),
-/* 36 */
+/* 37 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9745,7 +9950,7 @@ module.exports = function JpipTagTree(bitstreamReader, width, height, transactio
 };
 
 /***/ }),
-/* 37 */
+/* 38 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9809,7 +10014,7 @@ module.exports = function JpipCodeblockLengthParserClosure() {
 }();
 
 /***/ }),
-/* 38 */
+/* 39 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -9942,7 +10147,7 @@ module.exports = function JpipSubbandLengthInPacketHeaderCalculator(bitstreamRea
 };
 
 /***/ }),
-/* 39 */
+/* 40 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10211,7 +10416,7 @@ module.exports = function JpipPacketLengthCalculator(tileStructure, componentStr
 };
 
 /***/ }),
-/* 40 */
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -10279,184 +10484,13 @@ module.exports = function JpipQualityLayersCache(codestreamStructure, jpipFactor
 };
 
 /***/ }),
-/* 41 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-var jGlobals = __webpack_require__(0);
-var jpipFactory = __webpack_require__(1);
-
-module.exports = JpipFetcher;
-
-/* global console: false */
-
-function JpipFetcher(databinsSaver, options) {
-    options = options || {};
-
-    var isOpenCalled = false;
-    var resolveOpen = null;
-    var rejectOpen = null;
-    var progressionOrder = 'RPCL';
-
-    var maxChannelsInSession = options.maxChannelsInSession || 1;
-    var maxRequestsWaitingForResponseInChannel = options.maxRequestsWaitingForResponseInChannel || 1;
-
-    //var databinsSaver = jpipFactory.createDatabinsSaver(/*isJpipTilepartStream=*/false);
-    var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
-
-    var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
-    var offsetsCalculator = jpipFactory.createOffsetsCalculator(mainHeaderDatabin, markersParser);
-    var structureParser = jpipFactory.createStructureParser(databinsSaver, markersParser, offsetsCalculator);
-    var codestreamStructure = jpipFactory.createCodestreamStructure(structureParser, progressionOrder);
-
-    var requester = jpipFactory.createReconnectableRequester(maxChannelsInSession, maxRequestsWaitingForResponseInChannel, codestreamStructure, databinsSaver);
-
-    var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
-
-    requester.setStatusCallback(requesterStatusCallback);
-
-    this.open = function open(baseUrl) {
-        if (isOpenCalled) {
-            throw 'webJpip error: Cannot call JpipFetcher.open() twice';
-        }
-
-        return new Promise(function (resolve, reject) {
-            resolveOpen = resolve;
-            rejectOpen = reject;
-            requester.open(baseUrl);
-        });
-    };
-
-    this.close = function close() {
-        return new Promise(function (resolve, reject) {
-            requester.close(resolve);
-        });
-    };
-
-    this.on = function on() {
-        // TODO When JpipFetcher is fully aligned to imageDecoderFramework new API
-    };
-
-    this.startFetch = function startFetch(fetchContext, codestreamPartParams) {
-        var params = paramsModifier.modify(codestreamPartParams);
-        var fetch = createFetch(fetchContext, params.progressiveness);
-
-        fetch.move(params.codestreamPartParams);
-    };
-
-    this.startMovableFetch = function startMovableFetch(fetchContext, codestreamPartParams) {
-        var params = paramsModifier.modify(codestreamPartParams);
-        var fetch = createFetch(fetchContext, params.progressiveness);
-
-        var dedicatedChannelHandle = requester.dedicateChannelForMovableRequest();
-        fetch.setDedicatedChannelHandle(dedicatedChannelHandle);
-        fetchContext.on('move', fetch.move);
-
-        fetch.move(params.codestreamPartParams);
-    };
-
-    function createFetch(fetchContext, progressiveness) {
-        //var imageDataContext = jpipFactory.createImageDataContext(
-        //    jpipObjectsForRequestContext,
-        //    codestreamPartParamsModified,
-        //    progressivenessModified);
-        //    //{
-        //    //    disableServerRequests: !!options.isOnlyWaitForData,
-        //    //    isMovable: false,
-        //    //    userContextVars: userContextVars,
-        //    //    failureCallback: options.failureCallback
-        //    //});
-
-        var fetch = jpipFactory.createFetch(fetchContext, requester, progressiveness);
-
-        fetchContext.on('isProgressiveChanged', fetch.isProgressiveChanged);
-        fetchContext.on('terminate', fetch.terminate);
-        fetchContext.on('stop', fetch.stop);
-        fetchContext.on('resume', fetch.resum);
-
-        return fetch;
-    }
-
-    //this.startMovableFetch = function startMovableFetch(imageDataContext, movableFetchState) {
-    //    movableFetchState.dedicatedChannelHandle =
-    //        requester.dedicateChannelForMovableRequest();
-    //    movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
-    //        requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
-    //    movableFetchState.fetchHandle.resume();
-    //};
-    //
-    //this.moveFetch = function moveFetch(imageDataContext, movableFetchState) {
-    //    movableFetchState.fetchHandle.stopAsync();
-    //    movableFetchState.fetchHandle = jpipFactory.createFetchHandle(
-    //        requester, imageDataContext, movableFetchState.dedicatedChannelHandle);
-    //    movableFetchState.fetchHandle.resume();
-    //};
-
-    this.reconnect = function reconnect() {
-        requester.reconnect();
-    };
-
-    function requesterStatusCallback(requesterStatus) {
-        var serializableException = null;
-        if (requesterStatus.exception !== null) {
-            serializableException = requesterStatus.exception.toString();
-        }
-
-        var status = {
-            isReady: requesterStatus.isReady,
-            exception: serializableException
-        };
-
-        if (!resolveOpen || !status.isReady && !status.exception) {
-            if (status.exception) {
-                try {
-                    // TODO: Nicer way to propagate errors from here is required
-                    console.error('JpipFetcher.requesterStatusCallback got ' + 'unexpected exception: ' + status.exception);
-                } catch (e) {
-                    // Old IE not support console.log
-                }
-            }
-
-            return;
-        }
-
-        var localResolve = resolveOpen;
-        var localReject = rejectOpen;
-        resolveOpen = null;
-        rejectOpen = null;
-
-        if (!status.isReady) {
-            localReject(status.exception);
-            return;
-        }
-
-        var params = codestreamStructure.getSizesParams();
-        var clonedParams = JSON.parse(JSON.stringify(params));
-
-        var tile = codestreamStructure.getDefaultTileStructure();
-        var component = tile.getDefaultComponentStructure();
-
-        clonedParams.imageLevel = 0;
-        clonedParams.lowestQuality = 1;
-        clonedParams.highestQuality = tile.getNumQualityLayers();
-        clonedParams.numResolutionLevelsForLimittedViewer = component.getNumResolutionLevels();
-
-        localResolve(clonedParams);
-    }
-
-    return this;
-}
-
-/***/ }),
 /* 42 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _jpx = __webpack_require__(2);
+var _jpx = __webpack_require__(1);
 
 module.exports = PdfjsJpxDecoderLegacy;
 
@@ -12569,7 +12603,7 @@ exports.ArithmeticDecoder = ArithmeticDecoder;
 "use strict";
 
 
-var _jpx = __webpack_require__(2);
+var _jpx = __webpack_require__(1);
 
 module.exports = PdfjsJpxPixelsDecoder;
 
@@ -12725,7 +12759,7 @@ PdfjsJpxPixelsDecoder.prototype._copyTile = function copyTile(targetImage, tile,
 "use strict";
 
 
-var _jpx = __webpack_require__(2);
+var _jpx = __webpack_require__(1);
 
 module.exports = PdfjsJpxCoefficientsDecoder;
 

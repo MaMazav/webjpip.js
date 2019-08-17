@@ -33,22 +33,29 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
     this._listener.register();
 }
 
-JpipImageDataContext.prototype.hasData = function hasData() {
+JpipImageDataContext.prototype.getProgressiveStagesFinished = function getProgressiveStagesFinished() {
     //ensureNoFailure();
     this._ensureNotDisposed();
-    return this._listener.hasData();
+    return this._listener.getProgressiveStagesFinished();
 };
 
-JpipImageDataContext.prototype.getFetchedData = function getFetchedData() {
+JpipImageDataContext.prototype.getFetchedData = function getFetchedData(quality) {
     this._ensureNotDisposed();
-    if (!this.hasData()) {
-        throw 'JpipImageDataContext error: cannot call getFetchedData before hasData = true';
+    if (this.getProgressiveStagesFinished() === 0) {
+        throw 'JpipImageDataContext error: cannot call getFetchedData before getProgressiveStagesFinished() > 0';
     }
     
     //ensureNoFailure();
-    var qualityReached = this._listener.getQualityReached();
+    var minQuality = this._listener.getQualityReached();
+    if (quality) {
+        if (quality > minQuality) {
+            throw 'JpipImageDataContext error: getFetchedData called ' +
+                'with quality higher than already reached';
+        }
+        minQuality = quality;
+    }
     var codeblocks = this._packetsDataCollector.getAllCodeblocksData(
-        this._codestreamPart, qualityReached);
+        this._codestreamPart, minQuality, quality);
     
     var headersCodestream =
         this._getCodestream(/*isOnlyHeadersWithoutBitstream=*/true);
@@ -69,7 +76,7 @@ JpipImageDataContext.prototype.getFetchedData = function getFetchedData() {
     return {
         headersCodestream: headersCodestream,
         codeblocksData: codeblocks.codeblocksData,
-        minQuality: qualityReached
+        minQuality: minQuality
     };
 };
 
@@ -110,7 +117,7 @@ JpipImageDataContext.prototype.setIsProgressive = function setIsProgressive(isPr
     this._ensureNotDisposed();
     var oldIsProgressive = this._isProgressive;
     this._isProgressive = isProgressive;
-    if (!oldIsProgressive && isProgressive && this.hasData()) {
+    if (!oldIsProgressive && isProgressive && this.getProgressiveStagesFinished() > 0) {
         for (var i = 0; i < this._dataListeners.length; ++i) {
             this._dataListeners[i](this);
         }
@@ -171,6 +178,7 @@ JpipImageDataContext.prototype._qualityLayerReachedCallback = function qualityLa
     if (!this._isProgressive && !this._listener.isDone()) {
         return;
     }
+    
     for (var i = 0; i < this._dataListeners.length; ++i) {
         this._dataListeners[i](this);
     }

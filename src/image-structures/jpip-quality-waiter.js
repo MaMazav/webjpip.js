@@ -49,8 +49,8 @@ module.exports = function JpipQualityWaiter(
         }
     };
     
-    this.hasData = function hasData() {
-        return progressiveStagesFinished > 0;
+    this.getProgressiveStagesFinished = function getProgressiveStagesFinished() {
+        return progressiveStagesFinished;
     };
     
     this.isDone = function isDone() {

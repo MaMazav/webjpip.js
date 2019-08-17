@@ -8,8 +8,6 @@ module.exports = function JpipParamsCodestreamPart(
     var tilesBounds = null;
     var fullTilesSize = null;
     
-    // TODO: Ensure that strings property name doesn't break on uglify
-    
     Object.defineProperty(this, 'level', { get: function() {
         return codestreamPartParams ? codestreamPartParams.level : 0;
     }});
