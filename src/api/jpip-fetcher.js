@@ -1,13 +1,12 @@
 'use strict';
 
 var jGlobals = require('j2k-jpip-globals.js');
-var jpipFactory = require('jpip-runtime-factory.js'); 
 
 module.exports = JpipFetcher;
 
 /* global console: false */
 
-function JpipFetcher(databinsSaver, options) {
+function JpipFetcher(databinsSaver, options, jpipFactory) {
     options = options || {};
 
     var isOpenCalled = false;
@@ -19,7 +18,6 @@ function JpipFetcher(databinsSaver, options) {
     var maxRequestsWaitingForResponseInChannel =
         options.maxRequestsWaitingForResponseInChannel || 1;
 
-    //var databinsSaver = jpipFactory.createDatabinsSaver(/*isJpipTilepartStream=*/false);
     var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
 
     var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
@@ -59,7 +57,7 @@ function JpipFetcher(databinsSaver, options) {
     };
     
     this.on = function on() {
-        // TODO When JpipFetcher is fully aligned to imageDecoderFramework new API
+        // Required for all imageDecoderFramework fetcher instances
     };
 
     this.startFetch = function startFetch(fetchContext, codestreamPartParams) {

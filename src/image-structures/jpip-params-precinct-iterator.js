@@ -20,8 +20,6 @@ module.exports = function JpipParamsPrecinctIterator(
     var precinctsInCodestreamPartPerLevelPerComponent = null;
     var tileStructure;
     
-    // TODO: Ensure that strings property name doesn't break on uglify
-
     // A.6.1 in part 1: Core Coding System
     
     Object.defineProperty(this, 'tileIndex', { get: function() {

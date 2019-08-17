@@ -15,8 +15,6 @@ module.exports = function JpipPrecinctCodestreamPart(
     var tilesBounds = null;
     var level = calculateLevel();
 
-    // TODO: Ensure that strings property name doesn't break on uglify
-    
     Object.defineProperty(this, 'level', { get: function() {
         return level;
     }});
