@@ -245,7 +245,7 @@ exports.JpxImage = undefined;
 
 var _util = __webpack_require__(43);
 
-var _arithmetic_decoder = __webpack_require__(45);
+var _arithmetic_decoder = __webpack_require__(44);
 
 /* Copyright 2012 Mozilla Foundation
  *
@@ -389,7 +389,7 @@ var JpxImage = function JpxImageClosure() {
           this.width = Xsiz - XOsiz;
           this.height = Ysiz - YOsiz;
           this.componentsCount = Csiz;
-          // Results are always returned as Uint8Arrays
+          // Results are always returned as `Uint8ClampedArray`s.
           this.bitsPerComponent = 8;
           return;
         }
@@ -588,7 +588,7 @@ var JpxImage = function JpxImageClosure() {
               cod.selectiveArithmeticCodingBypass = !!(blockStyle & 1);
               cod.resetContextProbabilities = !!(blockStyle & 2);
               cod.terminationOnEachCodingPass = !!(blockStyle & 4);
-              cod.verticalyStripe = !!(blockStyle & 8);
+              cod.verticallyStripe = !!(blockStyle & 8);
               cod.predictableTermination = !!(blockStyle & 16);
               cod.segmentationSymbolUsed = !!(blockStyle & 32);
               cod.reversibleTransformation = data[j++];
@@ -613,8 +613,8 @@ var JpxImage = function JpxImageClosure() {
               if (cod.terminationOnEachCodingPass) {
                 unsupported.push('terminationOnEachCodingPass');
               }
-              if (cod.verticalyStripe) {
-                unsupported.push('verticalyStripe');
+              if (cod.verticallyStripe) {
+                unsupported.push('verticallyStripe');
               }
               if (cod.predictableTermination) {
                 unsupported.push('predictableTermination');
@@ -2953,8 +2953,8 @@ module.exports.j2kExceptions = jGlobals.j2kExceptions;
 module.exports.jpipExceptions = jGlobals.jpipExceptions;
 module.exports.Internals = {
     PdfjsJpxDecoderLegacy: __webpack_require__(42),
-    PdfjsJpxPixelsDecoder: __webpack_require__(46),
-    PdfjsJpxCoefficientsDecoder: __webpack_require__(47),
+    PdfjsJpxPixelsDecoder: __webpack_require__(45),
+    PdfjsJpxCoefficientsDecoder: __webpack_require__(46),
     jpipRuntimeFactory: __webpack_require__(2),
     jGlobals: jGlobals
 };
@@ -10636,13 +10636,17 @@ PdfjsJpxDecoderLegacy.prototype._copyTile = function copyTile(targetImage, tile,
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(process) {
+
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /* Copyright 2012 Mozilla Foundation
  *
@@ -10658,16 +10662,31 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* eslint no-var: error */
 
-//import './compatibility';
-//import { ReadableStream } from './streams_polyfill';
+// import './compatibility';
+// import { ReadableStream } from './streams_polyfill';
+// import { URL } from './url_polyfill';
 
+var IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
 var FONT_IDENTITY_MATRIX = [0.001, 0, 0, 0.001, 0, 0];
 
 var NativeImageDecoding = {
   NONE: 'none',
   DECODE: 'decode',
   DISPLAY: 'display'
+};
+
+// Permission flags from Table 22, Section 7.6.3.2 of the PDF specification.
+var PermissionFlag = {
+  PRINT: 0x04,
+  MODIFY_CONTENTS: 0x08,
+  COPY: 0x10,
+  MODIFY_ANNOTATIONS: 0x20,
+  FILL_INTERACTIVE_FORMS: 0x100,
+  COPY_FOR_ACCESSIBILITY: 0x200,
+  ASSEMBLE: 0x400,
+  PRINT_HIGH_QUALITY: 0x800
 };
 
 var TextRenderingMode = {
@@ -10718,6 +10737,29 @@ var AnnotationType = {
   REDACT: 26
 };
 
+var AnnotationStateModelType = {
+  MARKED: 'Marked',
+  REVIEW: 'Review'
+};
+
+var AnnotationMarkedState = {
+  MARKED: 'Marked',
+  UNMARKED: 'Unmarked'
+};
+
+var AnnotationReviewState = {
+  ACCEPTED: 'Accepted',
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
+  COMPLETED: 'Completed',
+  NONE: 'None'
+};
+
+var AnnotationReplyType = {
+  GROUP: 'Group',
+  REPLY: 'R'
+};
+
 var AnnotationFlag = {
   INVISIBLE: 0x01,
   HIDDEN: 0x02,
@@ -10762,36 +10804,36 @@ var AnnotationBorderStyleType = {
 };
 
 var StreamType = {
-  UNKNOWN: 0,
-  FLATE: 1,
-  LZW: 2,
-  DCT: 3,
-  JPX: 4,
-  JBIG: 5,
-  A85: 6,
-  AHX: 7,
-  CCF: 8,
-  RL: 9
+  UNKNOWN: 'UNKNOWN',
+  FLATE: 'FLATE',
+  LZW: 'LZW',
+  DCT: 'DCT',
+  JPX: 'JPX',
+  JBIG: 'JBIG',
+  A85: 'A85',
+  AHX: 'AHX',
+  CCF: 'CCF',
+  RLX: 'RLX' // PDF short name is 'RL', but telemetry requires three chars.
 };
 
 var FontType = {
-  UNKNOWN: 0,
-  TYPE1: 1,
-  TYPE1C: 2,
-  CIDFONTTYPE0: 3,
-  CIDFONTTYPE0C: 4,
-  TRUETYPE: 5,
-  CIDFONTTYPE2: 6,
-  TYPE3: 7,
-  OPENTYPE: 8,
-  TYPE0: 9,
-  MMTYPE1: 10
+  UNKNOWN: 'UNKNOWN',
+  TYPE1: 'TYPE1',
+  TYPE1C: 'TYPE1C',
+  CIDFONTTYPE0: 'CIDFONTTYPE0',
+  CIDFONTTYPE0C: 'CIDFONTTYPE0C',
+  TRUETYPE: 'TRUETYPE',
+  CIDFONTTYPE2: 'CIDFONTTYPE2',
+  TYPE3: 'TYPE3',
+  OPENTYPE: 'OPENTYPE',
+  TYPE0: 'TYPE0',
+  MMTYPE1: 'MMTYPE1'
 };
 
-var VERBOSITY_LEVELS = {
-  errors: 0,
-  warnings: 1,
-  infos: 5
+var VerbosityLevel = {
+  ERRORS: 0,
+  WARNINGS: 1,
+  INFOS: 5
 };
 
 var CMapCompressionType = {
@@ -10897,10 +10939,26 @@ var OPS = {
   constructPath: 91
 };
 
-var verbosity = VERBOSITY_LEVELS.warnings;
+var UNSUPPORTED_FEATURES = {
+  unknown: 'unknown',
+  forms: 'forms',
+  javaScript: 'javaScript',
+  smask: 'smask',
+  shadingPattern: 'shadingPattern',
+  font: 'font'
+};
+
+var PasswordResponses = {
+  NEED_PASSWORD: 1,
+  INCORRECT_PASSWORD: 2
+};
+
+var verbosity = VerbosityLevel.WARNINGS;
 
 function setVerbosityLevel(level) {
-  verbosity = level;
+  if (Number.isInteger(level)) {
+    verbosity = level;
+  }
 }
 
 function getVerbosityLevel() {
@@ -10911,21 +10969,16 @@ function getVerbosityLevel() {
 // as warning that Workers were disabled, which is important to devs but not
 // end users.
 function info(msg) {
-  if (verbosity >= VERBOSITY_LEVELS.infos) {
+  if (verbosity >= VerbosityLevel.INFOS) {
     console.log('Info: ' + msg);
   }
 }
 
 // Non-fatal warnings.
 function warn(msg) {
-  if (verbosity >= VERBOSITY_LEVELS.warnings) {
+  if (verbosity >= VerbosityLevel.WARNINGS) {
     console.log('Warning: ' + msg);
   }
-}
-
-// Deprecated API function -- display regardless of the PDFJS.verbosity setting.
-function deprecated(details) {
-  console.log('Deprecated API usage: ' + details);
 }
 
 function unreachable(msg) {
@@ -10938,19 +10991,11 @@ function assert(cond, msg) {
   }
 }
 
-var UNSUPPORTED_FEATURES = {
-  unknown: 'unknown',
-  forms: 'forms',
-  javaScript: 'javaScript',
-  smask: 'smask',
-  shadingPattern: 'shadingPattern',
-  font: 'font'
-};
-
 // Checks if URLs have the same origin. For non-HTTP based URLs, returns false.
 function isSameOrigin(baseUrl, otherUrl) {
+  var base = void 0;
   try {
-    var base = new URL(baseUrl);
+    base = new URL(baseUrl);
     if (!base.origin || base.origin === 'null') {
       return false; // non-HTTP url
     }
@@ -10963,7 +11008,7 @@ function isSameOrigin(baseUrl, otherUrl) {
 }
 
 // Checks if URLs use one of the whitelisted protocols, e.g. to avoid XSS.
-function isValidProtocol(url) {
+function _isValidProtocol(url) {
   if (!url) {
     return false;
   }
@@ -10980,7 +11025,8 @@ function isValidProtocol(url) {
 }
 
 /**
- * Attempts to create a valid absolute URL (utilizing `isValidProtocol`).
+ * Attempts to create a valid absolute URL.
+ *
  * @param {URL|string} url - An absolute, or relative, URL.
  * @param {URL|string} baseUrl - An absolute URL.
  * @returns Either a valid {URL}, or `null` otherwise.
@@ -10991,7 +11037,7 @@ function createValidAbsoluteUrl(url, baseUrl) {
   }
   try {
     var absoluteUrl = baseUrl ? new URL(url, baseUrl) : new URL(url);
-    if (isValidProtocol(absoluteUrl)) {
+    if (_isValidProtocol(absoluteUrl)) {
       return absoluteUrl;
     }
   } catch (ex) {/* `new URL()` will throw on incorrect data. */}
@@ -11005,23 +11051,6 @@ function shadow(obj, prop, value) {
     writable: false });
   return value;
 }
-
-function getLookupTableFactory(initializer) {
-  var lookup;
-  return function () {
-    if (initializer) {
-      lookup = Object.create(null);
-      initializer(lookup);
-      initializer = null;
-    }
-    return lookup;
-  };
-}
-
-var PasswordResponses = {
-  NEED_PASSWORD: 1,
-  INCORRECT_PASSWORD: 2
-};
 
 var PasswordException = function PasswordExceptionClosure() {
   function PasswordException(msg, code) {
@@ -11084,44 +11113,6 @@ var UnexpectedResponseException = function UnexpectedResponseExceptionClosure() 
   UnexpectedResponseException.constructor = UnexpectedResponseException;
 
   return UnexpectedResponseException;
-}();
-
-var NotImplementedException = function NotImplementedExceptionClosure() {
-  function NotImplementedException(msg) {
-    this.message = msg;
-  }
-
-  NotImplementedException.prototype = new Error();
-  NotImplementedException.prototype.name = 'NotImplementedException';
-  NotImplementedException.constructor = NotImplementedException;
-
-  return NotImplementedException;
-}();
-
-var MissingDataException = function MissingDataExceptionClosure() {
-  function MissingDataException(begin, end) {
-    this.begin = begin;
-    this.end = end;
-    this.message = 'Missing data [' + begin + ', ' + end + ')';
-  }
-
-  MissingDataException.prototype = new Error();
-  MissingDataException.prototype.name = 'MissingDataException';
-  MissingDataException.constructor = MissingDataException;
-
-  return MissingDataException;
-}();
-
-var XRefParseException = function XRefParseExceptionClosure() {
-  function XRefParseException(msg) {
-    this.message = msg;
-  }
-
-  XRefParseException.prototype = new Error();
-  XRefParseException.prototype.name = 'XRefParseException';
-  XRefParseException.constructor = XRefParseException;
-
-  return XRefParseException;
 }();
 
 /**
@@ -11209,23 +11200,19 @@ function arrayByteLength(arr) {
  * @returns {Uint8Array}
  */
 function arraysToBytes(arr) {
+  var length = arr.length;
   // Shortcut: if first and only item is Uint8Array, return it.
-  if (arr.length === 1 && arr[0] instanceof Uint8Array) {
+  if (length === 1 && arr[0] instanceof Uint8Array) {
     return arr[0];
   }
   var resultLength = 0;
-  var i,
-      ii = arr.length;
-  var item, itemLength;
-  for (i = 0; i < ii; i++) {
-    item = arr[i];
-    itemLength = arrayByteLength(item);
-    resultLength += itemLength;
+  for (var i = 0; i < length; i++) {
+    resultLength += arrayByteLength(arr[i]);
   }
   var pos = 0;
   var data = new Uint8Array(resultLength);
-  for (i = 0; i < ii; i++) {
-    item = arr[i];
+  for (var _i = 0; _i < length; _i++) {
+    var item = arr[_i];
     if (!(item instanceof Uint8Array)) {
       if (typeof item === 'string') {
         item = stringToBytes(item);
@@ -11233,7 +11220,7 @@ function arraysToBytes(arr) {
         item = new Uint8Array(item);
       }
     }
-    itemLength = item.byteLength;
+    var itemLength = item.byteLength;
     data.set(item, pos);
     pos += itemLength;
   }
@@ -11285,368 +11272,186 @@ function isEvalSupported() {
   }
 }
 
-var IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
+var rgbBuf = ['rgb(', 0, ',', 0, ',', 0, ')'];
 
-var Util = function UtilClosure() {
-  function Util() {}
+var Util = function () {
+  function Util() {
+    _classCallCheck(this, Util);
+  }
 
-  var rgbBuf = ['rgb(', 0, ',', 0, ',', 0, ')'];
+  _createClass(Util, null, [{
+    key: 'makeCssRgb',
 
-  // makeCssRgb() can be called thousands of times. Using |rgbBuf| avoids
-  // creating many intermediate strings.
-  Util.makeCssRgb = function Util_makeCssRgb(r, g, b) {
-    rgbBuf[1] = r;
-    rgbBuf[3] = g;
-    rgbBuf[5] = b;
-    return rgbBuf.join('');
-  };
-
-  // Concatenates two transformation matrices together and returns the result.
-  Util.transform = function Util_transform(m1, m2) {
-    return [m1[0] * m2[0] + m1[2] * m2[1], m1[1] * m2[0] + m1[3] * m2[1], m1[0] * m2[2] + m1[2] * m2[3], m1[1] * m2[2] + m1[3] * m2[3], m1[0] * m2[4] + m1[2] * m2[5] + m1[4], m1[1] * m2[4] + m1[3] * m2[5] + m1[5]];
-  };
-
-  // For 2d affine transforms
-  Util.applyTransform = function Util_applyTransform(p, m) {
-    var xt = p[0] * m[0] + p[1] * m[2] + m[4];
-    var yt = p[0] * m[1] + p[1] * m[3] + m[5];
-    return [xt, yt];
-  };
-
-  Util.applyInverseTransform = function Util_applyInverseTransform(p, m) {
-    var d = m[0] * m[3] - m[1] * m[2];
-    var xt = (p[0] * m[3] - p[1] * m[2] + m[2] * m[5] - m[4] * m[3]) / d;
-    var yt = (-p[0] * m[1] + p[1] * m[0] + m[4] * m[1] - m[5] * m[0]) / d;
-    return [xt, yt];
-  };
-
-  // Applies the transform to the rectangle and finds the minimum axially
-  // aligned bounding box.
-  Util.getAxialAlignedBoundingBox = function Util_getAxialAlignedBoundingBox(r, m) {
-
-    var p1 = Util.applyTransform(r, m);
-    var p2 = Util.applyTransform(r.slice(2, 4), m);
-    var p3 = Util.applyTransform([r[0], r[3]], m);
-    var p4 = Util.applyTransform([r[2], r[1]], m);
-    return [Math.min(p1[0], p2[0], p3[0], p4[0]), Math.min(p1[1], p2[1], p3[1], p4[1]), Math.max(p1[0], p2[0], p3[0], p4[0]), Math.max(p1[1], p2[1], p3[1], p4[1])];
-  };
-
-  Util.inverseTransform = function Util_inverseTransform(m) {
-    var d = m[0] * m[3] - m[1] * m[2];
-    return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d, (m[2] * m[5] - m[4] * m[3]) / d, (m[4] * m[1] - m[5] * m[0]) / d];
-  };
-
-  // Apply a generic 3d matrix M on a 3-vector v:
-  //   | a b c |   | X |
-  //   | d e f | x | Y |
-  //   | g h i |   | Z |
-  // M is assumed to be serialized as [a,b,c,d,e,f,g,h,i],
-  // with v as [X,Y,Z]
-  Util.apply3dTransform = function Util_apply3dTransform(m, v) {
-    return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
-  };
-
-  // This calculation uses Singular Value Decomposition.
-  // The SVD can be represented with formula A = USV. We are interested in the
-  // matrix S here because it represents the scale values.
-  Util.singularValueDecompose2dScale = function Util_singularValueDecompose2dScale(m) {
-
-    var transpose = [m[0], m[2], m[1], m[3]];
-
-    // Multiply matrix m with its transpose.
-    var a = m[0] * transpose[0] + m[1] * transpose[2];
-    var b = m[0] * transpose[1] + m[1] * transpose[3];
-    var c = m[2] * transpose[0] + m[3] * transpose[2];
-    var d = m[2] * transpose[1] + m[3] * transpose[3];
-
-    // Solve the second degree polynomial to get roots.
-    var first = (a + d) / 2;
-    var second = Math.sqrt((a + d) * (a + d) - 4 * (a * d - c * b)) / 2;
-    var sx = first + second || 1;
-    var sy = first - second || 1;
-
-    // Scale values are the square roots of the eigenvalues.
-    return [Math.sqrt(sx), Math.sqrt(sy)];
-  };
-
-  // Normalize rectangle rect=[x1, y1, x2, y2] so that (x1,y1) < (x2,y2)
-  // For coordinate systems whose origin lies in the bottom-left, this
-  // means normalization to (BL,TR) ordering. For systems with origin in the
-  // top-left, this means (TL,BR) ordering.
-  Util.normalizeRect = function Util_normalizeRect(rect) {
-    var r = rect.slice(0); // clone rect
-    if (rect[0] > rect[2]) {
-      r[0] = rect[2];
-      r[2] = rect[0];
-    }
-    if (rect[1] > rect[3]) {
-      r[1] = rect[3];
-      r[3] = rect[1];
-    }
-    return r;
-  };
-
-  // Returns a rectangle [x1, y1, x2, y2] corresponding to the
-  // intersection of rect1 and rect2. If no intersection, returns 'false'
-  // The rectangle coordinates of rect1, rect2 should be [x1, y1, x2, y2]
-  Util.intersect = function Util_intersect(rect1, rect2) {
-    function compare(a, b) {
-      return a - b;
+    // makeCssRgb() can be called thousands of times. Using ´rgbBuf` avoids
+    // creating many intermediate strings.
+    value: function makeCssRgb(r, g, b) {
+      rgbBuf[1] = r;
+      rgbBuf[3] = g;
+      rgbBuf[5] = b;
+      return rgbBuf.join('');
     }
 
-    // Order points along the axes
-    var orderedX = [rect1[0], rect1[2], rect2[0], rect2[2]].sort(compare),
-        orderedY = [rect1[1], rect1[3], rect2[1], rect2[3]].sort(compare),
-        result = [];
+    // Concatenates two transformation matrices together and returns the result.
 
-    rect1 = Util.normalizeRect(rect1);
-    rect2 = Util.normalizeRect(rect2);
-
-    // X: first and second points belong to different rectangles?
-    if (orderedX[0] === rect1[0] && orderedX[1] === rect2[0] || orderedX[0] === rect2[0] && orderedX[1] === rect1[0]) {
-      // Intersection must be between second and third points
-      result[0] = orderedX[1];
-      result[2] = orderedX[2];
-    } else {
-      return false;
+  }, {
+    key: 'transform',
+    value: function transform(m1, m2) {
+      return [m1[0] * m2[0] + m1[2] * m2[1], m1[1] * m2[0] + m1[3] * m2[1], m1[0] * m2[2] + m1[2] * m2[3], m1[1] * m2[2] + m1[3] * m2[3], m1[0] * m2[4] + m1[2] * m2[5] + m1[4], m1[1] * m2[4] + m1[3] * m2[5] + m1[5]];
     }
 
-    // Y: first and second points belong to different rectangles?
-    if (orderedY[0] === rect1[1] && orderedY[1] === rect2[1] || orderedY[0] === rect2[1] && orderedY[1] === rect1[1]) {
-      // Intersection must be between second and third points
-      result[1] = orderedY[1];
-      result[3] = orderedY[2];
-    } else {
-      return false;
+    // For 2d affine transforms
+
+  }, {
+    key: 'applyTransform',
+    value: function applyTransform(p, m) {
+      var xt = p[0] * m[0] + p[1] * m[2] + m[4];
+      var yt = p[0] * m[1] + p[1] * m[3] + m[5];
+      return [xt, yt];
+    }
+  }, {
+    key: 'applyInverseTransform',
+    value: function applyInverseTransform(p, m) {
+      var d = m[0] * m[3] - m[1] * m[2];
+      var xt = (p[0] * m[3] - p[1] * m[2] + m[2] * m[5] - m[4] * m[3]) / d;
+      var yt = (-p[0] * m[1] + p[1] * m[0] + m[4] * m[1] - m[5] * m[0]) / d;
+      return [xt, yt];
     }
 
-    return result;
-  };
+    // Applies the transform to the rectangle and finds the minimum axially
+    // aligned bounding box.
 
-  var ROMAN_NUMBER_MAP = ['', 'C', 'CC', 'CCC', 'CD', 'D', 'DC', 'DCC', 'DCCC', 'CM', '', 'X', 'XX', 'XXX', 'XL', 'L', 'LX', 'LXX', 'LXXX', 'XC', '', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
-  /**
-   * Converts positive integers to (upper case) Roman numerals.
-   * @param {integer} number - The number that should be converted.
-   * @param {boolean} lowerCase - Indicates if the result should be converted
-   *   to lower case letters. The default is false.
-   * @return {string} The resulting Roman number.
-   */
-  Util.toRoman = function Util_toRoman(number, lowerCase) {
-    assert(Number.isInteger(number) && number > 0, 'The number should be a positive integer.');
-    var pos,
-        romanBuf = [];
-    // Thousands
-    while (number >= 1000) {
-      number -= 1000;
-      romanBuf.push('M');
+  }, {
+    key: 'getAxialAlignedBoundingBox',
+    value: function getAxialAlignedBoundingBox(r, m) {
+      var p1 = Util.applyTransform(r, m);
+      var p2 = Util.applyTransform(r.slice(2, 4), m);
+      var p3 = Util.applyTransform([r[0], r[3]], m);
+      var p4 = Util.applyTransform([r[2], r[1]], m);
+      return [Math.min(p1[0], p2[0], p3[0], p4[0]), Math.min(p1[1], p2[1], p3[1], p4[1]), Math.max(p1[0], p2[0], p3[0], p4[0]), Math.max(p1[1], p2[1], p3[1], p4[1])];
     }
-    // Hundreds
-    pos = number / 100 | 0;
-    number %= 100;
-    romanBuf.push(ROMAN_NUMBER_MAP[pos]);
-    // Tens
-    pos = number / 10 | 0;
-    number %= 10;
-    romanBuf.push(ROMAN_NUMBER_MAP[10 + pos]);
-    // Ones
-    romanBuf.push(ROMAN_NUMBER_MAP[20 + number]);
-
-    var romanStr = romanBuf.join('');
-    return lowerCase ? romanStr.toLowerCase() : romanStr;
-  };
-
-  Util.appendToArray = function Util_appendToArray(arr1, arr2) {
-    Array.prototype.push.apply(arr1, arr2);
-  };
-
-  Util.prependToArray = function Util_prependToArray(arr1, arr2) {
-    Array.prototype.unshift.apply(arr1, arr2);
-  };
-
-  Util.extendObj = function extendObj(obj1, obj2) {
-    for (var key in obj2) {
-      obj1[key] = obj2[key];
+  }, {
+    key: 'inverseTransform',
+    value: function inverseTransform(m) {
+      var d = m[0] * m[3] - m[1] * m[2];
+      return [m[3] / d, -m[1] / d, -m[2] / d, m[0] / d, (m[2] * m[5] - m[4] * m[3]) / d, (m[4] * m[1] - m[5] * m[0]) / d];
     }
-  };
 
-  Util.getInheritableProperty = function Util_getInheritableProperty(dict, name, getArray) {
-    while (dict && !dict.has(name)) {
-      dict = dict.get('Parent');
-    }
-    if (!dict) {
-      return null;
-    }
-    return getArray ? dict.getArray(name) : dict.get(name);
-  };
+    // Apply a generic 3d matrix M on a 3-vector v:
+    //   | a b c |   | X |
+    //   | d e f | x | Y |
+    //   | g h i |   | Z |
+    // M is assumed to be serialized as [a,b,c,d,e,f,g,h,i],
+    // with v as [X,Y,Z]
 
-  Util.inherit = function Util_inherit(sub, base, prototype) {
-    sub.prototype = Object.create(base.prototype);
-    sub.prototype.constructor = sub;
-    for (var prop in prototype) {
-      sub.prototype[prop] = prototype[prop];
+  }, {
+    key: 'apply3dTransform',
+    value: function apply3dTransform(m, v) {
+      return [m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2], m[6] * v[0] + m[7] * v[1] + m[8] * v[2]];
     }
-  };
 
-  Util.loadScript = function Util_loadScript(src, callback) {
-    var script = document.createElement('script');
-    var loaded = false;
-    script.setAttribute('src', src);
-    if (callback) {
-      script.onload = function () {
-        if (!loaded) {
-          callback();
-        }
-        loaded = true;
-      };
+    // This calculation uses Singular Value Decomposition.
+    // The SVD can be represented with formula A = USV. We are interested in the
+    // matrix S here because it represents the scale values.
+
+  }, {
+    key: 'singularValueDecompose2dScale',
+    value: function singularValueDecompose2dScale(m) {
+      var transpose = [m[0], m[2], m[1], m[3]];
+
+      // Multiply matrix m with its transpose.
+      var a = m[0] * transpose[0] + m[1] * transpose[2];
+      var b = m[0] * transpose[1] + m[1] * transpose[3];
+      var c = m[2] * transpose[0] + m[3] * transpose[2];
+      var d = m[2] * transpose[1] + m[3] * transpose[3];
+
+      // Solve the second degree polynomial to get roots.
+      var first = (a + d) / 2;
+      var second = Math.sqrt((a + d) * (a + d) - 4 * (a * d - c * b)) / 2;
+      var sx = first + second || 1;
+      var sy = first - second || 1;
+
+      // Scale values are the square roots of the eigenvalues.
+      return [Math.sqrt(sx), Math.sqrt(sy)];
     }
-    document.getElementsByTagName('head')[0].appendChild(script);
-  };
+
+    // Normalize rectangle rect=[x1, y1, x2, y2] so that (x1,y1) < (x2,y2)
+    // For coordinate systems whose origin lies in the bottom-left, this
+    // means normalization to (BL,TR) ordering. For systems with origin in the
+    // top-left, this means (TL,BR) ordering.
+
+  }, {
+    key: 'normalizeRect',
+    value: function normalizeRect(rect) {
+      var r = rect.slice(0); // clone rect
+      if (rect[0] > rect[2]) {
+        r[0] = rect[2];
+        r[2] = rect[0];
+      }
+      if (rect[1] > rect[3]) {
+        r[1] = rect[3];
+        r[3] = rect[1];
+      }
+      return r;
+    }
+
+    // Returns a rectangle [x1, y1, x2, y2] corresponding to the
+    // intersection of rect1 and rect2. If no intersection, returns 'false'
+    // The rectangle coordinates of rect1, rect2 should be [x1, y1, x2, y2]
+
+  }, {
+    key: 'intersect',
+    value: function intersect(rect1, rect2) {
+      function compare(a, b) {
+        return a - b;
+      }
+
+      // Order points along the axes
+      var orderedX = [rect1[0], rect1[2], rect2[0], rect2[2]].sort(compare);
+      var orderedY = [rect1[1], rect1[3], rect2[1], rect2[3]].sort(compare);
+      var result = [];
+
+      rect1 = Util.normalizeRect(rect1);
+      rect2 = Util.normalizeRect(rect2);
+
+      // X: first and second points belong to different rectangles?
+      if (orderedX[0] === rect1[0] && orderedX[1] === rect2[0] || orderedX[0] === rect2[0] && orderedX[1] === rect1[0]) {
+        // Intersection must be between second and third points
+        result[0] = orderedX[1];
+        result[2] = orderedX[2];
+      } else {
+        return null;
+      }
+
+      // Y: first and second points belong to different rectangles?
+      if (orderedY[0] === rect1[1] && orderedY[1] === rect2[1] || orderedY[0] === rect2[1] && orderedY[1] === rect1[1]) {
+        // Intersection must be between second and third points
+        result[1] = orderedY[1];
+        result[3] = orderedY[2];
+      } else {
+        return null;
+      }
+
+      return result;
+    }
+  }]);
 
   return Util;
-}();
-
-/**
- * PDF page viewport created based on scale, rotation and offset.
- * @class
- * @alias PageViewport
- */
-var PageViewport = function PageViewportClosure() {
-  /**
-   * @constructor
-   * @private
-   * @param viewBox {Array} xMin, yMin, xMax and yMax coordinates.
-   * @param scale {number} scale of the viewport.
-   * @param rotation {number} rotations of the viewport in degrees.
-   * @param offsetX {number} offset X
-   * @param offsetY {number} offset Y
-   * @param dontFlip {boolean} if true, axis Y will not be flipped.
-   */
-  function PageViewport(viewBox, scale, rotation, offsetX, offsetY, dontFlip) {
-    this.viewBox = viewBox;
-    this.scale = scale;
-    this.rotation = rotation;
-    this.offsetX = offsetX;
-    this.offsetY = offsetY;
-
-    // creating transform to convert pdf coordinate system to the normal
-    // canvas like coordinates taking in account scale and rotation
-    var centerX = (viewBox[2] + viewBox[0]) / 2;
-    var centerY = (viewBox[3] + viewBox[1]) / 2;
-    var rotateA, rotateB, rotateC, rotateD;
-    rotation = rotation % 360;
-    rotation = rotation < 0 ? rotation + 360 : rotation;
-    switch (rotation) {
-      case 180:
-        rotateA = -1;rotateB = 0;rotateC = 0;rotateD = 1;
-        break;
-      case 90:
-        rotateA = 0;rotateB = 1;rotateC = 1;rotateD = 0;
-        break;
-      case 270:
-        rotateA = 0;rotateB = -1;rotateC = -1;rotateD = 0;
-        break;
-      // case 0:
-      default:
-        rotateA = 1;rotateB = 0;rotateC = 0;rotateD = -1;
-        break;
-    }
-
-    if (dontFlip) {
-      rotateC = -rotateC;rotateD = -rotateD;
-    }
-
-    var offsetCanvasX, offsetCanvasY;
-    var width, height;
-    if (rotateA === 0) {
-      offsetCanvasX = Math.abs(centerY - viewBox[1]) * scale + offsetX;
-      offsetCanvasY = Math.abs(centerX - viewBox[0]) * scale + offsetY;
-      width = Math.abs(viewBox[3] - viewBox[1]) * scale;
-      height = Math.abs(viewBox[2] - viewBox[0]) * scale;
-    } else {
-      offsetCanvasX = Math.abs(centerX - viewBox[0]) * scale + offsetX;
-      offsetCanvasY = Math.abs(centerY - viewBox[1]) * scale + offsetY;
-      width = Math.abs(viewBox[2] - viewBox[0]) * scale;
-      height = Math.abs(viewBox[3] - viewBox[1]) * scale;
-    }
-    // creating transform for the following operations:
-    // translate(-centerX, -centerY), rotate and flip vertically,
-    // scale, and translate(offsetCanvasX, offsetCanvasY)
-    this.transform = [rotateA * scale, rotateB * scale, rotateC * scale, rotateD * scale, offsetCanvasX - rotateA * scale * centerX - rotateC * scale * centerY, offsetCanvasY - rotateB * scale * centerX - rotateD * scale * centerY];
-
-    this.width = width;
-    this.height = height;
-    this.fontScale = scale;
-  }
-  PageViewport.prototype = /** @lends PageViewport.prototype */{
-    /**
-     * Clones viewport with additional properties.
-     * @param args {Object} (optional) If specified, may contain the 'scale' or
-     * 'rotation' properties to override the corresponding properties in
-     * the cloned viewport.
-     * @returns {PageViewport} Cloned viewport.
-     */
-    clone: function PageViewPort_clone(args) {
-      args = args || {};
-      var scale = 'scale' in args ? args.scale : this.scale;
-      var rotation = 'rotation' in args ? args.rotation : this.rotation;
-      return new PageViewport(this.viewBox.slice(), scale, rotation, this.offsetX, this.offsetY, args.dontFlip);
-    },
-    /**
-     * Converts PDF point to the viewport coordinates. For examples, useful for
-     * converting PDF location into canvas pixel coordinates.
-     * @param x {number} X coordinate.
-     * @param y {number} Y coordinate.
-     * @returns {Object} Object that contains 'x' and 'y' properties of the
-     * point in the viewport coordinate space.
-     * @see {@link convertToPdfPoint}
-     * @see {@link convertToViewportRectangle}
-     */
-    convertToViewportPoint: function PageViewport_convertToViewportPoint(x, y) {
-      return Util.applyTransform([x, y], this.transform);
-    },
-    /**
-     * Converts PDF rectangle to the viewport coordinates.
-     * @param rect {Array} xMin, yMin, xMax and yMax coordinates.
-     * @returns {Array} Contains corresponding coordinates of the rectangle
-     * in the viewport coordinate space.
-     * @see {@link convertToViewportPoint}
-     */
-    convertToViewportRectangle: function PageViewport_convertToViewportRectangle(rect) {
-      var tl = Util.applyTransform([rect[0], rect[1]], this.transform);
-      var br = Util.applyTransform([rect[2], rect[3]], this.transform);
-      return [tl[0], tl[1], br[0], br[1]];
-    },
-    /**
-     * Converts viewport coordinates to the PDF location. For examples, useful
-     * for converting canvas pixel location into PDF one.
-     * @param x {number} X coordinate.
-     * @param y {number} Y coordinate.
-     * @returns {Object} Object that contains 'x' and 'y' properties of the
-     * point in the PDF coordinate space.
-     * @see {@link convertToViewportPoint}
-     */
-    convertToPdfPoint: function PageViewport_convertToPdfPoint(x, y) {
-      return Util.applyInverseTransform([x, y], this.transform);
-    }
-  };
-  return PageViewport;
 }();
 
 var PDFStringTranslateTable = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2D8, 0x2C7, 0x2C6, 0x2D9, 0x2DD, 0x2DB, 0x2DA, 0x2DC, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2022, 0x2020, 0x2021, 0x2026, 0x2014, 0x2013, 0x192, 0x2044, 0x2039, 0x203A, 0x2212, 0x2030, 0x201E, 0x201C, 0x201D, 0x2018, 0x2019, 0x201A, 0x2122, 0xFB01, 0xFB02, 0x141, 0x152, 0x160, 0x178, 0x17D, 0x131, 0x142, 0x153, 0x161, 0x17E, 0, 0x20AC];
 
 function stringToPDFString(str) {
-  var i,
-      n = str.length,
+  var length = str.length,
       strBuf = [];
   if (str[0] === '\xFE' && str[1] === '\xFF') {
     // UTF16BE BOM
-    for (i = 2; i < n; i += 2) {
+    for (var i = 2; i < length; i += 2) {
       strBuf.push(String.fromCharCode(str.charCodeAt(i) << 8 | str.charCodeAt(i + 1)));
     }
   } else {
-    for (i = 0; i < n; ++i) {
-      var code = PDFStringTranslateTable[str.charCodeAt(i)];
-      strBuf.push(code ? String.fromCharCode(code) : str.charAt(i));
+    for (var _i2 = 0; _i2 < length; ++_i2) {
+      var code = PDFStringTranslateTable[str.charCodeAt(_i2)];
+      strBuf.push(code ? String.fromCharCode(code) : str.charAt(_i2));
     }
   }
   return strBuf.join('');
@@ -11683,47 +11488,57 @@ function isArrayBuffer(v) {
   return (typeof v === 'undefined' ? 'undefined' : _typeof(v)) === 'object' && v !== null && v.byteLength !== undefined;
 }
 
+function isArrayEqual(arr1, arr2) {
+  if (arr1.length !== arr2.length) {
+    return false;
+  }
+  return arr1.every(function (element, index) {
+    return element === arr2[index];
+  });
+}
+
 // Checks if ch is one of the following characters: SPACE, TAB, CR or LF.
 function isSpace(ch) {
   return ch === 0x20 || ch === 0x09 || ch === 0x0D || ch === 0x0A;
-}
-
-function isNodeJS() {
-  // eslint-disable-next-line no-undef
-  return (typeof process === 'undefined' ? 'undefined' : _typeof(process)) === 'object' && process + '' === '[object process]';
 }
 
 /**
  * Promise Capability object.
  *
  * @typedef {Object} PromiseCapability
- * @property {Promise} promise - A promise object.
- * @property {function} resolve - Fulfills the promise.
- * @property {function} reject - Rejects the promise.
+ * @property {Promise} promise - A Promise object.
+ * @property {boolean} settled - If the Promise has been fulfilled/rejected.
+ * @property {function} resolve - Fulfills the Promise.
+ * @property {function} reject - Rejects the Promise.
  */
 
 /**
  * Creates a promise capability object.
  * @alias createPromiseCapability
  *
- * @return {PromiseCapability} A capability object contains:
- * - a Promise, resolve and reject methods.
+ * @return {PromiseCapability}
  */
 function createPromiseCapability() {
-  var capability = {};
+  var capability = Object.create(null);
+  var isSettled = false;
+
+  Object.defineProperty(capability, 'settled', {
+    get: function get() {
+      return isSettled;
+    }
+  });
   capability.promise = new Promise(function (resolve, reject) {
-    capability.resolve = resolve;
-    capability.reject = reject;
+    capability.resolve = function (data) {
+      isSettled = true;
+      resolve(data);
+    };
+    capability.reject = function (reason) {
+      isSettled = true;
+      reject(reason);
+    };
   });
   return capability;
 }
-
-var createBlob = function createBlob(data, contentType) {
-  if (typeof Blob !== 'undefined') {
-    return new Blob([data], { type: contentType });
-  }
-  throw new Error('The "Blob" constructor is not supported.');
-};
 
 var createObjectURL = function createObjectURLClosure() {
   // Blob/createObjectURL is not available, falling back to data schema.
@@ -11733,7 +11548,7 @@ var createObjectURL = function createObjectURLClosure() {
     var forceDataSchema = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
     if (!forceDataSchema && URL.createObjectURL) {
-      var blob = createBlob(data, contentType);
+      var blob = new Blob([data], { type: contentType });
       return URL.createObjectURL(blob);
     }
 
@@ -11752,502 +11567,61 @@ var createObjectURL = function createObjectURLClosure() {
   };
 }();
 
-function resolveCall(fn, args) {
-  var thisArg = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-
-  if (!fn) {
-    return Promise.resolve(undefined);
-  }
-  return new Promise(function (resolve, reject) {
-    resolve(fn.apply(thisArg, args));
-  });
-}
-
-function wrapReason(reason) {
-  if ((typeof reason === 'undefined' ? 'undefined' : _typeof(reason)) !== 'object') {
-    return reason;
-  }
-  switch (reason.name) {
-    case 'AbortException':
-      return new AbortException(reason.message);
-    case 'MissingPDFException':
-      return new MissingPDFException(reason.message);
-    case 'UnexpectedResponseException':
-      return new UnexpectedResponseException(reason.message, reason.status);
-    default:
-      return new UnknownErrorException(reason.message, reason.details);
-  }
-}
-
-function makeReasonSerializable(reason) {
-  if (!(reason instanceof Error) || reason instanceof AbortException || reason instanceof MissingPDFException || reason instanceof UnexpectedResponseException || reason instanceof UnknownErrorException) {
-    return reason;
-  }
-  return new UnknownErrorException(reason.message, reason.toString());
-}
-
-function resolveOrReject(capability, success, reason) {
-  if (success) {
-    capability.resolve();
-  } else {
-    capability.reject(reason);
-  }
-}
-
-function finalize(promise) {
-  return Promise.resolve(promise).catch(function () {});
-}
-
-function MessageHandler(sourceName, targetName, comObj) {
-  var _this = this;
-
-  this.sourceName = sourceName;
-  this.targetName = targetName;
-  this.comObj = comObj;
-  this.callbackId = 1;
-  this.streamId = 1;
-  this.postMessageTransfers = true;
-  this.streamSinks = Object.create(null);
-  this.streamControllers = Object.create(null);
-  var callbacksCapabilities = this.callbacksCapabilities = Object.create(null);
-  var ah = this.actionHandler = Object.create(null);
-
-  this._onComObjOnMessage = function (event) {
-    var data = event.data;
-    if (data.targetName !== _this.sourceName) {
-      return;
-    }
-    if (data.stream) {
-      _this._processStreamMessage(data);
-    } else if (data.isReply) {
-      var callbackId = data.callbackId;
-      if (data.callbackId in callbacksCapabilities) {
-        var callback = callbacksCapabilities[callbackId];
-        delete callbacksCapabilities[callbackId];
-        if ('error' in data) {
-          callback.reject(wrapReason(data.error));
-        } else {
-          callback.resolve(data.data);
-        }
-      } else {
-        throw new Error('Cannot resolve callback ' + callbackId);
-      }
-    } else if (data.action in ah) {
-      var action = ah[data.action];
-      if (data.callbackId) {
-        var _sourceName = _this.sourceName;
-        var _targetName = data.sourceName;
-        Promise.resolve().then(function () {
-          return action[0].call(action[1], data.data);
-        }).then(function (result) {
-          comObj.postMessage({
-            sourceName: _sourceName,
-            targetName: _targetName,
-            isReply: true,
-            callbackId: data.callbackId,
-            data: result
-          });
-        }, function (reason) {
-          comObj.postMessage({
-            sourceName: _sourceName,
-            targetName: _targetName,
-            isReply: true,
-            callbackId: data.callbackId,
-            error: makeReasonSerializable(reason)
-          });
-        });
-      } else if (data.streamId) {
-        _this._createStreamSink(data);
-      } else {
-        action[0].call(action[1], data.data);
-      }
-    } else {
-      throw new Error('Unknown action from worker: ' + data.action);
-    }
-  };
-  comObj.addEventListener('message', this._onComObjOnMessage);
-}
-
-MessageHandler.prototype = {
-  on: function on(actionName, handler, scope) {
-    var ah = this.actionHandler;
-    if (ah[actionName]) {
-      throw new Error('There is already an actionName called "' + actionName + '"');
-    }
-    ah[actionName] = [handler, scope];
-  },
-
-  /**
-   * Sends a message to the comObj to invoke the action with the supplied data.
-   * @param {String} actionName - Action to call.
-   * @param {JSON} data - JSON data to send.
-   * @param {Array} [transfers] - Optional list of transfers/ArrayBuffers
-   */
-  send: function send(actionName, data, transfers) {
-    var message = {
-      sourceName: this.sourceName,
-      targetName: this.targetName,
-      action: actionName,
-      data: data
-    };
-    this.postMessage(message, transfers);
-  },
-
-  /**
-   * Sends a message to the comObj to invoke the action with the supplied data.
-   * Expects that the other side will callback with the response.
-   * @param {String} actionName - Action to call.
-   * @param {JSON} data - JSON data to send.
-   * @param {Array} [transfers] - Optional list of transfers/ArrayBuffers.
-   * @returns {Promise} Promise to be resolved with response data.
-   */
-  sendWithPromise: function sendWithPromise(actionName, data, transfers) {
-    var callbackId = this.callbackId++;
-    var message = {
-      sourceName: this.sourceName,
-      targetName: this.targetName,
-      action: actionName,
-      data: data,
-      callbackId: callbackId
-    };
-    var capability = createPromiseCapability();
-    this.callbacksCapabilities[callbackId] = capability;
-    try {
-      this.postMessage(message, transfers);
-    } catch (e) {
-      capability.reject(e);
-    }
-    return capability.promise;
-  },
-
-  /**
-   * Sends a message to the comObj to invoke the action with the supplied data.
-   * Expect that the other side will callback to signal 'start_complete'.
-   * @param {String} actionName - Action to call.
-   * @param {JSON} data - JSON data to send.
-   * @param {Object} queueingStrategy - strategy to signal backpressure based on
-   *                 internal queue.
-   * @param {Array} [transfers] - Optional list of transfers/ArrayBuffers.
-   * @return {ReadableStream} ReadableStream to read data in chunks.
-   */
-  sendWithStream: function sendWithStream(actionName, data, queueingStrategy, transfers) {
-    var _this2 = this;
-
-    var streamId = this.streamId++;
-    var sourceName = this.sourceName;
-    var targetName = this.targetName;
-
-    return new ReadableStream({
-      start: function start(controller) {
-        var startCapability = createPromiseCapability();
-        _this2.streamControllers[streamId] = {
-          controller: controller,
-          startCall: startCapability,
-          isClosed: false
-        };
-        _this2.postMessage({
-          sourceName: sourceName,
-          targetName: targetName,
-          action: actionName,
-          streamId: streamId,
-          data: data,
-          desiredSize: controller.desiredSize
-        });
-        // Return Promise for Async process, to signal success/failure.
-        return startCapability.promise;
-      },
-
-      pull: function pull(controller) {
-        var pullCapability = createPromiseCapability();
-        _this2.streamControllers[streamId].pullCall = pullCapability;
-        _this2.postMessage({
-          sourceName: sourceName,
-          targetName: targetName,
-          stream: 'pull',
-          streamId: streamId,
-          desiredSize: controller.desiredSize
-        });
-        // Returning Promise will not call "pull"
-        // again until current pull is resolved.
-        return pullCapability.promise;
-      },
-
-      cancel: function cancel(reason) {
-        var cancelCapability = createPromiseCapability();
-        _this2.streamControllers[streamId].cancelCall = cancelCapability;
-        _this2.streamControllers[streamId].isClosed = true;
-        _this2.postMessage({
-          sourceName: sourceName,
-          targetName: targetName,
-          stream: 'cancel',
-          reason: reason,
-          streamId: streamId
-        });
-        // Return Promise to signal success or failure.
-        return cancelCapability.promise;
-      }
-    }, queueingStrategy);
-  },
-  _createStreamSink: function _createStreamSink(data) {
-    var _this3 = this;
-
-    var self = this;
-    var action = this.actionHandler[data.action];
-    var streamId = data.streamId;
-    var desiredSize = data.desiredSize;
-    var sourceName = this.sourceName;
-    var targetName = data.sourceName;
-    var capability = createPromiseCapability();
-
-    var sendStreamRequest = function sendStreamRequest(_ref) {
-      var stream = _ref.stream,
-          chunk = _ref.chunk,
-          transfers = _ref.transfers,
-          success = _ref.success,
-          reason = _ref.reason;
-
-      _this3.postMessage({ sourceName: sourceName, targetName: targetName, stream: stream, streamId: streamId,
-        chunk: chunk, success: success, reason: reason }, transfers);
-    };
-
-    var streamSink = {
-      enqueue: function enqueue(chunk) {
-        var size = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
-        var transfers = arguments[2];
-
-        if (this.isCancelled) {
-          return;
-        }
-        var lastDesiredSize = this.desiredSize;
-        this.desiredSize -= size;
-        // Enqueue decreases the desiredSize property of sink,
-        // so when it changes from positive to negative,
-        // set ready as unresolved promise.
-        if (lastDesiredSize > 0 && this.desiredSize <= 0) {
-          this.sinkCapability = createPromiseCapability();
-          this.ready = this.sinkCapability.promise;
-        }
-        sendStreamRequest({ stream: 'enqueue', chunk: chunk, transfers: transfers });
-      },
-      close: function close() {
-        if (this.isCancelled) {
-          return;
-        }
-        this.isCancelled = true;
-        sendStreamRequest({ stream: 'close' });
-        delete self.streamSinks[streamId];
-      },
-      error: function error(reason) {
-        if (this.isCancelled) {
-          return;
-        }
-        this.isCancelled = true;
-        sendStreamRequest({ stream: 'error', reason: reason });
-      },
-
-
-      sinkCapability: capability,
-      onPull: null,
-      onCancel: null,
-      isCancelled: false,
-      desiredSize: desiredSize,
-      ready: null
-    };
-
-    streamSink.sinkCapability.resolve();
-    streamSink.ready = streamSink.sinkCapability.promise;
-    this.streamSinks[streamId] = streamSink;
-    resolveCall(action[0], [data.data, streamSink], action[1]).then(function () {
-      sendStreamRequest({ stream: 'start_complete', success: true });
-    }, function (reason) {
-      sendStreamRequest({ stream: 'start_complete', success: false, reason: reason });
-    });
-  },
-  _processStreamMessage: function _processStreamMessage(data) {
-    var _this4 = this;
-
-    var sourceName = this.sourceName;
-    var targetName = data.sourceName;
-    var streamId = data.streamId;
-
-    var sendStreamResponse = function sendStreamResponse(_ref2) {
-      var stream = _ref2.stream,
-          success = _ref2.success,
-          reason = _ref2.reason;
-
-      _this4.comObj.postMessage({ sourceName: sourceName, targetName: targetName, stream: stream,
-        success: success, streamId: streamId, reason: reason });
-    };
-
-    var deleteStreamController = function deleteStreamController() {
-      // Delete streamController only when start, pull and
-      // cancel callbacks are resolved, to avoid "TypeError".
-      Promise.all([_this4.streamControllers[data.streamId].startCall, _this4.streamControllers[data.streamId].pullCall, _this4.streamControllers[data.streamId].cancelCall].map(function (capability) {
-        return capability && finalize(capability.promise);
-      })).then(function () {
-        delete _this4.streamControllers[data.streamId];
-      });
-    };
-
-    switch (data.stream) {
-      case 'start_complete':
-        resolveOrReject(this.streamControllers[data.streamId].startCall, data.success, wrapReason(data.reason));
-        break;
-      case 'pull_complete':
-        resolveOrReject(this.streamControllers[data.streamId].pullCall, data.success, wrapReason(data.reason));
-        break;
-      case 'pull':
-        // Ignore any pull after close is called.
-        if (!this.streamSinks[data.streamId]) {
-          sendStreamResponse({ stream: 'pull_complete', success: true });
-          break;
-        }
-        // Pull increases the desiredSize property of sink,
-        // so when it changes from negative to positive,
-        // set ready property as resolved promise.
-        if (this.streamSinks[data.streamId].desiredSize <= 0 && data.desiredSize > 0) {
-          this.streamSinks[data.streamId].sinkCapability.resolve();
-        }
-        // Reset desiredSize property of sink on every pull.
-        this.streamSinks[data.streamId].desiredSize = data.desiredSize;
-        resolveCall(this.streamSinks[data.streamId].onPull).then(function () {
-          sendStreamResponse({ stream: 'pull_complete', success: true });
-        }, function (reason) {
-          sendStreamResponse({ stream: 'pull_complete',
-            success: false, reason: reason });
-        });
-        break;
-      case 'enqueue':
-        assert(this.streamControllers[data.streamId], 'enqueue should have stream controller');
-        if (!this.streamControllers[data.streamId].isClosed) {
-          this.streamControllers[data.streamId].controller.enqueue(data.chunk);
-        }
-        break;
-      case 'close':
-        assert(this.streamControllers[data.streamId], 'close should have stream controller');
-        if (this.streamControllers[data.streamId].isClosed) {
-          break;
-        }
-        this.streamControllers[data.streamId].isClosed = true;
-        this.streamControllers[data.streamId].controller.close();
-        deleteStreamController();
-        break;
-      case 'error':
-        assert(this.streamControllers[data.streamId], 'error should have stream controller');
-        this.streamControllers[data.streamId].controller.error(wrapReason(data.reason));
-        deleteStreamController();
-        break;
-      case 'cancel_complete':
-        resolveOrReject(this.streamControllers[data.streamId].cancelCall, data.success, wrapReason(data.reason));
-        deleteStreamController();
-        break;
-      case 'cancel':
-        if (!this.streamSinks[data.streamId]) {
-          break;
-        }
-        resolveCall(this.streamSinks[data.streamId].onCancel, [wrapReason(data.reason)]).then(function () {
-          sendStreamResponse({ stream: 'cancel_complete', success: true });
-        }, function (reason) {
-          sendStreamResponse({ stream: 'cancel_complete',
-            success: false, reason: reason });
-        });
-        this.streamSinks[data.streamId].sinkCapability.reject(wrapReason(data.reason));
-        this.streamSinks[data.streamId].isCancelled = true;
-        delete this.streamSinks[data.streamId];
-        break;
-      default:
-        throw new Error('Unexpected stream case');
-    }
-  },
-
-
-  /**
-   * Sends raw message to the comObj.
-   * @private
-   * @param {Object} message - Raw message.
-   * @param transfers List of transfers/ArrayBuffers, or undefined.
-   */
-  postMessage: function postMessage(message, transfers) {
-    if (transfers && this.postMessageTransfers) {
-      this.comObj.postMessage(message, transfers);
-    } else {
-      this.comObj.postMessage(message);
-    }
-  },
-  destroy: function destroy() {
-    this.comObj.removeEventListener('message', this._onComObjOnMessage);
-  }
-};
-
-function loadJpegStream(id, imageUrl, objs) {
-  var img = new Image();
-  img.onload = function loadJpegStream_onloadClosure() {
-    objs.resolve(id, img);
-  };
-  img.onerror = function loadJpegStream_onerrorClosure() {
-    objs.resolve(id, null);
-    warn('Error during JPEG image loading');
-  };
-  img.src = imageUrl;
-}
-
 exports.FONT_IDENTITY_MATRIX = FONT_IDENTITY_MATRIX;
 exports.IDENTITY_MATRIX = IDENTITY_MATRIX;
 exports.OPS = OPS;
-exports.VERBOSITY_LEVELS = VERBOSITY_LEVELS;
+exports.VerbosityLevel = VerbosityLevel;
 exports.UNSUPPORTED_FEATURES = UNSUPPORTED_FEATURES;
 exports.AnnotationBorderStyleType = AnnotationBorderStyleType;
 exports.AnnotationFieldFlag = AnnotationFieldFlag;
 exports.AnnotationFlag = AnnotationFlag;
+exports.AnnotationMarkedState = AnnotationMarkedState;
+exports.AnnotationReplyType = AnnotationReplyType;
+exports.AnnotationReviewState = AnnotationReviewState;
+exports.AnnotationStateModelType = AnnotationStateModelType;
 exports.AnnotationType = AnnotationType;
 exports.FontType = FontType;
 exports.ImageKind = ImageKind;
 exports.CMapCompressionType = CMapCompressionType;
 exports.AbortException = AbortException;
 exports.InvalidPDFException = InvalidPDFException;
-exports.MessageHandler = MessageHandler;
-exports.MissingDataException = MissingDataException;
 exports.MissingPDFException = MissingPDFException;
 exports.NativeImageDecoding = NativeImageDecoding;
-exports.NotImplementedException = NotImplementedException;
-exports.PageViewport = PageViewport;
 exports.PasswordException = PasswordException;
 exports.PasswordResponses = PasswordResponses;
+exports.PermissionFlag = PermissionFlag;
 exports.StreamType = StreamType;
 exports.TextRenderingMode = TextRenderingMode;
 exports.UnexpectedResponseException = UnexpectedResponseException;
 exports.UnknownErrorException = UnknownErrorException;
 exports.Util = Util;
-exports.XRefParseException = XRefParseException;
 exports.FormatError = FormatError;
 exports.arrayByteLength = arrayByteLength;
 exports.arraysToBytes = arraysToBytes;
 exports.assert = assert;
 exports.bytesToString = bytesToString;
-exports.createBlob = createBlob;
 exports.createPromiseCapability = createPromiseCapability;
 exports.createObjectURL = createObjectURL;
-exports.deprecated = deprecated;
-exports.getLookupTableFactory = getLookupTableFactory;
 exports.getVerbosityLevel = getVerbosityLevel;
 exports.info = info;
 exports.isArrayBuffer = isArrayBuffer;
+exports.isArrayEqual = isArrayEqual;
 exports.isBool = isBool;
 exports.isEmptyObj = isEmptyObj;
 exports.isNum = isNum;
 exports.isString = isString;
 exports.isSpace = isSpace;
-exports.isNodeJS = isNodeJS;
 exports.isSameOrigin = isSameOrigin;
 exports.createValidAbsoluteUrl = createValidAbsoluteUrl;
 exports.isLittleEndian = isLittleEndian;
 exports.isEvalSupported = isEvalSupported;
-exports.loadJpegStream = loadJpegStream;
 exports.log2 = log2;
 exports.readInt8 = readInt8;
 exports.readUint16 = readUint16;
 exports.readUint32 = readUint32;
 exports.removeNullCharacters = removeNullCharacters;
+exports.ReadableStream = ReadableStream;
+exports.URL = URL;
 exports.setVerbosityLevel = setVerbosityLevel;
 exports.shadow = shadow;
 exports.string32 = string32;
@@ -12257,200 +11631,9 @@ exports.stringToUTF8String = stringToUTF8String;
 exports.utf8StringToString = utf8StringToString;
 exports.warn = warn;
 exports.unreachable = unreachable;
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
 
 /***/ }),
 /* 44 */
-/***/ (function(module, exports) {
-
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-
-/***/ }),
-/* 45 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -12459,6 +11642,11 @@ process.umask = function() { return 0; };
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 /* Copyright 2012 Mozilla Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12473,8 +11661,13 @@ Object.defineProperty(exports, "__esModule", {
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* eslint no-var: error */
 
-/* This class implements the QM Coder decoding as defined in
+// Table C-2
+var QeTable = [{ qe: 0x5601, nmps: 1, nlps: 1, switchFlag: 1 }, { qe: 0x3401, nmps: 2, nlps: 6, switchFlag: 0 }, { qe: 0x1801, nmps: 3, nlps: 9, switchFlag: 0 }, { qe: 0x0AC1, nmps: 4, nlps: 12, switchFlag: 0 }, { qe: 0x0521, nmps: 5, nlps: 29, switchFlag: 0 }, { qe: 0x0221, nmps: 38, nlps: 33, switchFlag: 0 }, { qe: 0x5601, nmps: 7, nlps: 6, switchFlag: 1 }, { qe: 0x5401, nmps: 8, nlps: 14, switchFlag: 0 }, { qe: 0x4801, nmps: 9, nlps: 14, switchFlag: 0 }, { qe: 0x3801, nmps: 10, nlps: 14, switchFlag: 0 }, { qe: 0x3001, nmps: 11, nlps: 17, switchFlag: 0 }, { qe: 0x2401, nmps: 12, nlps: 18, switchFlag: 0 }, { qe: 0x1C01, nmps: 13, nlps: 20, switchFlag: 0 }, { qe: 0x1601, nmps: 29, nlps: 21, switchFlag: 0 }, { qe: 0x5601, nmps: 15, nlps: 14, switchFlag: 1 }, { qe: 0x5401, nmps: 16, nlps: 14, switchFlag: 0 }, { qe: 0x5101, nmps: 17, nlps: 15, switchFlag: 0 }, { qe: 0x4801, nmps: 18, nlps: 16, switchFlag: 0 }, { qe: 0x3801, nmps: 19, nlps: 17, switchFlag: 0 }, { qe: 0x3401, nmps: 20, nlps: 18, switchFlag: 0 }, { qe: 0x3001, nmps: 21, nlps: 19, switchFlag: 0 }, { qe: 0x2801, nmps: 22, nlps: 19, switchFlag: 0 }, { qe: 0x2401, nmps: 23, nlps: 20, switchFlag: 0 }, { qe: 0x2201, nmps: 24, nlps: 21, switchFlag: 0 }, { qe: 0x1C01, nmps: 25, nlps: 22, switchFlag: 0 }, { qe: 0x1801, nmps: 26, nlps: 23, switchFlag: 0 }, { qe: 0x1601, nmps: 27, nlps: 24, switchFlag: 0 }, { qe: 0x1401, nmps: 28, nlps: 25, switchFlag: 0 }, { qe: 0x1201, nmps: 29, nlps: 26, switchFlag: 0 }, { qe: 0x1101, nmps: 30, nlps: 27, switchFlag: 0 }, { qe: 0x0AC1, nmps: 31, nlps: 28, switchFlag: 0 }, { qe: 0x09C1, nmps: 32, nlps: 29, switchFlag: 0 }, { qe: 0x08A1, nmps: 33, nlps: 30, switchFlag: 0 }, { qe: 0x0521, nmps: 34, nlps: 31, switchFlag: 0 }, { qe: 0x0441, nmps: 35, nlps: 32, switchFlag: 0 }, { qe: 0x02A1, nmps: 36, nlps: 33, switchFlag: 0 }, { qe: 0x0221, nmps: 37, nlps: 34, switchFlag: 0 }, { qe: 0x0141, nmps: 38, nlps: 35, switchFlag: 0 }, { qe: 0x0111, nmps: 39, nlps: 36, switchFlag: 0 }, { qe: 0x0085, nmps: 40, nlps: 37, switchFlag: 0 }, { qe: 0x0049, nmps: 41, nlps: 38, switchFlag: 0 }, { qe: 0x0025, nmps: 42, nlps: 39, switchFlag: 0 }, { qe: 0x0015, nmps: 43, nlps: 40, switchFlag: 0 }, { qe: 0x0009, nmps: 44, nlps: 41, switchFlag: 0 }, { qe: 0x0005, nmps: 45, nlps: 42, switchFlag: 0 }, { qe: 0x0001, nmps: 45, nlps: 43, switchFlag: 0 }, { qe: 0x5601, nmps: 46, nlps: 46, switchFlag: 0 }];
+
+/**
+ * This class implements the QM Coder decoding as defined in
  *   JPEG 2000 Part I Final Committee Draft Version 1.0
  *   Annex C.3 Arithmetic decoding procedure
  * available at http://www.jpeg.org/public/fcd15444-1.pdf
@@ -12482,12 +11675,12 @@ Object.defineProperty(exports, "__esModule", {
  * The arithmetic decoder is used in conjunction with context models to decode
  * JPEG2000 and JBIG2 streams.
  */
-var ArithmeticDecoder = function ArithmeticDecoderClosure() {
-  // Table C-2
-  var QeTable = [{ qe: 0x5601, nmps: 1, nlps: 1, switchFlag: 1 }, { qe: 0x3401, nmps: 2, nlps: 6, switchFlag: 0 }, { qe: 0x1801, nmps: 3, nlps: 9, switchFlag: 0 }, { qe: 0x0AC1, nmps: 4, nlps: 12, switchFlag: 0 }, { qe: 0x0521, nmps: 5, nlps: 29, switchFlag: 0 }, { qe: 0x0221, nmps: 38, nlps: 33, switchFlag: 0 }, { qe: 0x5601, nmps: 7, nlps: 6, switchFlag: 1 }, { qe: 0x5401, nmps: 8, nlps: 14, switchFlag: 0 }, { qe: 0x4801, nmps: 9, nlps: 14, switchFlag: 0 }, { qe: 0x3801, nmps: 10, nlps: 14, switchFlag: 0 }, { qe: 0x3001, nmps: 11, nlps: 17, switchFlag: 0 }, { qe: 0x2401, nmps: 12, nlps: 18, switchFlag: 0 }, { qe: 0x1C01, nmps: 13, nlps: 20, switchFlag: 0 }, { qe: 0x1601, nmps: 29, nlps: 21, switchFlag: 0 }, { qe: 0x5601, nmps: 15, nlps: 14, switchFlag: 1 }, { qe: 0x5401, nmps: 16, nlps: 14, switchFlag: 0 }, { qe: 0x5101, nmps: 17, nlps: 15, switchFlag: 0 }, { qe: 0x4801, nmps: 18, nlps: 16, switchFlag: 0 }, { qe: 0x3801, nmps: 19, nlps: 17, switchFlag: 0 }, { qe: 0x3401, nmps: 20, nlps: 18, switchFlag: 0 }, { qe: 0x3001, nmps: 21, nlps: 19, switchFlag: 0 }, { qe: 0x2801, nmps: 22, nlps: 19, switchFlag: 0 }, { qe: 0x2401, nmps: 23, nlps: 20, switchFlag: 0 }, { qe: 0x2201, nmps: 24, nlps: 21, switchFlag: 0 }, { qe: 0x1C01, nmps: 25, nlps: 22, switchFlag: 0 }, { qe: 0x1801, nmps: 26, nlps: 23, switchFlag: 0 }, { qe: 0x1601, nmps: 27, nlps: 24, switchFlag: 0 }, { qe: 0x1401, nmps: 28, nlps: 25, switchFlag: 0 }, { qe: 0x1201, nmps: 29, nlps: 26, switchFlag: 0 }, { qe: 0x1101, nmps: 30, nlps: 27, switchFlag: 0 }, { qe: 0x0AC1, nmps: 31, nlps: 28, switchFlag: 0 }, { qe: 0x09C1, nmps: 32, nlps: 29, switchFlag: 0 }, { qe: 0x08A1, nmps: 33, nlps: 30, switchFlag: 0 }, { qe: 0x0521, nmps: 34, nlps: 31, switchFlag: 0 }, { qe: 0x0441, nmps: 35, nlps: 32, switchFlag: 0 }, { qe: 0x02A1, nmps: 36, nlps: 33, switchFlag: 0 }, { qe: 0x0221, nmps: 37, nlps: 34, switchFlag: 0 }, { qe: 0x0141, nmps: 38, nlps: 35, switchFlag: 0 }, { qe: 0x0111, nmps: 39, nlps: 36, switchFlag: 0 }, { qe: 0x0085, nmps: 40, nlps: 37, switchFlag: 0 }, { qe: 0x0049, nmps: 41, nlps: 38, switchFlag: 0 }, { qe: 0x0025, nmps: 42, nlps: 39, switchFlag: 0 }, { qe: 0x0015, nmps: 43, nlps: 40, switchFlag: 0 }, { qe: 0x0009, nmps: 44, nlps: 41, switchFlag: 0 }, { qe: 0x0005, nmps: 45, nlps: 42, switchFlag: 0 }, { qe: 0x0001, nmps: 45, nlps: 43, switchFlag: 0 }, { qe: 0x5601, nmps: 46, nlps: 46, switchFlag: 0 }];
 
+var ArithmeticDecoder = function () {
   // C.3.5 Initialisation of the decoder (INITDEC)
   function ArithmeticDecoder(data, start, end) {
+    _classCallCheck(this, ArithmeticDecoder);
+
     this.data = data;
     this.bp = start;
     this.dataEnd = end;
@@ -12503,14 +11696,17 @@ var ArithmeticDecoder = function ArithmeticDecoderClosure() {
     this.a = 0x8000;
   }
 
-  ArithmeticDecoder.prototype = {
-    // C.3.4 Compressed data input (BYTEIN)
-    byteIn: function ArithmeticDecoder_byteIn() {
+  // C.3.4 Compressed data input (BYTEIN)
+
+
+  _createClass(ArithmeticDecoder, [{
+    key: "byteIn",
+    value: function byteIn() {
       var data = this.data;
       var bp = this.bp;
+
       if (data[bp] === 0xFF) {
-        var b1 = data[bp + 1];
-        if (b1 > 0x8F) {
+        if (data[bp + 1] > 0x8F) {
           this.clow += 0xFF00;
           this.ct = 8;
         } else {
@@ -12529,16 +11725,20 @@ var ArithmeticDecoder = function ArithmeticDecoderClosure() {
         this.chigh += this.clow >> 16;
         this.clow &= 0xFFFF;
       }
-    },
+    }
+
     // C.3.2 Decoding a decision (DECODE)
-    readBit: function ArithmeticDecoder_readBit(contexts, pos) {
-      // contexts are packed into 1 byte:
+
+  }, {
+    key: "readBit",
+    value: function readBit(contexts, pos) {
+      // Contexts are packed into 1 byte:
       // highest 7 bits carry cx.index, lowest bit carries cx.mps
       var cx_index = contexts[pos] >> 1,
           cx_mps = contexts[pos] & 1;
       var qeTableIcx = QeTable[cx_index];
       var qeIcx = qeTableIcx.qe;
-      var d;
+      var d = void 0;
       var a = this.a - qeIcx;
 
       if (this.chigh < qeIcx) {
@@ -12589,7 +11789,7 @@ var ArithmeticDecoder = function ArithmeticDecoderClosure() {
       contexts[pos] = cx_index << 1 | cx_mps;
       return d;
     }
-  };
+  }]);
 
   return ArithmeticDecoder;
 }();
@@ -12597,7 +11797,7 @@ var ArithmeticDecoder = function ArithmeticDecoderClosure() {
 exports.ArithmeticDecoder = ArithmeticDecoder;
 
 /***/ }),
-/* 46 */
+/* 45 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -12753,7 +11953,7 @@ PdfjsJpxPixelsDecoder.prototype._copyTile = function copyTile(targetImage, tile,
 };
 
 /***/ }),
-/* 47 */
+/* 46 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
