@@ -2,36 +2,31 @@
 
 module.exports = PdfjsJpxCoefficientsDecoder;
 
-var jGlobals = require('j2k-jpip-globals.js');
-
-import { JpxImage } from 'jpx.js';
+var PdfjsJpxContextPool = require('pdfjs-jpx-context-pool.js');
 
 function PdfjsJpxCoefficientsDecoder() {
-    this._image = new JpxImage();
+    this._contextPool = new PdfjsJpxContextPool();
 }
 
 PdfjsJpxCoefficientsDecoder.prototype.start = function start(data, key) {
     var self = this;
     return new Promise(function(resolve, reject) {
-        var currentContext = self._image.parseCodestream(
-            data.headersCodestream,
-            0,
-            data.headersCodestream.length,
-            { isOnlyParseHeaders: true });
-        
+        var image = self._contextPool.image;
+        var currentContext = self._contextPool.getContext(data.headersCodestream);
         if (data.codeblocksData) {
-            self._image.addPacketsData(currentContext, data.codeblocksData);
+            image.addPacketsData(currentContext, data.codeblocksData);
         }
         if (data.precinctCoefficients) {
-            for (var i = 0; i < data.precinctCoefficients.length; ++i) {
-                var precinct = data.precinctCoefficients[i];
-                self._image.setPrecinctCoefficients(
+            // NOTE: Apparently dead code that can be removed
+            for (var j = 0; j < data.precinctCoefficients.length; ++j) {
+                var precinct = data.precinctCoefficients[j];
+                image.setPrecinctCoefficients(
                     currentContext, precinct.coefficients, precinct.tileIndex,
                     precinct.c, precinct.r, precinct.p);
             }
         }
         
-        var coefficients = self._image.decodePrecinctCoefficients(
+        var coefficients = image.decodePrecinctCoefficients(
             currentContext,
             /*tileIndex=*/0,
             key.component,

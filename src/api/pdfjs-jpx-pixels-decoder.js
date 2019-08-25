@@ -2,29 +2,24 @@
 
 module.exports = PdfjsJpxPixelsDecoder;
 
-var jGlobals = require('j2k-jpip-globals.js');
-
-import { JpxImage } from 'jpx.js';
+var PdfjsJpxContextPool = require('pdfjs-jpx-context-pool.js');
 
 function PdfjsJpxPixelsDecoder() {
-    this._image = new JpxImage();
+    this._contextPool = new PdfjsJpxContextPool();
 }
 
 PdfjsJpxPixelsDecoder.prototype.start = function start(data) {
     var self = this;
     return new Promise(function(resolve, reject) {
+        var image = self._contextPool.image;
+        var currentContext = self._contextPool.getContext(data.headersCodestream);
+
         var regionToParse = {
             left  : data.offsetInRegion.offsetX,
             top   : data.offsetInRegion.offsetY,
             right : data.offsetInRegion.offsetX + data.offsetInRegion.width,
             bottom: data.offsetInRegion.offsetY + data.offsetInRegion.height
         };
-        
-        var currentContext = self._image.parseCodestream(
-            data.headersCodestream,
-            0,
-            data.headersCodestream.length,
-            { isOnlyParseHeaders: true });
         
         var imageTilesX = data.imageTilesX;
         var boundsTilesX = data.tilesBounds.maxTileXExclusive - data.tilesBounds.minTileX;
@@ -41,7 +36,7 @@ PdfjsJpxPixelsDecoder.prototype.start = function start(data) {
             var inBoundsTileY = imageTileY - minTileY;
             var inBoundsTileIndex = inBoundsTileX + (inBoundsTileY * boundsTilesX);
             
-            self._image.setPrecinctCoefficients(
+            image.setPrecinctCoefficients(
                 currentContext,
                 coeffs.coefficients,
                 inBoundsTileIndex,
@@ -50,9 +45,9 @@ PdfjsJpxPixelsDecoder.prototype.start = function start(data) {
                 coeffs.key.precinctIndexInComponentResolution);
         }
         
-        self._image.decode(currentContext, { regionToParse: regionToParse });
+        image.decode(currentContext, { regionToParse: regionToParse });
 
-        var result = self._copyTilesPixelsToOnePixelsArray(self._image.tiles, regionToParse, self._image.componentsCount);
+        var result = self._copyTilesPixelsToOnePixelsArray(image.tiles, regionToParse, image.componentsCount);
         resolve(result);
     });
 };
