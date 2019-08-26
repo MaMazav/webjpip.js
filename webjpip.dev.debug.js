@@ -364,9 +364,9 @@ var jpipRuntimeFactory = {
         return new JpipPrecinctsIteratorWaiter(codestreamPart, codestreamStructure, databinsSaver, iteratePrecinctCallback, jpipRuntimeFactory);
     },
 
-    createQualityWaiter: function createQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct) {
+    createQualityWaiter: function createQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, callbacksThis) {
 
-        return new JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, jpipRuntimeFactory);
+        return new JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinct, callbacksThis, jpipRuntimeFactory);
     },
 
     createRequestParamsModifier: function createRequestParamsModifier(codestreamStructure) {
@@ -5468,47 +5468,43 @@ module.exports = function JpipDatabinsSaver(isJpipTilePartStream, jpipFactory) {
             loadedBytesInRegisteredDatabins += databin.getLoadedBytes();
         }
 
-        databinsArray.listeners[inClassId].push({
+        var handle = {
             listener: listener,
             listenerThis: listenerThis,
-            isRegistered: true
-        });
+            databin: databin,
+            isRegistered: true,
+            index: databinsArray.listeners[inClassId].length
+        };
+        databinsArray.listeners[inClassId].push(handle);
 
         databinsArray.databinsWithListeners[inClassId] = databin;
+        return handle;
     };
 
-    this.removeEventListener = function removeEventListener(databin, event, listener) {
-
-        if (event !== 'dataArrived') {
-            throw new jGlobals.jpipExceptions.InternalErrorException('Unsupported event: ' + event);
-        }
-
-        var classId = databin.getClassId();
-        var inClassId = databin.getInClassId();
+    this.removeEventListener = function removeEventListener(handle) {
+        var classId = handle.databin.getClassId();
+        var inClassId = handle.databin.getInClassId();
         var databinsArray = databinsByClass[classId];
         var listeners = databinsArray.listeners[inClassId];
 
-        if (databin !== databinsArray.databins[inClassId] || databin !== databinsArray.databinsWithListeners[inClassId]) {
+        if (handle.databin !== databinsArray.databins[inClassId] || handle.databin !== databinsArray.databinsWithListeners[inClassId]) {
 
             throw new jGlobals.jpipExceptions.InternalErrorException('Unmatched databin ' + 'with class-ID=' + classId + ' and in-class-ID=' + inClassId);
         }
 
-        for (var i = 0; i < listeners.length; ++i) {
-            if (listeners[i].listener === listener) {
-                listeners[i].isRegistered = true;
-                listeners[i] = listeners[listeners.length - 1];
-                listeners.length -= 1;
-
-                if (listeners.length === 0) {
-                    delete databinsArray.databinsWithListeners[inClassId];
-                    loadedBytesInRegisteredDatabins -= databin.getLoadedBytes();
-                }
-
-                return;
-            }
+        if (handle !== listeners[handle.index]) {
+            throw new jGlobals.jpipExceptions.InternalErrorException('Incosnsitency in ' + 'databin listeners indices');
         }
 
-        throw new jGlobals.jpipExceptions.InternalErrorException('Could not unregister listener from databin');
+        listeners[handle.index].isRegistered = false;
+        listeners[handle.index] = listeners[listeners.length - 1];
+        listeners[listeners.length - 1].index = handle.index;
+        listeners.length -= 1;
+
+        if (listeners.length === 0) {
+            delete databinsArray.databinsWithListeners[inClassId];
+            loadedBytesInRegisteredDatabins -= handle.databin.getLoadedBytes();
+        }
     };
 
     this.cleanupUnregisteredDatabins = function cleanupUnregisteredDatabins() {
@@ -6241,9 +6237,8 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
     this._dataListeners = [];
     this._isDisposed = false;
     this._isProgressive = true;
-    this._precinctDataArrivedBound = this._precinctDataArrived.bind(this);
 
-    this._listener = this._jpipFactory.createQualityWaiter(this._codestreamPart, progressiveness, this._maxQuality, this._qualityLayerReachedCallback.bind(this), this._codestreamStructure, this._databinsSaver, this._startTrackPrecinct.bind(this));
+    this._listener = this._jpipFactory.createQualityWaiter(this._codestreamPart, progressiveness, this._maxQuality, this._qualityLayerReachedCallback, this._codestreamStructure, this._databinsSaver, this._startTrackPrecinct, this);
 
     this._listener.register();
 }
@@ -6312,9 +6307,8 @@ JpipImageDataContext.prototype.dispose = function dispose() {
     this._listener.unregister();
     this._listener = null;
     for (var i = 0; i < this._registeredPrecinctDatabins.length; ++i) {
-        var precinctDatabin = this._registeredPrecinctDatabins[i];
-
-        this._databinsSaver.removeEventListener(precinctDatabin, 'dataArrived', this._precinctDataArrivedBound);
+        var databinListenerHandle = this._registeredPrecinctDatabins[i];
+        this._databinsSaver.removeEventListener(databinListenerHandle);
     }
 };
 
@@ -6356,8 +6350,8 @@ JpipImageDataContext.prototype._startTrackPrecinct = function startTrackPrecinct
 
     var inClassIndex = precinctDatabin.getInClassId();
     this._maxQualityPerPrecinct[inClassIndex] = maxQuality;
-    this._registeredPrecinctDatabins.push(precinctDatabin);
-    this._databinsSaver.addEventListener(precinctDatabin, 'dataArrived', this._precinctDataArrivedBound);
+    var handle = this._databinsSaver.addEventListener(precinctDatabin, 'dataArrived', this._precinctDataArrived, this);
+    this._registeredPrecinctDatabins.push(handle);
 
     this._precinctDataArrived(precinctDatabin, precinctIterator);
 };
@@ -7810,7 +7804,6 @@ module.exports = function JpipPrecinctsIteratorWaiter(codestreamPart, codestream
         while (tileIterator.tryAdvance()) {
             var tileIndex = tileIterator.tileIndex;
             var databin = databinsSaver.getTileHeaderDatabin(tileIndex);
-            registeredTileHeaderDatabins.push(databin);
 
             var inClassId = databin.getInClassId();
             accumulatedDataPerDatabin[inClassId] = {
@@ -7818,7 +7811,8 @@ module.exports = function JpipPrecinctsIteratorWaiter(codestreamPart, codestream
                 isAlreadyLoaded: false
             };
 
-            databinsSaver.addEventListener(databin, 'dataArrived', tileHeaderDataArrived);
+            var handle = databinsSaver.addEventListener(databin, 'dataArrived', tileHeaderDataArrived);
+            registeredTileHeaderDatabins.push(handle);
 
             ++tileHeadersNotLoaded;
             tileHeaderDataArrived(databin);
@@ -7838,7 +7832,7 @@ module.exports = function JpipPrecinctsIteratorWaiter(codestreamPart, codestream
         isUnregistered = true;
 
         for (var j = 0; j < registeredTileHeaderDatabins.length; ++j) {
-            databinsSaver.removeEventListener(registeredTileHeaderDatabins[j], 'dataArrived', tileHeaderDataArrived);
+            databinsSaver.removeEventListener(registeredTileHeaderDatabins[j]);
         }
     };
 
@@ -7881,7 +7875,7 @@ module.exports = function JpipPrecinctsIteratorWaiter(codestreamPart, codestream
 
 var jGlobals = __webpack_require__(0);
 
-module.exports = function JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinctCallback, jpipFactory) {
+module.exports = function JpipQualityWaiter(codestreamPart, progressiveness, maxQuality, qualityLayerReachedCallback, codestreamStructure, databinsSaver, startTrackPrecinctCallback, callbacksThis, jpipFactory) {
 
     // NOTE: (performance) Toggled between int and string ('max')
     var minNumQualityLayersReached = 0;
@@ -7945,7 +7939,7 @@ module.exports = function JpipQualityWaiter(codestreamPart, progressiveness, max
         var qualityInTile = tileStructure.getNumQualityLayers();
         accumulatedData.qualityInTile = qualityInTile;
 
-        startTrackPrecinctCallback(precinctDatabin, qualityInTile, precinctIterator, inClassIndex, tileStructure);
+        startTrackPrecinctCallback.call(callbacksThis, precinctDatabin, qualityInTile, precinctIterator, inClassIndex, tileStructure);
 
         if (isRegistered) {
             tryAdvanceQualityLayersReached();
@@ -8019,7 +8013,7 @@ module.exports = function JpipQualityWaiter(codestreamPart, progressiveness, max
 
         isRequestDone = progressiveStagesFinished === progressiveness.length;
 
-        qualityLayerReachedCallback();
+        qualityLayerReachedCallback.call(callbacksThis);
     }
 };
 

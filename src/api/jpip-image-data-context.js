@@ -19,16 +19,16 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
     this._dataListeners = [];
     this._isDisposed = false;
     this._isProgressive = true;
-    this._precinctDataArrivedBound = this._precinctDataArrived.bind(this);
     
     this._listener = this._jpipFactory.createQualityWaiter(
         this._codestreamPart,
         progressiveness,
         this._maxQuality,
-        this._qualityLayerReachedCallback.bind(this),
+        this._qualityLayerReachedCallback,
         this._codestreamStructure,
         this._databinsSaver,
-        this._startTrackPrecinct.bind(this));
+        this._startTrackPrecinct,
+        this);
     
     this._listener.register();
 }
@@ -104,12 +104,8 @@ JpipImageDataContext.prototype.dispose = function dispose() {
     this._listener.unregister();
     this._listener = null;
     for (var i = 0; i < this._registeredPrecinctDatabins.length; ++i) {
-        var precinctDatabin = this._registeredPrecinctDatabins[i];
-        
-        this._databinsSaver.removeEventListener(
-            precinctDatabin,
-            'dataArrived',
-            this._precinctDataArrivedBound);
+        var databinListenerHandle = this._registeredPrecinctDatabins[i];
+        this._databinsSaver.removeEventListener(databinListenerHandle);
     }
 };
 
@@ -156,9 +152,9 @@ JpipImageDataContext.prototype._startTrackPrecinct = function startTrackPrecinct
     
     var inClassIndex = precinctDatabin.getInClassId();
     this._maxQualityPerPrecinct[inClassIndex] = maxQuality;
-    this._registeredPrecinctDatabins.push(precinctDatabin);
-    this._databinsSaver.addEventListener(
-        precinctDatabin, 'dataArrived', this._precinctDataArrivedBound);
+    var handle = this._databinsSaver.addEventListener(
+        precinctDatabin, 'dataArrived', this._precinctDataArrived, this);
+    this._registeredPrecinctDatabins.push(handle);
     
     this._precinctDataArrived(precinctDatabin, precinctIterator);
 };

@@ -183,7 +183,8 @@ var jpipRuntimeFactory = {
         qualityLayerReachedCallback,
         codestreamStructure,
         databinsSaver,
-        startTrackPrecinct) {
+        startTrackPrecinct,
+        callbacksThis) {
         
         return new JpipQualityWaiter(
             codestreamPart,
@@ -193,6 +194,7 @@ var jpipRuntimeFactory = {
             codestreamStructure,
             databinsSaver,
             startTrackPrecinct,
+            callbacksThis,
             jpipRuntimeFactory);
     },
     

@@ -34,7 +34,6 @@ module.exports = function JpipPrecinctsIteratorWaiter(
         while (tileIterator.tryAdvance()) {
             var tileIndex = tileIterator.tileIndex;
             var databin = databinsSaver.getTileHeaderDatabin(tileIndex);
-            registeredTileHeaderDatabins.push(databin);
 
             var inClassId = databin.getInClassId();
             accumulatedDataPerDatabin[inClassId] = {
@@ -42,8 +41,9 @@ module.exports = function JpipPrecinctsIteratorWaiter(
                 isAlreadyLoaded: false
             };
             
-            databinsSaver.addEventListener(
+            var handle = databinsSaver.addEventListener(
                 databin, 'dataArrived', tileHeaderDataArrived);
+            registeredTileHeaderDatabins.push(handle);
                 
             ++tileHeadersNotLoaded;
             tileHeaderDataArrived(databin);
@@ -64,10 +64,7 @@ module.exports = function JpipPrecinctsIteratorWaiter(
         isUnregistered = true;
 
         for (var j = 0; j < registeredTileHeaderDatabins.length; ++j) {
-            databinsSaver.removeEventListener(
-                registeredTileHeaderDatabins[j],
-                'dataArrived',
-                tileHeaderDataArrived);
+            databinsSaver.removeEventListener(registeredTileHeaderDatabins[j]);
         }
     };
     

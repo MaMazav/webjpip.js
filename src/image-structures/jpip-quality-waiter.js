@@ -10,6 +10,7 @@ module.exports = function JpipQualityWaiter(
     codestreamStructure,
     databinsSaver,
     startTrackPrecinctCallback,
+    callbacksThis,
     jpipFactory) {
 
     // NOTE: (performance) Toggled between int and string ('max')
@@ -87,7 +88,8 @@ module.exports = function JpipQualityWaiter(
         var qualityInTile = tileStructure.getNumQualityLayers();
         accumulatedData.qualityInTile = qualityInTile;
         
-        startTrackPrecinctCallback(
+        startTrackPrecinctCallback.call(
+            callbacksThis,
             precinctDatabin,
             qualityInTile,
             precinctIterator,
@@ -175,6 +177,6 @@ module.exports = function JpipQualityWaiter(
         
         isRequestDone = progressiveStagesFinished === progressiveness.length;
 
-        qualityLayerReachedCallback();
+        qualityLayerReachedCallback.call(callbacksThis);
     }
 };

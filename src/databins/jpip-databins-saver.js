@@ -108,52 +108,46 @@ module.exports = function JpipDatabinsSaver(isJpipTilePartStream, jpipFactory) {
             loadedBytesInRegisteredDatabins += databin.getLoadedBytes();
         }
         
-        databinsArray.listeners[inClassId].push({
+        var handle = {
             listener: listener,
             listenerThis: listenerThis,
-            isRegistered: true
-            });
+            databin: databin,
+            isRegistered: true,
+            index: databinsArray.listeners[inClassId].length
+        };
+        databinsArray.listeners[inClassId].push(handle);
         
         databinsArray.databinsWithListeners[inClassId] = databin;
+        return handle;
     };
     
-    this.removeEventListener = function removeEventListener(
-        databin, event, listener) {
-        
-        if (event !== 'dataArrived') {
-            throw new jGlobals.jpipExceptions.InternalErrorException('Unsupported event: ' +
-                event);
-        }
-
-        var classId = databin.getClassId();
-        var inClassId = databin.getInClassId();
+    this.removeEventListener = function removeEventListener(handle) {
+        var classId = handle.databin.getClassId();
+        var inClassId = handle.databin.getInClassId();
         var databinsArray = databinsByClass[classId];
         var listeners = databinsArray.listeners[inClassId];
         
-        if (databin !== databinsArray.databins[inClassId] ||
-            databin !== databinsArray.databinsWithListeners[inClassId]) {
+        if (handle.databin !== databinsArray.databins[inClassId] ||
+            handle.databin !== databinsArray.databinsWithListeners[inClassId]) {
             
             throw new jGlobals.jpipExceptions.InternalErrorException('Unmatched databin ' +
                 'with class-ID=' + classId + ' and in-class-ID=' + inClassId);
         }
         
-        for (var i = 0; i < listeners.length; ++i) {
-            if (listeners[i].listener === listener) {
-                listeners[i].isRegistered = true;
-                listeners[i] = listeners[listeners.length - 1];
-                listeners.length -= 1;
-                
-                if (listeners.length === 0) {
-                    delete databinsArray.databinsWithListeners[inClassId];
-                    loadedBytesInRegisteredDatabins -= databin.getLoadedBytes();
-                }
-                
-                return;
-            }
+        if (handle !== listeners[handle.index]) {
+            throw new jGlobals.jpipExceptions.InternalErrorException('Incosnsitency in ' +
+                'databin listeners indices');
         }
         
-        throw new jGlobals.jpipExceptions.InternalErrorException(
-            'Could not unregister listener from databin');
+        listeners[handle.index].isRegistered = false;
+        listeners[handle.index] = listeners[listeners.length - 1];
+        listeners[listeners.length - 1].index = handle.index;
+        listeners.length -= 1;
+        
+        if (listeners.length === 0) {
+            delete databinsArray.databinsWithListeners[inClassId];
+            loadedBytesInRegisteredDatabins -= handle.databin.getLoadedBytes();
+        }
     };
     
     this.cleanupUnregisteredDatabins = function cleanupUnregisteredDatabins() {
