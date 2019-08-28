@@ -1819,44 +1819,10 @@ var JpxImage = function JpxImageClosure() {
     var regionTmp = { x0: 0, x1: 0, y0: 0, y1: 1 };
 
     if (resolution.hasDecodedCoefficients && resolution.dataInvalidationId === dataInvalidationId) {
-      var isDecodeCoefficientsRequired = false;
-      var subbands = resolution.subbands;
-      var interleave = subbands[0].type !== 'LL';
 
-      var kk = resolution.pixelsPrecinctsWithDecodedCoefficients.length;
-      for (var k = 0; k < kk; ++k) {
-        var pixelsPrecinct = resolution.pixelsPrecinctsWithDecodedCoefficients[k];
-        var precinctRegionInLevel = calculateRegionInLevelOfPixelsPrecinct(pixelsPrecinct, resolution);
-        var x0 = Math.max(precinctRegionInLevel.x0, regionInLevel.x0);
-        var y0 = Math.max(precinctRegionInLevel.y0, regionInLevel.y0);
-        var x1 = Math.min(precinctRegionInLevel.x1, regionInLevel.x1);
-        var y1 = Math.min(precinctRegionInLevel.y1, regionInLevel.y1);
-        if (x0 >= x1 || y0 >= y1) {
-          continue;
-        }
-        if (pixelsPrecinct.dataInvalidationId !== dataInvalidationId) {
-          continue;
-        }
-        if (!pixelsPrecinct['decodedCoefficients']) {
-          if (pixelsPrecinct.hasData) {
-            isDecodeCoefficientsRequired = true;
-          }
-          continue;
-        }
-        var decoded = pixelsPrecinct.decodedCoefficients;
-        var width = x1 - x0;
-        var sourceWidth = precinctRegionInLevel.x1 - precinctRegionInLevel.x0;
-        var targetWidth = arrayWidth;
-        var source = x0 - precinctRegionInLevel.x0 + (y0 - precinctRegionInLevel.y0) * sourceWidth;
-        var target = x0 - regionInLevel.x0 + (y0 - regionInLevel.y0) * targetWidth;
+      var isAllCoefficientsCopied = copyDecodedCoefficients(resolution, regionInLevel, coefficients, arrayWidth, dataInvalidationId);
 
-        for (var row = y0; row < y1; ++row) {
-          coefficients.set(decoded.subarray(source, source + width), target);
-          source += sourceWidth;
-          target += targetWidth;
-        }
-      }
-      if (!isDecodeCoefficientsRequired) {
+      if (isAllCoefficientsCopied) {
         return coefficients;
       }
     }
@@ -1885,6 +1851,10 @@ var JpxImage = function JpxImageClosure() {
       // to the interleaved positions of the HL, LH, and HH coefficients.
       // The LL coefficients will then be interleaved in Transform.iterate().
 
+      var x0 = subband.tbx0;
+      var y0 = subband.tby0;
+      var width = subband.tbx1 - subband.tbx0;
+      var codeblocks = subband.codeblocksWithData;
       var right = subband.type.charAt(0) === 'H' ? 1 : 0;
       var bottom = subband.type.charAt(1) === 'H' ? arrayWidth : 0;
       var interleaveOffset = right + bottom;
@@ -1917,8 +1887,8 @@ var JpxImage = function JpxImageClosure() {
       var delta = reversible ? 1 : Math.pow(2, precision + gainLog2 - epsilon) * (1 + mu / 2048);
       var mb = guardBits + epsilon - 1;
 
-      for (var i = 0, ii = subband.codeblocksWithData.length; i < ii; ++i) {
-        var codeblock = subband.codeblocksWithData[i];
+      for (var i = 0, ii = codeblocks.length; i < ii; ++i) {
+        var codeblock = codeblocks[i];
         if (codeblock.precinct.pixelsPrecinct.decodedCoefficients && codeblock.dataInvalidationId === dataInvalidationId) {
           continue;
         }
@@ -2019,6 +1989,47 @@ var JpxImage = function JpxImageClosure() {
     }
     return coefficients;
   }
+  function copyDecodedCoefficients(resolution, regionInLevel, coefficients, arrayWidth, dataInvalidationId) {
+    var isAllCoefficientsCopied = true;
+    var subbands = resolution.subbands;
+    var interleave = subbands[0].type !== 'LL';
+
+    var kk = resolution.pixelsPrecinctsWithDecodedCoefficients.length;
+    for (var k = 0; k < kk; ++k) {
+      var pixelsPrecinct = resolution.pixelsPrecinctsWithDecodedCoefficients[k];
+      var precinctRegionInLevel = calculateRegionInLevelOfPixelsPrecinct(pixelsPrecinct, resolution);
+      var x0 = Math.max(precinctRegionInLevel.x0, regionInLevel.x0);
+      var y0 = Math.max(precinctRegionInLevel.y0, regionInLevel.y0);
+      var x1 = Math.min(precinctRegionInLevel.x1, regionInLevel.x1);
+      var y1 = Math.min(precinctRegionInLevel.y1, regionInLevel.y1);
+      if (x0 >= x1 || y0 >= y1) {
+        continue;
+      }
+      if (pixelsPrecinct.dataInvalidationId !== dataInvalidationId) {
+        continue;
+      }
+      if (!pixelsPrecinct['decodedCoefficients']) {
+        if (pixelsPrecinct.hasData) {
+          isAllCoefficientsCopied = false;
+        }
+        continue;
+      }
+      var decoded = pixelsPrecinct.decodedCoefficients;
+      var width = x1 - x0;
+      var sourceWidth = precinctRegionInLevel.x1 - precinctRegionInLevel.x0;
+      var targetWidth = arrayWidth;
+      var source = x0 - precinctRegionInLevel.x0 + (y0 - precinctRegionInLevel.y0) * sourceWidth;
+      var target = x0 - regionInLevel.x0 + (y0 - regionInLevel.y0) * targetWidth;
+
+      for (var row = y0; row < y1; ++row) {
+        coefficients.set(decoded.subarray(source, source + width), target);
+        source += sourceWidth;
+        target += targetWidth;
+      }
+    }
+
+    return isAllCoefficientsCopied;
+  }
   function transformTile(context, tile, c) {
     var component = tile.components[c];
     var codingStyleParameters = component.codingStyleParameters;
@@ -2053,8 +2064,8 @@ var JpxImage = function JpxImageClosure() {
     for (var i = 0; i <= decompositionLevelsCount; i++) {
       var resolution = component.resolutions[i];
 
-      var width = resolution.trx1 - resolution.trx0;
-      var height = resolution.try1 - resolution.try0;
+      var levelWidth = resolution.trx1 - resolution.trx0;
+      var levelHeight = resolution.try1 - resolution.try0;
 
       var regionInLevel;
       if (relativeRegionInTile === undefined) {
@@ -2090,60 +2101,60 @@ var JpxImage = function JpxImageClosure() {
         y1: regionInLevel.y1 - resolution.try0
       };
       subbandCoefficients.push({
-        width: width,
-        height: height,
+        levelWidth: levelWidth,
+        levelHeight: levelHeight,
         items: coefficients,
         relativeRegionInLevel: relativeRegionInLevel
       });
     }
     var result = transform.calculate(subbandCoefficients, component.tcx0, component.tcy0);
-    var transformedRegion = result.relativeRegionInLevel;
-    var transformedWidth = transformedRegion.x1 - transformedRegion.x0;
+    var relativeRegionInLevel = result.relativeRegionInLevel;
 
-    var needCropTile = false;
     if (context.regionToParse !== undefined) {
-      needCropTile = relativeRegionInTile.x0 !== transformedRegion.x0 || relativeRegionInTile.y0 !== transformedRegion.y0 || relativeRegionInTile.x1 !== transformedRegion.x1 || relativeRegionInTile.y1 !== transformedRegion.y1;
+      var needCropTile = relativeRegionInTile.x0 !== relativeRegionInLevel.x0 || relativeRegionInTile.y0 !== relativeRegionInLevel.y0 || relativeRegionInTile.x1 !== relativeRegionInLevel.x1 || relativeRegionInTile.y1 !== relativeRegionInLevel.y1;
+      if (needCropTile) {
+        var croppedItems = cropTile(relativeRegionInTile, relativeRegionInLevel, result.items);
+        return {
+          left: component.tcx0 + relativeRegionInTile.x0,
+          top: component.tcy0 + relativeRegionInTile.y0,
+          width: relativeRegionInTile.x1 - relativeRegionInTile.x0,
+          height: relativeRegionInTile.y1 - relativeRegionInTile.y0,
+          items: croppedItems
+        };
+      }
     }
-    if (!needCropTile) {
-      var transformedHeight = transformedRegion.y1 - transformedRegion.y0;
-      return {
-        left: component.tcx0,
-        top: component.tcy0,
-        width: transformedWidth,
-        height: transformedHeight,
-        items: result.items
-      };
-    }
-
+    return {
+      left: component.tcx0,
+      top: component.tcy0,
+      width: relativeRegionInLevel.x1 - relativeRegionInLevel.x0,
+      height: relativeRegionInLevel.y1 - relativeRegionInLevel.y0,
+      items: result.items
+    };
+  }
+  function cropTile(relativeRegionInTile, relativeRegionInLevel, items) {
     // Crop the 4 redundant pixels used for the DWT
 
     var width = relativeRegionInTile.x1 - relativeRegionInTile.x0;
     var height = relativeRegionInTile.y1 - relativeRegionInTile.y0;
+    var sourceWidth = relativeRegionInLevel.x1 - relativeRegionInLevel.x0;
 
-    var itemsWithRedundantPixels = result.items;
-    var items = new Float32Array(width * height);
+    var result = new Float32Array(width * height);
 
-    var redundantRowsTop = relativeRegionInTile.y0 - transformedRegion.y0;
-    var redundantColumnsLeft = relativeRegionInTile.x0 - transformedRegion.x0;
+    var redundantRowsTop = relativeRegionInTile.y0 - relativeRegionInLevel.y0;
+    var redundantColumnsLeft = relativeRegionInTile.x0 - relativeRegionInLevel.x0;
 
     var targetOffset = 0;
-    var sourceOffset = redundantColumnsLeft + transformedWidth * redundantRowsTop;
+    var sourceOffset = redundantColumnsLeft + sourceWidth * redundantRowsTop;
     for (var i = 0; i < height; ++i) {
       var sourceEnd = sourceOffset + width;
 
-      items.set(itemsWithRedundantPixels.subarray(sourceOffset, sourceEnd), targetOffset);
+      result.set(items.subarray(sourceOffset, sourceEnd), targetOffset);
 
-      sourceOffset += transformedWidth;
+      sourceOffset += sourceWidth;
       targetOffset += width;
     }
 
-    return {
-      left: component.tcx0 + relativeRegionInTile.x0,
-      top: component.tcy0 + relativeRegionInTile.y0,
-      width: width,
-      height: height,
-      items: items
-    };
+    return result;
   }
   function transformComponents(context) {
     var siz = context.SIZ;
@@ -3574,7 +3585,7 @@ module.exports = {
         return transaction;
     },
 
-    createTransactionalObject: function commitTransaction(initialValue, isValueType) {
+    createTransactionalObject: function createTransactionalObject(initialValue, clone) {
 
         var value = null;
         var prevValue = initialValue;
@@ -3582,7 +3593,6 @@ module.exports = {
             isActive: false,
             isAborted: true
         };
-        var clone = isValueType ? cloneValueType : cloneByJSON;
 
         var transactionalObject = {
             getValue: function getValue(activeTransaction) {
@@ -3628,15 +3638,6 @@ module.exports = {
 
                 throw new jGlobals.jpipExceptions.InternalErrorException('Cannot simultanously access transactional object ' + 'from two active transactions');
             }
-        }
-
-        function cloneValueType(value) {
-            return value;
-        }
-
-        function cloneByJSON(value) {
-            var newValue = JSON.parse(JSON.stringify(value));
-            return newValue;
         }
 
         return transactionalObject;
@@ -9596,18 +9597,27 @@ module.exports = function JpipTileStructure(sizeParams, codestreamStructure, jpi
 var jGlobals = __webpack_require__(0);
 
 module.exports = function JpipBitstreamReaderClosure() {
+    var NULL_BYTE = -1; // Using js' null and number in same property degrades performance
     var zeroBitsUntilFirstOneBitMap = createZeroBitsUntilFirstOneBitMap();
 
     function JpipBitstreamReader(databin, transactionHelper) {
         var initialState = {
             nextOffsetToParse: 0,
             validBitsInCurrentByte: 0,
-            originalByteWithoutShift: null,
-            currentByte: null,
+            originalByteWithoutShift: NULL_BYTE,
+            currentByte: NULL_BYTE,
             isSkipNextByte: false
         };
 
-        var streamState = transactionHelper.createTransactionalObject(initialState);
+        var streamState = transactionHelper.createTransactionalObject(initialState, function cloneState(state) {
+            return {
+                nextOffsetToParse: state.nextOffsetToParse,
+                validBitsInCurrentByte: state.validBitsInCurrentByte,
+                originalByteWithoutShift: state.originalByteWithoutShift,
+                currentByte: state.currentByte,
+                isSkipNextByte: state.isSkipNextByte
+            };
+        });
         var activeTransaction = null;
 
         Object.defineProperty(this, 'activeTransaction', {
@@ -9655,7 +9665,7 @@ module.exports = function JpipBitstreamReaderClosure() {
                 var state = streamState.getValue(activeTransaction);
                 state.validBitsInCurrentByte = 0;
                 state.isSkipNextByte = false;
-                state.originalByteWithoutShift = null;
+                state.originalByteWithoutShift = NULL_BYTE;
                 state.nextOffsetToParse = offsetInBytes;
             }
         });
@@ -9867,7 +9877,9 @@ var jGlobals = __webpack_require__(0);
 
 module.exports = function JpipTagTree(bitstreamReader, width, height, transactionHelper) {
 
-    var isAlreadyReadBitsTransactionalObject = transactionHelper.createTransactionalObject(false, /*isValueType=*/true);
+    var isAlreadyReadBitsTransactionalObject = transactionHelper.createTransactionalObject(false, function cloneBoolean(old) {
+        return old;
+    });
     var levels;
 
     createLevelsArray();
@@ -10020,7 +10032,12 @@ module.exports = function JpipTagTree(bitstreamReader, width, height, transactio
             isFinalValue: false
         };
 
-        var transactionalObject = transactionHelper.createTransactionalObject(objectValue);
+        var transactionalObject = transactionHelper.createTransactionalObject(objectValue, function cloneNodeValue(nodeValue) {
+            return {
+                minimalPossibleValue: nodeValue.minimalPossibleValue,
+                isFinalValue: nodeValue.isFinalValue
+            };
+        });
 
         levels[level].content[indexInLevel] = transactionalObject;
         return transactionalObject;
@@ -10052,8 +10069,8 @@ module.exports = function JpipCodeblockLengthParserClosure() {
     var exactLog2Table = createExactLog2Table();
 
     function JpipCodeblockLengthParser(bitstreamReader, transactionHelper) {
-        var lBlock = transactionHelper.createTransactionalObject({
-            lBlockValue: 3
+        var lBlock = transactionHelper.createTransactionalObject({ lBlockValue: 3 }, function cloneLBlock(oldLBlock) {
+            return { lBlockValue: oldLBlock.lBlockValue };
         });
 
         this.parse = function parse(codingPasses) {
@@ -10114,7 +10131,9 @@ module.exports = function JpipSubbandLengthInPacketHeaderCalculator(bitstreamRea
 
     var codeblockLengthParsers = null;
     var isCodeblocksIncluded = null;
-    var parsedQualityLayers = transactionHelper.createTransactionalObject(0, /*isValueType=*/true);
+    var parsedQualityLayers = transactionHelper.createTransactionalObject(0, function cloneLayers(layers) {
+        return layers;
+    });
 
     var inclusionTree = jpipFactory.createTagTree(bitstreamReader, numCodeblocksX, numCodeblocksY);
 
@@ -10175,7 +10194,9 @@ module.exports = function JpipSubbandLengthInPacketHeaderCalculator(bitstreamRea
             for (var y = 0; y < numCodeblocksY; ++y) {
                 codeblockLengthParsers[x][y] = jpipFactory.createCodeblockLengthParser(bitstreamReader, transactionHelper);
 
-                isCodeblocksIncluded[x][y] = transactionHelper.createTransactionalObject({ isIncluded: false });
+                isCodeblocksIncluded[x][y] = transactionHelper.createTransactionalObject({ isIncluded: false }, function cloneIsIncluded(old) {
+                    return { isIncluded: old.isIncluded };
+                });
             }
         }
     }

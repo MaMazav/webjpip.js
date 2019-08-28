@@ -6,7 +6,9 @@ module.exports = function JpipTagTree(
     bitstreamReader, width, height, transactionHelper) {
     
     var isAlreadyReadBitsTransactionalObject =
-        transactionHelper.createTransactionalObject(false, /*isValueType=*/true);
+        transactionHelper.createTransactionalObject(false, function cloneBoolean(old) {
+            return old;
+        });
     var levels;
     
     createLevelsArray();
@@ -170,7 +172,12 @@ module.exports = function JpipTagTree(
             };
             
         var transactionalObject = transactionHelper.createTransactionalObject(
-            objectValue);
+            objectValue, function cloneNodeValue(nodeValue) {
+                return {
+                    minimalPossibleValue: nodeValue.minimalPossibleValue,
+                    isFinalValue: nodeValue.isFinalValue
+                };
+            });
         
         levels[level].content[indexInLevel] = transactionalObject;
         return transactionalObject;

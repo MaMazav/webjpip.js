@@ -3,18 +3,27 @@
 var jGlobals = require('j2k-jpip-globals.js');
 
 module.exports = (function JpipBitstreamReaderClosure() {
+    var NULL_BYTE = -1; // Using js' null and number in same property degrades performance
     var zeroBitsUntilFirstOneBitMap = createZeroBitsUntilFirstOneBitMap();
 
     function JpipBitstreamReader(databin, transactionHelper) {
         var initialState = {
             nextOffsetToParse: 0,
             validBitsInCurrentByte: 0,
-            originalByteWithoutShift: null,
-            currentByte: null,
+            originalByteWithoutShift: NULL_BYTE,
+            currentByte: NULL_BYTE,
             isSkipNextByte: false
             };
 
-        var streamState = transactionHelper.createTransactionalObject(initialState);
+        var streamState = transactionHelper.createTransactionalObject(initialState, function cloneState(state) {
+            return {
+                nextOffsetToParse: state.nextOffsetToParse,
+                validBitsInCurrentByte: state.validBitsInCurrentByte,
+                originalByteWithoutShift: state.originalByteWithoutShift,
+                currentByte: state.currentByte,
+                isSkipNextByte: state.isSkipNextByte
+            };
+        });
         var activeTransaction = null;
         
         Object.defineProperty(this, 'activeTransaction', {
@@ -72,7 +81,7 @@ module.exports = (function JpipBitstreamReaderClosure() {
                 var state = streamState.getValue(activeTransaction);
                 state.validBitsInCurrentByte = 0;
                 state.isSkipNextByte = false;
-                state.originalByteWithoutShift = null;
+                state.originalByteWithoutShift = NULL_BYTE;
                 state.nextOffsetToParse = offsetInBytes;
             }
         });

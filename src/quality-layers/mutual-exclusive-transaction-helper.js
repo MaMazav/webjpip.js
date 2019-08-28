@@ -43,8 +43,8 @@ module.exports = {
         return transaction;
     },
     
-    createTransactionalObject: function commitTransaction(
-        initialValue, isValueType) {
+    createTransactionalObject: function createTransactionalObject(
+        initialValue, clone) {
         
         var value = null;
         var prevValue = initialValue;
@@ -52,7 +52,6 @@ module.exports = {
             isActive: false,
             isAborted: true
             };
-        var clone = isValueType ? cloneValueType : cloneByJSON;
         
         var transactionalObject = {
             getValue: function getValue(activeTransaction) {
@@ -102,15 +101,6 @@ module.exports = {
                     'Cannot simultanously access transactional object ' +
                     'from two active transactions');
             }
-        }
-        
-        function cloneValueType(value) {
-            return value;
-        }
-        
-        function cloneByJSON(value) {
-            var newValue = JSON.parse(JSON.stringify(value));
-            return newValue;
         }
         
         return transactionalObject;

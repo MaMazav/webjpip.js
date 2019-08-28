@@ -14,7 +14,9 @@ module.exports =
     var codeblockLengthParsers = null;
     var isCodeblocksIncluded = null;
     var parsedQualityLayers = transactionHelper.createTransactionalObject(
-        0, /*isValueType=*/true);
+        0, function cloneLayers(layers) {
+            return layers;
+        });
         
     var inclusionTree = jpipFactory.createTagTree(
         bitstreamReader, numCodeblocksX, numCodeblocksY);
@@ -83,8 +85,11 @@ module.exports =
                     jpipFactory.createCodeblockLengthParser(
                         bitstreamReader, transactionHelper);
                     
-                isCodeblocksIncluded[x][y] = transactionHelper
-                    .createTransactionalObject({ isIncluded: false });
+                isCodeblocksIncluded[x][y] = transactionHelper.createTransactionalObject(
+                    { isIncluded: false },
+                    function cloneIsIncluded(old) {
+                        return { isIncluded: old.isIncluded };
+                    });
             }
         }
     }

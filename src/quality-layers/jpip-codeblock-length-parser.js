@@ -8,8 +8,10 @@ module.exports = (function JpipCodeblockLengthParserClosure() {
     var exactLog2Table = createExactLog2Table();
     
     function JpipCodeblockLengthParser(bitstreamReader, transactionHelper) {
-        var lBlock = transactionHelper.createTransactionalObject({
-            lBlockValue: 3
+        var lBlock = transactionHelper.createTransactionalObject(
+            { lBlockValue: 3 },
+            function cloneLBlock(oldLBlock) {
+                return { lBlockValue: oldLBlock.lBlockValue };
             });
         
         this.parse = function parse(codingPasses) {
