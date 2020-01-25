@@ -40,7 +40,7 @@ var transactionHelperStub = {
         return result;
     },
     
-    createTransactionalObject: function createTransactionalObject(initialValue, isValueType) {
+    createTransactionalObject: function createTransactionalObject(initialValue, clone) {
         var currentValue = null;
         var timesResetted = -1;
         
@@ -66,11 +66,7 @@ var transactionHelperStub = {
                 transactionHelperStub.lastTransaction = transaction;
                 
                 if (timesResetted < transactionHelperStub.timesResetted) {
-                    if (isValueType) {
-                        currentValue = initialValue;
-                    } else {
-                        currentValue = Object.create(initialValue);
-                    }
+                    currentValue = clone(initialValue);
                     timesResetted = transactionHelperStub.timesResetted;
                 }
                 

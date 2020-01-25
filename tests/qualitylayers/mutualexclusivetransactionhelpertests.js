@@ -6,7 +6,9 @@ QUnit.test('Correctness of initial value', function(assert) {
     var initialValue = { prop1: 'value1', prop2: 2 };
     
     var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
-        .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
+        .createTransactionalObject(
+            JSON.parse(JSON.stringify(initialValue)),
+            function(val) { return { prop1: val.prop1, prop2: val.prop2 }; });
     
     var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
     
@@ -24,7 +26,9 @@ QUnit.test(
         var initialValue = { prop1: 'value1', prop2: 2 };
         
         var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
-            .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
+            .createTransactionalObject(
+                JSON.parse(JSON.stringify(initialValue)),
+                function(val) { return { prop1: val.prop1, prop2: val.prop2 }; });
         
         var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
@@ -50,7 +54,9 @@ QUnit.test(
         var initialValue = { prop1: 'value1', prop2: 2 };
         
         var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
-            .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
+            .createTransactionalObject(
+                JSON.parse(JSON.stringify(initialValue)),
+                function(val) { return { prop1: val.prop1, prop2: val.prop2 }; });
         
         var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
@@ -74,7 +80,9 @@ QUnit.test(
         var initialValue = { prop1: 'value1', prop2: 2 };
         
         var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
-            .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
+            .createTransactionalObject(
+                JSON.parse(JSON.stringify(initialValue)),
+                function(val) { return { prop1: val.prop1, prop2: val.prop2 }; });
         
         var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
@@ -103,7 +111,9 @@ QUnit.test(
         var initialValue = { prop1: 'value1', prop2: 2 };
         
         var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
-            .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
+            .createTransactionalObject(
+                JSON.parse(JSON.stringify(initialValue)),
+                function(val) { return { prop1: val.prop1, prop2: val.prop2 }; });
         
         var writerTx = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var changedValue = transactionalObject.getValue(writerTx);
@@ -131,7 +141,9 @@ QUnit.test('Transaction should see all local changes', function(assert) {
     var initialValue = { prop1: 'value1', prop2: 2 };
     
     var transactionalObject = jpipExports.mutualExclusiveTransactionHelper
-        .createTransactionalObject(JSON.parse(JSON.stringify(initialValue)));
+        .createTransactionalObject(
+            JSON.parse(JSON.stringify(initialValue)),
+            function(val) { return { prop1: val.prop1, prop2: val.prop2 }; });
     
     var transaction = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
 
@@ -283,7 +295,7 @@ QUnit.test(
         'active transactions',
     function(assert) {
         var object = jpipExports.mutualExclusiveTransactionHelper.createTransactionalObject(
-            { initialValue: 'dummyValue' } );
+            { initialValue: 'dummyValue' }, function(val) { initialValue: val.initialValue; } );
         var transaction1 = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         var transaction2 = jpipExports.mutualExclusiveTransactionHelper.createTransaction();
         
