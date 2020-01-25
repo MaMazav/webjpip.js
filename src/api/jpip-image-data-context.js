@@ -6,7 +6,6 @@ module.exports = JpipImageDataContext;
 
 function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressiveness) {
     this._codestreamPart       = codestreamPart;
-    this._maxQuality           = maxQuality;
     this._reconstructor        = jpipObjects.reconstructor;
     this._packetsDataCollector = jpipObjects.packetsDataCollector;
     this._qualityLayersCache   = jpipObjects.qualityLayersCache;
@@ -23,7 +22,7 @@ function JpipImageDataContext(jpipObjects, codestreamPart, maxQuality, progressi
     this._listener = this._jpipFactory.createQualityWaiter(
         this._codestreamPart,
         progressiveness,
-        this._maxQuality,
+        maxQuality,
         this._qualityLayerReachedCallback,
         this._codestreamStructure,
         this._databinsSaver,
@@ -135,7 +134,7 @@ JpipImageDataContext.prototype._getCodestream = function getCodestream(
         codestream = this._reconstructor.createHeadersCodestream(this._codestreamPart);
     } else {
         codestream = this._reconstructor.createCodestream(
-            this._codestreamPart, qualityReached, this._maxQuality);
+            this._codestreamPart, qualityReached);
     }
     
     if (codestream === null) {

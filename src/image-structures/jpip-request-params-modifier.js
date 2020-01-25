@@ -5,46 +5,19 @@ var jGlobals = require('j2k-jpip-globals.js');
 module.exports = JpipRequestParamsModifier;
 
 function JpipRequestParamsModifier(codestreamStructure) {
-    this.modify = function modify(codestreamPartParams, options) {
+    this.modifyCodestreamPartParams = function modifyCodestreamPartParams(codestreamPartParams) {
         var codestreamPartParamsModified = castCodestreamPartParams(codestreamPartParams);
-
-        options = options || {};
-        var useCachedDataOnly = options.useCachedDataOnly;
-        var disableProgressiveness = options.disableProgressiveness;
-
-        var progressivenessModified;
-        if (options.progressiveness !== undefined) {
-            if (useCachedDataOnly || disableProgressiveness) {
-                throw new jGlobals.jpipExceptions.ArgumentException(
-                    'options.progressiveness',
-                    options.progressiveness,
-                    'options contradiction: cannot accept both progressiveness' +
-                    'and useCachedDataOnly/disableProgressiveness options');
-            }
-            progressivenessModified = castProgressivenessParams(
-                options.progressiveness,
-                codestreamPartParamsModified.quality,
-                'quality');
-        } else  if (useCachedDataOnly) {
-            progressivenessModified = [ { minNumQualityLayers: 0 } ];
-        } else if (disableProgressiveness) {
-            var quality = codestreamPartParamsModified.quality;
-            var minNumQualityLayers =
-                quality === undefined ? 'max' : quality;
-            
-            progressivenessModified = [ { minNumQualityLayers: minNumQualityLayers } ];
-        } else {
-            progressivenessModified = getAutomaticProgressivenessStages(
-                codestreamPartParamsModified.quality);
-        }
-        
-        return {
-            codestreamPartParams: codestreamPartParamsModified,
-            progressiveness: progressivenessModified
-        };
+        return codestreamPartParamsModified;
     };
 
-    function castProgressivenessParams(progressiveness, quality, propertyName) {
+    this.modifyCustomProgressiveness = function modifyCustomProgressiveness(progressiveness) {
+        if (!progressiveness || !progressiveness.length) {
+            throw new jGlobals.jpipExceptions.ArgumentException(
+                'progressiveness',
+                progressiveness,
+                'custom progressiveness argument should be non empty array');
+        }
+
         // Ensure than minNumQualityLayers is given for all items
         
         var result = new Array(progressiveness.length);
@@ -53,29 +26,41 @@ function JpipRequestParamsModifier(codestreamStructure) {
             var minNumQualityLayers = progressiveness[i].minNumQualityLayers;
             
             if (minNumQualityLayers !== 'max') {
-                if (quality !== undefined &&
-                    minNumQualityLayers > quality) {
-                    
-                    throw new jGlobals.jpipExceptions.ArgumentException(
-                        'progressiveness[' + i + '].minNumQualityLayers',
-                        minNumQualityLayers,
-                        'minNumQualityLayers is bigger than ' +
-                            'fetchParams.quality');
-                }
-                
                 minNumQualityLayers = validateNumericParam(
                     minNumQualityLayers,
-                    propertyName,
                     'progressiveness[' + i + '].minNumQualityLayers');
             }
             
-            result[i] = { minNumQualityLayers: minNumQualityLayers };
+            var forceMaxQuality = 'no';
+            if (progressiveness[i].forceMaxQuality) {
+                forceMaxQuality = progressiveness[i].forceMaxQuality;
+                if (
+                    forceMaxQuality !== 'no' &&
+                    forceMaxQuality !== 'force' &&
+                    forceMaxQuality !== 'forceAll') {
+
+                    throw new jGlobals.jpipExceptions.ArgumentException(
+                        'progressiveness[' + i + '].forceMaxQuality',
+                        forceMaxQuality,
+                        'forceMaxQuality should be "no", "force" or "forceAll"');
+                }
+                
+                if (forceMaxQuality === 'forceAll') {
+                    throw new jGlobals.jpipExceptions.UnsupportedFeatureException(
+                        '"forceAll" value for forceMaxQuality in progressiveness');
+                }
+            }
+            
+            result[i] = {
+                minNumQualityLayers: minNumQualityLayers,
+                forceMaxQuality: forceMaxQuality
+            };
         }
         
         return result;
-    }
+    };
 
-    function getAutomaticProgressivenessStages(quality) {
+    this.getAutomaticProgressiveness = function getAutomaticProgressiveness(maxQuality) {
         // Create progressiveness of (1, 2, 3, (#max-quality/2), (#max-quality))
 
         var progressiveness = [];
@@ -85,9 +70,9 @@ function JpipRequestParamsModifier(codestreamStructure) {
         var numQualityLayersNumeric = tileStructure.getNumQualityLayers();
         var qualityNumericOrMax = 'max';
         
-        if (quality !== undefined) {
+        if (maxQuality !== undefined && maxQuality !== 'max') {
             numQualityLayersNumeric = Math.min(
-                numQualityLayersNumeric, quality);
+                numQualityLayersNumeric, maxQuality);
             qualityNumericOrMax = numQualityLayersNumeric;
         }
         
@@ -95,32 +80,36 @@ function JpipRequestParamsModifier(codestreamStructure) {
             numQualityLayersNumeric - 1: 3;
         
         for (var i = 1; i < firstQualityLayersCount; ++i) {
-            progressiveness.push({ minNumQualityLayers: i });
+            progressiveness.push({
+                minNumQualityLayers: i,
+                forceMaxQuality: 'no'
+            });
         }
         
         var middleQuality = Math.round(numQualityLayersNumeric / 2);
         if (middleQuality > firstQualityLayersCount && 
             (qualityNumericOrMax === 'max' || middleQuality < qualityNumericOrMax)) {
-            progressiveness.push({ minNumQualityLayers: middleQuality });
+            progressiveness.push({
+                minNumQualityLayers: middleQuality,
+                forceMaxQuality: 'no'
+            });
         }
         
         progressiveness.push({
-            minNumQualityLayers: qualityNumericOrMax
-            });
+            minNumQualityLayers: qualityNumericOrMax,
+            forceMaxQuality: 'no'
+        });
         
+        // Force decoding only first quality layers for quicker show-up
+        progressiveness[0].forceMaxQuality = 'force';
+
         return progressiveness;
-    }
+    };
 
     function castCodestreamPartParams(codestreamPartParams) {
         var level = validateNumericParam(
             codestreamPartParams.level,
             'level',
-            /*defaultValue=*/undefined,
-            /*allowUndefiend=*/true);
-
-        var quality = validateNumericParam(
-            codestreamPartParams.quality,
-            'quality',
             /*defaultValue=*/undefined,
             /*allowUndefiend=*/true);
         
@@ -149,10 +138,8 @@ function JpipRequestParamsModifier(codestreamStructure) {
             minY: minY,
             maxXExclusive: maxX,
             maxYExclusive: maxY,
-            
-            level: level,
-            quality: quality
-            };
+            level: level
+        };
         
         return result;
     }

@@ -84,8 +84,8 @@ var jpipRuntimeFactory = {
         return new JpipDatabinsSaver(isJpipTilepartStream, jpipRuntimeFactory);
     },
     
-    createFetcher: function(databinsSaver, options) {
-        return new JpipFetcher(databinsSaver, options, jpipRuntimeFactory);
+    createFetcher: function(databinsSaver, fetcherSharedObjects, options) {
+        return new JpipFetcher(databinsSaver, fetcherSharedObjects, options, jpipRuntimeFactory);
     },
     
     createFetch: function(fetchContext, requester, progressiveness) {

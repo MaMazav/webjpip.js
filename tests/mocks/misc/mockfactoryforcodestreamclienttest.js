@@ -85,9 +85,10 @@ mockFactoryForCodestreamClientTest.createDatabinsSaver = function(isJpipTilepart
     return mockFactoryForCodestreamClientTest.databinsSaver;
 };
 
-mockFactoryForCodestreamClientTest.createFetcher = function(databinsSaver, options) {
+mockFactoryForCodestreamClientTest.createFetcher = function(databinsSaver, fetcherSharedObjects, options) {
     mockFactoryForCodestreamClientTest.fetcherArgs = {
         databinsSaver: databinsSaver,
+        fetcherSharedObjects: fetcherSharedObjects,
         options: options
         };
     

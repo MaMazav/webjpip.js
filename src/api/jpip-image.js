@@ -10,45 +10,46 @@ var WORKER_TYPE_COEFFS = 2;
 
 var TASK_ABORTED_RESULT_PLACEHOLDER = 'aborted';
 
-function JpipImage(options) {
-    var databinsSaver = jpipFactory.createDatabinsSaver(/*isJpipTilepartStream=*/false);
-    var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
-
-    var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
-    var offsetsCalculator = jpipFactory.createOffsetsCalculator(
-        mainHeaderDatabin, markersParser);
-    var structureParser = jpipFactory.createStructureParser(
-        databinsSaver, markersParser, offsetsCalculator);
+function JpipImage(arg, progressiveness) {
+    var jpipObjects;
+    if (arg && arg.jpipFactory) {
+        jpipObjects = arg;
+    } else {
+        if (!arg || !arg.url) {
+            throw new jGlobals.jpipExceptions.ArgumentException(
+                'options.url', undefined);
+        }
+        jpipObjects = createJpipObjects(/*fetcherOptionsArg=*/arg);
+    }
     
-    var progressionOrder = 'RPCL';
-    var codestreamStructure = jpipFactory.createCodestreamStructure(
-        structureParser, progressionOrder);
-    
-    var qualityLayersCache = jpipFactory.createQualityLayersCache(
-        codestreamStructure);
-        
-    var headerModifier = jpipFactory.createHeaderModifier(
-        offsetsCalculator, progressionOrder);
-    var reconstructor = jpipFactory.createCodestreamReconstructor(
-        databinsSaver, headerModifier, qualityLayersCache);
-    var packetsDataCollector = jpipFactory.createPacketsDataCollector(
-        databinsSaver, qualityLayersCache);
-    
-    var jpipObjectsForRequestContext = {
-        reconstructor: reconstructor,
-        packetsDataCollector: packetsDataCollector,
-        qualityLayersCache: qualityLayersCache,
-        codestreamStructure: codestreamStructure,
-        databinsSaver: databinsSaver,
-        jpipFactory: jpipFactory
-    };
-    
-    var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
+    var progressivenessModified;
 
     var imageParams = null;
     var levelCalculator = null;
     
-    var fetcher = jpipFactory.createFetcher(databinsSaver, options); // NOTE: Proxying fetcher to web worker might boost performance
+    // NOTE: Proxying fetcher to web worker might boost performance
+    var fetcher = jpipFactory.createFetcher(
+        jpipObjects.databinsSaver,
+        jpipObjects.fetcherSharedObjects,
+        jpipObjects.fetcherOptions);
+    
+    this.nonProgressive = function nonProgressive(quality) {
+        var qualityModified = quality || 'max';
+        return this.customProgressive([ {
+            minNumQualityLayers: qualityModified,
+            forceMaxQuality: 'force'
+        } ]);
+    };
+    
+    this.autoProgressive = function autoProgressive(maxQuality) {
+        var autoProgressiveness = this.getAutomaticProgressiveness(maxQuality);
+        return this.customProgressive(autoProgressiveness);
+    };
+    
+    this.customProgressive = function customProgressive(customProgressiveness) {
+        var customProgressivenessModified = jpipObjects.paramsModifier.modifyCustomProgressiveness(customProgressiveness);
+        return new JpipImage(jpipObjects, customProgressivenessModified);
+    };
 
     this.opened = function opened(imageDecoder) {
         imageParams = imageDecoder.getImageParams();
@@ -84,8 +85,9 @@ function JpipImage(options) {
                     pathToTransferablesInPromiseResult: [[0, 'coefficients', 'buffer']]
                 };
             default:
-                throw 'webjpip error: Unexpected worker type in ' +
-                    'getWorkerTypeOptions ' + workerType;
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'webjpip error: Unexpected worker type in ' +
+                    'getWorkerTypeOptions ' + workerType);
         }
     };
     
@@ -93,16 +95,16 @@ function JpipImage(options) {
         if (key.taskType === 'COEFFS') {
             return 'C:' + key.inClassIndex;
         } else {
-            var params = paramsModifier.modify(/*codestreamTaskParams=*/key);
-            var partParams = params.codestreamPartParams;
+            var partParams = jpipObjects.paramsModifier.modifyCodestreamPartParams(/*codestreamTaskParams=*/key);
             return 'P:xmin' + partParams.minX + 'ymin' + partParams.minY +
                    'xmax' + partParams.maxXExclusive +
                    'ymax' + partParams.maxYExclusive +
-                   'r' + partParams.level + 'q' + partParams.quality;
+                   'r' + partParams.level;
         }
     };
     
     this.taskStarted = function taskStarted(task) {
+        validateProgressiveness();
         if (task.key.taskType === 'COEFFS') {
             startCoefficientsTask(task);
         } else {
@@ -110,30 +112,67 @@ function JpipImage(options) {
         }
     };
     
-    function startPixelsTask(task) {
-        var params = paramsModifier.modify(/*codestreamTaskParams=*/task.key);
-        var codestreamPart = jpipFactory.createParamsCodestreamPart(
-            params.codestreamPartParams,
+    function createJpipObjects(fetcherOptionsArg) {
+        var databinsSaver = jpipFactory.createDatabinsSaver(/*isJpipTilepartStream=*/false);
+        var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
+
+        var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
+        var offsetsCalculator = jpipFactory.createOffsetsCalculator(
+            mainHeaderDatabin, markersParser);
+        var structureParser = jpipFactory.createStructureParser(
+            databinsSaver, markersParser, offsetsCalculator);
+        
+        var progressionOrder = 'RPCL';
+        var codestreamStructure = jpipFactory.createCodestreamStructure(
+            structureParser, progressionOrder);
+        
+        var qualityLayersCache = jpipFactory.createQualityLayersCache(
             codestreamStructure);
+            
+        var headerModifier = jpipFactory.createHeaderModifier(
+            offsetsCalculator, progressionOrder);
+        var reconstructor = jpipFactory.createCodestreamReconstructor(
+            databinsSaver, headerModifier, qualityLayersCache);
+        var packetsDataCollector = jpipFactory.createPacketsDataCollector(
+            databinsSaver, qualityLayersCache);
+
+        var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
+        
+        return {
+            reconstructor: reconstructor,
+            packetsDataCollector: packetsDataCollector,
+            qualityLayersCache: qualityLayersCache,
+            codestreamStructure: codestreamStructure,
+            databinsSaver: databinsSaver,
+            paramsModifier: paramsModifier,
+            fetcherSharedObjects: {},
+            fetcherOptions: fetcherOptionsArg,
+            jpipFactory: jpipFactory
+        };
+    }
+    
+    function validateProgressiveness() {
+        if (!progressivenessModified) {
+            progressivenessModified = progressiveness ?
+                jpipObjects.paramsModifier.modifyCustomProgressiveness(progressiveness) :
+                jpipObjects.paramsModifier.getAutomaticProgressiveness();
+            
+            fetcher.setProgressiveness(progressivenessModified);
+        }
+    }
+    
+    function startPixelsTask(task) {
+        var params = jpipObjects.paramsModifier.modifyCodestreamPartParams(/*codestreamTaskParams=*/task.key);
+        var codestreamPart = jpipFactory.createParamsCodestreamPart(
+            params,
+            jpipObjects.codestreamStructure);
         
         var qualityWaiter;
         var dependencies = 0;
         var dependencyIndexByInClassIndex = [];
-        var minQualityData = [];
-        var minQualityDataCount = 0;
-        var isProcessedMinQuality = false;
         
         task.on('dependencyTaskData', function(data, dependencyKey) {
             var index = dependencyIndexByInClassIndex[dependencyKey.inClassIndex];
-            if (!minQualityData[index]) {
-                if (data.minQuality !== params.progressiveness[0].minNumQualityLayers) {
-                    throw 'jpip error: Unexpected quality as min quality data';
-                }
-                
-                minQualityData[index] = data;
-                ++minQualityDataCount;
-            }
-            
             qualityWaiter.precinctQualityLayerReached(
                 dependencyKey.inClassIndex, data.minQuality);
         });
@@ -144,8 +183,8 @@ function JpipImage(options) {
                 !status.isWaitingForWorkerResult &&
                 status.terminatedDependsTasks === status.dependsTasks) {
                 
-                throw 'jpip error: Unexpected unended task without pending ' +
-                    'depend tasks';
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'jpip error: Unexpected unended task without pending depend tasks');
             }
         });
 
@@ -157,11 +196,11 @@ function JpipImage(options) {
         
         qualityWaiter = jpipFactory.createQualityWaiter(
             codestreamPart,
-            params.progressiveness,
-            task.key.maxQuality,
+            progressivenessModified,
+            /*maxQuality=*/0, // TODO: Eliminate this unused argument
             qualityLayerReachedCallback,
-            codestreamStructure,
-            databinsSaver,
+            jpipObjects.codestreamStructure,
+            jpipObjects.databinsSaver,
             startTrackPrecinctCallback);
         
         qualityWaiter.register();
@@ -187,10 +226,8 @@ function JpipImage(options) {
                 precinctX: precinctIterator.precinctX,
                 precinctY: precinctIterator.precinctY,
                 component: precinctIterator.component,
-                maxQuality: params.codestreamPartParams.quality,
                 inClassIndex: inClassIndex,
-                precinctIndexInComponentResolution: precinctIndex,
-                progressiveness: params.progressiveness
+                precinctIndexInComponentResolution: precinctIndex
             });
         }
         
@@ -201,36 +238,24 @@ function JpipImage(options) {
         
         function qualityLayerReachedCallback() {
             if (headersCodestream === null) {
-                headersCodestream = reconstructor.createHeadersCodestream(codestreamPart);
-                offsetInRegion = getOffsetInRegion(codestreamPart, params.codestreamPartParams);
-                imageTilesX = codestreamStructure.getNumTilesX();
+                headersCodestream = jpipObjects.reconstructor.createHeadersCodestream(codestreamPart);
+                offsetInRegion = getOffsetInRegion(codestreamPart, params);
+                imageTilesX = jpipObjects.codestreamStructure.getNumTilesX();
                 tilesBounds = codestreamPart.tilesBounds;
             }
             
-            if (!isProcessedMinQuality) {
-                if (minQualityDataCount < minQualityData.length) {
-                    throw 'webjpip error: Min quality layer data missing';
-                }
-                
-                isProcessedMinQuality = true;
-                task.dataReady({
-                    headersCodestream: headersCodestream,
-                    offsetInRegion: offsetInRegion,
-                    imageTilesX: imageTilesX,
-                    tilesBounds: tilesBounds,
-                    precinctCoefficients: minQualityData
-                }, WORKER_TYPE_PIXELS, /*canSkip=*/false);
-            }
-            
-            if (qualityWaiter.getProgressiveStagesFinished() > 1) {
-                task.dataReady({
-                    headersCodestream: headersCodestream,
-                    offsetInRegion: offsetInRegion,
-                    imageTilesX: imageTilesX,
-                    tilesBounds: tilesBounds,
-                    precinctCoefficients: task.dependTaskResults // NOTE: dependTaskResults might be changed while work (passed by ref)
-                }, WORKER_TYPE_PIXELS, /*canSkip=*/true);
-            }
+            // TODO: Aggregate results to support 'forceAll'
+            var stage = qualityWaiter.getProgressiveStagesFinished();
+            var canSkip =
+                progressivenessModified[stage - 1].force === 'force' ||
+                progressivenessModified[stage - 1].force === 'forceAll';
+            task.dataReady({
+                headersCodestream: headersCodestream,
+                offsetInRegion: offsetInRegion,
+                imageTilesX: imageTilesX,
+                tilesBounds: tilesBounds,
+                precinctCoefficients: task.dependTaskResults // NOTE: dependTaskResults might be changed while work (passed by ref)
+            }, WORKER_TYPE_PIXELS, canSkip);
             
             if (qualityWaiter.isDone()) {
                 taskEnded();
@@ -249,7 +274,7 @@ function JpipImage(options) {
     function startCoefficientsTask(task) {
         var codestreamPart = jpipFactory.createPrecinctCodestreamPart(
             getLevelCalculator(),
-            codestreamStructure.getTileStructure(task.key.tileIndex),
+            jpipObjects.codestreamStructure.getTileStructure(task.key.tileIndex),
             task.key.tileIndex,
             task.key.component,
             task.key.resolutionLevel,
@@ -263,13 +288,12 @@ function JpipImage(options) {
         });
 
         var context = jpipFactory.createImageDataContext(
-            jpipObjectsForRequestContext,
+            jpipObjects,
             codestreamPart,
-            task.key.maxQuality,
-            task.key.progressiveness); // TODO: Eliminate progressiveness from API
+            task.key.maxQuality, // TODO: Eliminate this unused argument
+            progressivenessModified);
         
         var hadData = false;
-        var hadMinQuality = false;
         var isTerminated = false;
         
         context.on('data', onData);
@@ -279,26 +303,27 @@ function JpipImage(options) {
         
         function onData(context_) {
             if (context !== context_) {
-                throw 'webjpip error: Unexpected context in data event';
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'webjpip error: Unexpected context in data event');
             }
             
             hadData = true;
             
+            var quality;
             var stage = context.getProgressiveStagesFinished();
-            if (!hadMinQuality) {
-                hadMinQuality = true;
-                var minQualityData = context.getFetchedData(task.key.progressiveness[0].minNumQualityLayers);
-                task.dataReady(minQualityData, WORKER_TYPE_COEFFS, /*canSkip=*/false);
+            var canSkip =
+                progressivenessModified[stage - 1].force !== 'force' && progressivenessModified[stage - 1].force !== 'forceAll';
+            if (!canSkip) {
+                quality = progressivenessModified[stage - 1].minNumQualityLayers;
             }
             
-            if (stage > 1) {
-                var data = context.getFetchedData();
-                task.dataReady(data, WORKER_TYPE_COEFFS, /*canSkip=*/true);
-            }
+            var data = context.getFetchedData(quality);
+            task.dataReady(data, WORKER_TYPE_COEFFS, canSkip);
             
             if (context.isDone()) {
                 if (!hadData) {
-                    throw 'webjpip error: Coefficients task without data';
+                    throw new jGlobals.jpipExceptions.InternalErrorException(
+                        'webjpip error: Coefficients task without data');
                 }
                 taskEnded();
                 task.terminate();
@@ -335,18 +360,19 @@ function JpipImage(options) {
     };
     
     this.taskStarted = function taskStarted(task) {
-        var params = paramsModifier.modify(/*codestreamTaskParams=*/task.key);
+        validateProgressiveness();
+        var params = jpipObjects.paramsModifier.modifyCodestreamPartParams(/*codestreamTaskParams=*/task.key);
         var codestreamPart = jpipFactory.createParamsCodestreamPart(
-            params.codestreamPartParams,
-            codestreamStructure);
+            params,
+            jpipObjects.codestreamStructure);
             
         var context = jpipFactory.createImageDataContext(
-            jpipObjectsForRequestContext,
+            jpipObjects,
             codestreamPart,
-            params.codestreamPartParams.quality,
-            params.progressiveness);
+            params.quality,
+            progressivenessModified);
         
-        var offsetInRegion = getOffsetInRegion(codestreamPart, params.codestreamPartParams);
+        var offsetInRegion = getOffsetInRegion(codestreamPart, params);
         
         context.on('data', onData);
         if (context.hasData()) {
@@ -355,7 +381,8 @@ function JpipImage(options) {
         
         function onData(context_) {
             if (context !== context_) {
-                throw 'webjpip error: Unexpected context in data event';
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'webjpip error: Unexpected context in data event');
             }
             
             var data = context.getFetchedData();
@@ -379,9 +406,9 @@ function JpipImage(options) {
             }
             var firstTileId = tileIterator.tileIndex;
             
-            var firstTileLeft = codestreamStructure.getTileLeft(
+            var firstTileLeft = jpipObjects.codestreamStructure.getTileLeft(
                 firstTileId, codestreamPart.level);
-            var firstTileTop = codestreamStructure.getTileTop(
+            var firstTileTop = jpipObjects.codestreamStructure.getTileTop(
                 firstTileId, codestreamPart.level);
                 
             return {
@@ -394,8 +421,8 @@ function JpipImage(options) {
             return {
                 offsetX: 0,
                 offsetY: 0,
-                width : codestreamStructure.getImageWidth(),
-                height: codestreamStructure.getImageHeight()
+                width : jpipObjects.codestreamStructure.getImageWidth(),
+                height: jpipObjects.codestreamStructure.getImageHeight()
             };
         }
     }
@@ -438,5 +465,5 @@ function getScriptName(errorWithStackTrace) {
         return errorWithStackTrace.fileName;
     }
     
-    throw 'webjpip.js: Could not get current script URL';
+    throw new jGlobals.jpipExceptions.InternalErrorException('webjpip.js: Could not get current script URL');
 }

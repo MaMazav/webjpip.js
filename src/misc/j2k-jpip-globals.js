@@ -37,7 +37,10 @@ module.exports.jpipEndOfResponseReasons = {
 
 module.exports.j2kExceptions = {
     UnsupportedFeatureException: function(feature, standardSection) {
-        this.description = feature + ' (specified in section ' + standardSection + ' of part 1: Core Coding System standard) is not supported yet';
+        this.description = feature;
+        if (standardSection) {
+            this.description += ' (specified in section ' + standardSection + ' of part 1: Core Coding System standard) is not supported yet';
+        }
         
         this.toString = function() {
             return 'J2k UnsupportedFeatureException: ' + this.description;
@@ -69,7 +72,10 @@ module.exports.j2kExceptions = {
 
 module.exports.jpipExceptions = {
     UnsupportedFeatureException: function(feature, standardSection) {
-        this.description = feature + ' (specified in section ' + standardSection + ' of part 9: Interactivity tools, APIs and Protocols) is not supported yet';
+        this.description = feature;
+        if (standardSection) {
+            this.description += ' (specified in section ' + standardSection + ' of part 9: Interactivity tools, APIs and Protocols) is not supported yet';
+        }
         
         this.toString = function() {
             return 'Jpip UnsupportedFeatureException: ' + this.description;

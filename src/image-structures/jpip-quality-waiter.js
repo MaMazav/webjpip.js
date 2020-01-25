@@ -20,7 +20,13 @@ module.exports = function JpipQualityWaiter(
     var isRequestDone = false;
 
     var accumulatedDataPerPrecinct = [];
-    var precinctCountByReachedQualityLayer = [];
+    var precinctCountByReachedQualityLayer = [0];
+    var precinctCountInMaxQualityLayer = 0;
+    var precinctCount = 0;
+    var pendingPrecinctUpdate = [];
+
+    var defaultTileStructure = codestreamStructure.getDefaultTileStructure();
+    var defaultNumQualityLayers = defaultTileStructure.getNumQualityLayers();
 
     var precinctsWaiter = jpipFactory.createPrecinctsIteratorWaiter(
         codestreamPart,
@@ -44,7 +50,7 @@ module.exports = function JpipQualityWaiter(
         var accumulatedData = updatePrecinctData(
             precinctInClassId, qualityReached);
 
-        if (accumulatedData.isUpdated) {
+        if (accumulatedData.isUpdated && accumulatedData.qualityInTile) {
             accumulatedData.isUpdated = false;
             tryAdvanceQualityLayersReached();
         }
@@ -77,16 +83,26 @@ module.exports = function JpipQualityWaiter(
         var precinctDatabin = databinsSaver.getPrecinctDatabin(
             inClassIndex);
         
-        var accumulatedData = updatePrecinctData(
-            inClassIndex, /*qualityReached=*/0);
-        
-        if (accumulatedData.qualityInTile !== undefined) {
+        if (accumulatedDataPerPrecinct[inClassIndex]) {
             throw new jGlobals.jpipExceptions.InternalErrorException(
                 'Precinct was iterated twice in codestream part');
         }
         
+        ++precinctCountByReachedQualityLayer[0];
+        ++precinctCount;
         var qualityInTile = tileStructure.getNumQualityLayers();
-        accumulatedData.qualityInTile = qualityInTile;
+        accumulatedDataPerPrecinct[inClassIndex] = {
+            qualityReached: 0,
+            isUpdated: false,
+            isMaxQuality: false,
+            qualityInTile: qualityInTile
+        };
+
+        var pendingQualityReached = pendingPrecinctUpdate[inClassIndex];
+        if (pendingQualityReached) {
+            delete pendingPrecinctUpdate[inClassIndex];
+            updatePrecinctData(inClassIndex, pendingQualityReached);
+        }
         
         startTrackPrecinctCallback.call(
             callbacksThis,
@@ -103,27 +119,37 @@ module.exports = function JpipQualityWaiter(
     
     function updatePrecinctData(precinctInClassId, qualityReached) {
         var accumulatedData = accumulatedDataPerPrecinct[precinctInClassId];
-        if (accumulatedData) {
-            --precinctCountByReachedQualityLayer[accumulatedData.qualityReached];
-            accumulatedData.isUpdated =
-                accumulatedData.qualityReached !== qualityReached;
-            accumulatedData.qualityReached = qualityReached;
-        } else {
-            accumulatedData = {
-                qualityReached: qualityReached,
-                isUpdated: qualityReached > 0
-            };
-            accumulatedDataPerPrecinct[precinctInClassId] = accumulatedData;
+        if (!accumulatedData) {
+            pendingPrecinctUpdate[precinctInClassId] = qualityReached;
+            return;
+        }
+        
+        --precinctCountByReachedQualityLayer[accumulatedData.qualityReached];
+        if (accumulatedData.isMaxQuality) {
+            --precinctCountInMaxQualityLayer;
+            accumulatedData.isMaxQuality = false;
+        }
+        
+        // qualityReached in last quality might arrive either as 'max' or number. Normalize both cases to number
+        var qualityReachedNumeric = qualityReached === 'max' ? accumulatedData.qualityInTile : qualityReached;
+        accumulatedData.isUpdated =
+            accumulatedData.qualityReached !== qualityReachedNumeric;
+        accumulatedData.qualityReached = qualityReachedNumeric;
+        
+        if (qualityReachedNumeric === accumulatedData.qualityInTile) {
+            ++precinctCountInMaxQualityLayer;
+            accumulatedData.isMaxQuality = true;
         }
 
-        var count = precinctCountByReachedQualityLayer[qualityReached] || 0;
-        precinctCountByReachedQualityLayer[qualityReached] = count + 1;
+        var count = precinctCountByReachedQualityLayer[qualityReachedNumeric] || 0;
+        precinctCountByReachedQualityLayer[qualityReachedNumeric] = count + 1;
         
         return accumulatedData;
     }
     
     function tryAdvanceQualityLayersReached() {
-        if (precinctCountByReachedQualityLayer[minNumQualityLayersReached] > 0 ||
+        if (precinctCountByReachedQualityLayer.length === 0 ||
+            precinctCountByReachedQualityLayer[minNumQualityLayersReached] > 0 ||
             minNumQualityLayersReached === 'max' ||
             progressiveStagesFinished >= progressiveness.length ||
             !precinctsWaiter.isAllTileHeadersLoaded()) {
@@ -137,18 +163,17 @@ module.exports = function JpipQualityWaiter(
         }
         
         var hasPrecinctsInQualityLayer;
-        var maxQualityLayersReached = precinctCountByReachedQualityLayer.length;
         
         do {
             ++minNumQualityLayersReached;
             
-            if (minNumQualityLayersReached >= maxQualityLayersReached) {
-                minNumQualityLayersReached = 'max';
-                break;
+            if (minNumQualityLayersReached >= precinctCountByReachedQualityLayer.length) {
+                throw new jGlobals.jpipExceptions.InternalErrorException(
+                    'Advancing progressiveness rolled out of array of precincts counts by quality');
             }
             
-            hasPrecinctsInQualityLayer = precinctCountByReachedQualityLayer[
-                minNumQualityLayersReached] > 0;
+            hasPrecinctsInQualityLayer =
+                precinctCountByReachedQualityLayer[minNumQualityLayersReached] > 0;
         } while (!hasPrecinctsInQualityLayer);
         
         var numQualityLayersToWait = progressiveness[
@@ -158,21 +183,46 @@ module.exports = function JpipQualityWaiter(
             return;
         }
         
-        if (minNumQualityLayersReached === 'max') {
-            progressiveStagesFinished = progressiveness.length;
-        }
-        
+        var isFirst = true;
         while (progressiveStagesFinished < progressiveness.length) {
             var qualityLayersRequired = progressiveness[
                 progressiveStagesFinished].minNumQualityLayers;
             
-            if (qualityLayersRequired === 'max' ||
+            if ((qualityLayersRequired === 'max' && precinctCountInMaxQualityLayer !== precinctCount) ||
                 qualityLayersRequired > minNumQualityLayersReached) {
                 
                 break;
             }
             
+            var forceCurrentStage = 
+                progressiveness[progressiveStagesFinished].forceMaxQuality === 'force' ||
+                progressiveness[progressiveStagesFinished].forceMaxQuality === 'forceAll';
+            
+            var skipForceCheck = true;
+            if (progressiveStagesFinished < progressiveness.length - 1) {
+                /*
+                    This check captures the following common case of progressiveness:
+                    [{ minNumQualityLayers: 1, forceMaxQuality: 'force' },
+                     { minNumQualityLayers: 'max', forceMaxQuality: 'no' }]
+                    This is the automatic progressiveness for an image with single quality layer.
+                    The check here tries to avoid calling the callback twice in case that all precincts
+                    have only single quality layer, which makes both stages identical.
+                    Handling this situation by eliminating the first stage when calculating the automatic
+                    progressiveness is wrong in case that there are tiles with non-default count of quality
+                    layers that is bigger than 1, thus it should be handled here.
+                 */
+                skipForceCheck =
+                    precinctCountInMaxQualityLayer === precinctCount &&
+                    progressiveness[progressiveStagesFinished + 1].minNumQualityLayers === 'max';
+            }
+                
             ++progressiveStagesFinished;
+
+            if (!isFirst && !skipForceCheck && forceCurrentStage) {
+                qualityLayerReachedCallback.call(callbacksThis);
+            }
+            
+            isFirst = false;
         }
         
         isRequestDone = progressiveStagesFinished === progressiveness.length;

@@ -6,53 +6,89 @@ module.exports = JpipFetcher;
 
 /* global console: false */
 
-function JpipFetcher(databinsSaver, options, jpipFactory) {
+function JpipFetcher(databinsSaver, fetcherSharedObjects, options, jpipFactory) {
     options = options || {};
 
     var isOpenCalled = false;
+    var isCloseCalled = false;
+    
     var resolveOpen = null;
     var rejectOpen = null;
-    var progressionOrder = 'RPCL';
 
-    var maxChannelsInSession = options.maxChannelsInSession || 1;
-    var maxRequestsWaitingForResponseInChannel =
-        options.maxRequestsWaitingForResponseInChannel || 1;
-
-    var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
-
-    var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
-    var offsetsCalculator = jpipFactory.createOffsetsCalculator(
-        mainHeaderDatabin, markersParser);
-    var structureParser = jpipFactory.createStructureParser(
-        databinsSaver, markersParser, offsetsCalculator);
-    var codestreamStructure = jpipFactory.createCodestreamStructure(
-        structureParser, progressionOrder);
-
-    var requester = jpipFactory.createReconnectableRequester(
-        maxChannelsInSession,
-        maxRequestsWaitingForResponseInChannel,
-        codestreamStructure,
-        databinsSaver);
-
-    var paramsModifier = jpipFactory.createRequestParamsModifier(codestreamStructure);
-
-    requester.setStatusCallback(requesterStatusCallback);
+    var url = options.url;
+    var progressiveness;
     
-    this.open = function open(baseUrl) {
+    this.setProgressiveness = function setProgressiveness(progressiveness_) {
+        progressiveness = progressiveness_;
+    };
+    
+    this.open = function open() {
         if (isOpenCalled) {
             throw 'webJpip error: Cannot call JpipFetcher.open() twice';
         }
+        isOpenCalled = true;
         
-        return new Promise(function(resolve, reject) {
+        if (fetcherSharedObjects.openedCount) {
+            ++fetcherSharedObjects.openedCount;
+            return fetcherSharedObjects.openPromise;
+        }
+        
+        var progressionOrder = 'RPCL';
+        var maxChannelsInSession = options.maxChannelsInSession || 1;
+        var maxRequestsWaitingForResponseInChannel =
+            options.maxRequestsWaitingForResponseInChannel || 1;
+
+        var mainHeaderDatabin = databinsSaver.getMainHeaderDatabin();
+
+        var markersParser = jpipFactory.createMarkersParser(mainHeaderDatabin);
+        var offsetsCalculator = jpipFactory.createOffsetsCalculator(
+            mainHeaderDatabin, markersParser);
+        var structureParser = jpipFactory.createStructureParser(
+            databinsSaver, markersParser, offsetsCalculator);
+        
+        fetcherSharedObjects.codestreamStructure = jpipFactory.createCodestreamStructure(
+            structureParser, progressionOrder);
+        fetcherSharedObjects.paramsModifier = jpipFactory.createRequestParamsModifier(
+            fetcherSharedObjects.codestreamStructure);
+
+        fetcherSharedObjects.requester = jpipFactory.createReconnectableRequester(
+            maxChannelsInSession,
+            maxRequestsWaitingForResponseInChannel,
+            fetcherSharedObjects.codestreamStructure,
+            databinsSaver);
+        
+        fetcherSharedObjects.requester.setStatusCallback(requesterStatusCallback);
+        
+        fetcherSharedObjects.isOpenCalledBeforePromiseInitialized = false;
+        fetcherSharedObjects.openedCount = 1;
+        fetcherSharedObjects.openPromise = new Promise(function(resolve, reject) {
             resolveOpen = resolve;
             rejectOpen = reject;
-            requester.open(baseUrl);
+            fetcherSharedObjects.requester.open(url);
         });
+        
+        return fetcherSharedObjects.openPromise;
     };
     
     this.close = function close() {
         return new Promise(function(resolve, reject) {
-            requester.close(resolve);
+            if (isCloseCalled) {
+                reject('Already closed');
+                return;
+            }
+            if (!isOpenCalled) {
+                reject('Not opened');
+                return;
+            }
+            isCloseCalled = true;
+            
+            var opened = --fetcherSharedObjects.openedCount;
+            if (opened < 0) {
+                reject('Inconsistency in openedCount');
+            }
+            if (opened === 0) {
+                fetcherSharedObjects.requester.close(resolve);
+            }
         });
     };
     
@@ -61,24 +97,24 @@ function JpipFetcher(databinsSaver, options, jpipFactory) {
     };
 
     this.startFetch = function startFetch(fetchContext, codestreamPartParams) {
-        var params = paramsModifier.modify(codestreamPartParams);
-        var fetch = createFetch(fetchContext, params.progressiveness);
+        var paramsModified = fetcherSharedObjects.paramsModifier.modifyCodestreamPartParams(codestreamPartParams);
+        var fetch = createFetch(fetchContext);
         
-        fetch.move(params.codestreamPartParams);
+        fetch.move(paramsModified);
     };
 
     this.startMovableFetch = function startMovableFetch(fetchContext, codestreamPartParams) {
-        var params = paramsModifier.modify(codestreamPartParams);
-        var fetch = createFetch(fetchContext, params.progressiveness);
+        var paramsModified = fetcherSharedObjects.paramsModifier.modifyCodestreamPartParams(codestreamPartParams);
+        var fetch = createFetch(fetchContext);
 
-        var dedicatedChannelHandle = requester.dedicateChannelForMovableRequest();
+        var dedicatedChannelHandle = fetcherSharedObjects.requester.dedicateChannelForMovableRequest();
         fetch.setDedicatedChannelHandle(dedicatedChannelHandle);
         fetchContext.on('move', fetch.move);
 
-        fetch.move(params.codestreamPartParams);
+        fetch.move(paramsModified);
     };
     
-    function createFetch(fetchContext, progressiveness) {
+    function createFetch(fetchContext) {
         //var imageDataContext = jpipFactory.createImageDataContext(
         //    jpipObjectsForRequestContext,
         //    codestreamPartParamsModified,
@@ -90,7 +126,7 @@ function JpipFetcher(databinsSaver, options, jpipFactory) {
         //    //    failureCallback: options.failureCallback
         //    //});
         
-        var fetch = jpipFactory.createFetch(fetchContext, requester, progressiveness);
+        var fetch = jpipFactory.createFetch(fetchContext, fetcherSharedObjects.requester, progressiveness);
 
         fetchContext.on('isProgressiveChanged', fetch.isProgressiveChanged);
         fetchContext.on('terminate', fetch.terminate);
@@ -116,7 +152,7 @@ function JpipFetcher(databinsSaver, options, jpipFactory) {
     //};
     
     this.reconnect = function reconnect() {
-        requester.reconnect();
+        fetcherSharedObjects.requester.reconnect();
     };
     
     function requesterStatusCallback(requesterStatus) {
@@ -154,10 +190,10 @@ function JpipFetcher(databinsSaver, options, jpipFactory) {
             return;
         }
         
-        var params = codestreamStructure.getSizesParams();
+        var params = fetcherSharedObjects.codestreamStructure.getSizesParams();
         var clonedParams = JSON.parse(JSON.stringify(params));
         
-        var tile = codestreamStructure.getDefaultTileStructure();
+        var tile = fetcherSharedObjects.codestreamStructure.getDefaultTileStructure();
         var component = tile.getDefaultComponentStructure();
 
         clonedParams.imageLevel = 0;
